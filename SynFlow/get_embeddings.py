@@ -29,13 +29,13 @@ def process_file(args) -> List[dict]:
     out = []
     path = os.path.join(corpus_folder, fname)
 
-    def follow_path(graph, id2d, start, rel_seq):
+    def follow_path(graph, id2deprel, start, rel_seq):
         """
         Follows a path specified by rel_seq from start in graph.
         
         Args:
             graph (dict): Dependency graph mapping each token id to its neighbors.
-            id2d (dict): Mapping of edge (tuple of token ids) to dependency relation label.
+            id2deprel (dict): Mapping of edge (tuple of token ids) to dependency relation label.
             start (int): The id of the starting node.
             rel_seq (list[str]): The sequence of dependency labels to follow.
         
@@ -60,7 +60,7 @@ def process_file(args) -> List[dict]:
                 return # End the current path
             want = rel_seq[i]
             for nb in graph[node]:
-                if id2d.get((node, nb)) == want: # Check if the edge label is the one we want
+                if id2deprel.get((node, nb)) == want: # Check if the edge label is the one we want
                     dfs(nb, i+1, path_nodes + [nb])
         dfs(start, 0, [])
         return chains
@@ -75,9 +75,9 @@ def process_file(args) -> List[dict]:
                 sent_toks, sent_lines = [], []
             elif line.startswith("</s>"):
                 # Build graph when the whole sentence is appended
-                id2wp, graph, id2d = build_graph(sent_toks, pattern)
+                id2lemma_pos, graph, id2deprel = build_graph(sent_toks, pattern)
                 target_lp = f"{target_lemma}/{target_pos}"
-                for tid, lp in id2wp.items():
+                for tid, lp in id2lemma_pos.items():
                     if lp != target_lp: # Only process the matched token
                         continue
                     token_line = sent_lines[int(tid)-1]
@@ -90,7 +90,7 @@ def process_file(args) -> List[dict]:
                             # split your multi-hop slot
                             rel_seq = [r.strip() for r in subslot.split(">")]
                             # get every chain of IDs matching that rel sequence
-                            chains  = follow_path(graph, id2d, tid, rel_seq)
+                            chains  = follow_path(graph, id2deprel, tid, rel_seq)
                             # print(f"DEBUG {fname}:{token_line} chains for {slot} =", chains)
 
                             # flatten **all** nodes in **all** chains to avoid nested list
@@ -98,7 +98,7 @@ def process_file(args) -> List[dict]:
                             for chain in chains:
                                 for nid in chain:
                                     # 1) get lemma and POS
-                                    lemma_pos = id2wp[nid]            # e.g. "David/NOUN"
+                                    lemma_pos = id2lemma_pos[nid]            # e.g. "David/NOUN"
                                     lemma, pos = lemma_pos.rsplit("/", 1)
 
                                     # 2) POS-filter
@@ -107,17 +107,25 @@ def process_file(args) -> List[dict]:
 
                                     # 3) decide what to output
                                     if filler_format == "lemma/deprel":
-                                        # find the dependency label from head→nid
-                                        # id2d maps (head_id, dep_id) to the relation string
-                                        raw_deprel = next(
-                                            (lab for (h,d), lab in id2d.items() if d == nid),
+                                        # 1) lấy nhãn từ id2deprel (có thể 'chi_' hoặc 'pa_')
+                                        raw_label = next(
+                                            (label for (h,d), label in id2deprel.items() if d == nid),
                                             None
                                         ) or 'UNK'
-                                        # strip any "chi_" or "pa_" prefix
-                                        deprel = reformat_deprel(raw_deprel)
+                                        
+                                        if raw_label.startswith('chi_'):
+                                            # chiều child→dep: strip prefix như bình thường
+                                            deprel = reformat_deprel(raw_label)
+                                        else:
+                                            # chiều dep→child ('pa_…'): parse lại dòng gốc để lấy đúng DEPREL
+                                            orig_line = sent_toks[int(nid)-1]  # dòng CoNLL cho token này
+                                            m = pattern.match(orig_line)
+                                            raw_field = m.group(6) if m else 'UNK'      # cột thứ 6 là DEPREL
+                                            deprel = reformat_deprel(raw_field)
+
                                         filler = f"{lemma}/{deprel}"
                                     else:
-                                        # default or "lemma_pos"
+                                        # format lemma/pos hoặc mặc định
                                         filler = f"{lemma}/{pos}"
 
                                     subslot_fillers.append(filler)
