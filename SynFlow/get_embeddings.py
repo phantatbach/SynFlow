@@ -96,39 +96,35 @@ def process_file(args) -> List[dict]:
                             # flatten **all** nodes in **all** chains to avoid nested list
                             subslot_fillers = []
                             for chain in chains:
+                                prev_id = tid
                                 for nid in chain:
-                                    # 1) get lemma and POS
-                                    lemma_pos = id2lemma_pos[nid]            # e.g. "David/NOUN"
+                                    lemma_pos = id2lemma_pos[nid]
                                     lemma, pos = lemma_pos.rsplit("/", 1)
-
-                                    # 2) POS-filter
                                     if pos in filtered_pos:
+                                        prev_id = nid
                                         continue
 
-                                    # 3) decide what to output
                                     if filler_format == "lemma/deprel":
-                                        # 1) lấy nhãn từ id2deprel (có thể 'chi_' hoặc 'pa_')
-                                        raw_label = next(
-                                            (label for (h,d), label in id2deprel.items() if d == nid),
-                                            None
-                                        ) or 'UNK'
-                                        
+                                        # ←— CHỖ ĐÃ SỬA —→
+                                        raw_label = (
+                                            id2deprel.get((prev_id, nid))    # child→parent ⇒ pa_…
+                                            or id2deprel.get((nid, prev_id))  # parent→child ⇒ chi_…
+                                            or 'UNK'
+                                        )
                                         if raw_label.startswith('chi_'):
-                                            # chiều child→dep: strip prefix như bình thường
                                             deprel = reformat_deprel(raw_label)
                                         else:
-                                            # chiều dep→child ('pa_…'): parse lại dòng gốc để lấy đúng DEPREL
-                                            orig_line = sent_toks[int(nid)-1]  # dòng CoNLL cho token này
+                                            orig_line = sent_toks[int(nid)-1]
                                             m = pattern.match(orig_line)
-                                            raw_field = m.group(6) if m else 'UNK'      # cột thứ 6 là DEPREL
+                                            raw_field = m.group(6) if m else 'UNK'
                                             deprel = reformat_deprel(raw_field)
 
                                         filler = f"{lemma}/{deprel}"
                                     else:
-                                        # format lemma/pos hoặc mặc định
                                         filler = f"{lemma}/{pos}"
 
                                     subslot_fillers.append(filler)
+                                    prev_id = nid
                             
                             slot_fillers.extend(subslot_fillers)
 
