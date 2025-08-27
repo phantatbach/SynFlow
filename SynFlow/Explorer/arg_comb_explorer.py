@@ -15,53 +15,6 @@ DEFAULT_PATTERN = re.compile(
     r'([^\t]+)'        # DEPREL
 )
 
-# def find_paths(id2lp, graph, id2d, target_lp, max_length):
-#     """
-#     Finds all unique paths of dependency labels starting from tokens with a specific lemma/POS
-#     in a dependency graph, with a maximum specified path length.
-
-#     Args:
-#         id2lp (dict): Mapping of token id to 'lemma/pos'.
-#         graph (dict): Dependency graph mapping each token id to its neighbors.
-#         id2d (dict): Mapping of edge (tuple of token ids) to dependency relation label.
-#         target_lp (str): The target lemma/POS string to search paths from.
-#         max_length (int): Maximum length of paths to explore.
-
-#     Returns:
-#         list: A list of unique path strings of dependency labels, where each path
-#               is represented as labels joined by ' > '.
-#     """
-
-#     out = []
-#     for t, lp in id2lp.items():
-#         if lp != target_lp: continue
-
-#         def dfs(node, depth, seen, rel_path):
-#             '''
-#             Recursively find paths of length <= max_length from a specific node with DFS.
-#             '''
-#             if 0 < depth <= max_length:
-#                 out.append(" > ".join(rel_path)) # Append all items in rel_path with >
-#                 # out.append((depth, " > ".join(rel_path)))
-#             if depth == max_length:
-#                 return
-            
-#             for nb in graph[node]: # Explore all the neighbours
-#                 if nb in seen: # skip any node we've already visited (including t)
-#                     continue
-#                 lbl = id2d.get((node, nb))
-#                 if not lbl:
-#                     continue
-#                 dfs(nb,
-#                     depth+1,
-#                     seen | {nb}, # Union of seen and neighbours
-#                     rel_path + [lbl] # Add edge label to the path
-#                 )
-
-#         dfs(t, 0, {t}, [])
-
-#     return out
-
 def find_paths(id2lp, graph, id2d, target_lp, max_length):
     out = []
 

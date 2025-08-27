@@ -150,13 +150,13 @@ def build_slot_df(
     freq_min: int  = 1,
     freq_max: int  = 10**9,
     filtered_pos: list = None,
-    out_template_csv: str = "templates.csv"
+    output_folder: str = None,
 ) -> pd.DataFrame:
     """
     1) Walk corpus in parallel, build per-token slot lists.
     2) Apply frequency filter (freq_path, freq_min, freq_max).
     3) Drop rows where all slots are empty (write {target}_dropped.txt).
-    4) Save the resulting DataFrame to out_template_csv and return it.
+    4) Save the resulting DataFrame to {output_folder}/ and return it.
     """
     pattern   = pattern or DEFAULT_PATTERN
     num_procs = num_processes or max(1, cpu_count()-1)
@@ -211,7 +211,7 @@ def build_slot_df(
     # drop empty‐slot rows
     mask = df[slots].apply(lambda r: all(len(x)==0 for x in r), axis=1)
     dropped = df.index[mask].tolist()
-    with open(f"{target_lemma}_dropped.txt","w",encoding='utf8') as f:
+    with open(f"{output_folder}/{target_lemma}_dropped.txt","w",encoding='utf8') as f:
         for idx in dropped:
             f.write(idx+"\n")
     df = df[~mask]
@@ -222,8 +222,9 @@ def build_slot_df(
     df.insert(0, target_slot, [[target_slot]] * len(df))
 
     # save
-    df.to_csv(out_template_csv)
-    print(f"Wrote slot‐fillers to {out_template_csv} ({len(df)} rows), "
+    output_csv = f"{output_folder}/{target_lemma}_samples_all_slots.csv"
+    df.to_csv(output_csv)
+    print(f"Wrote slot‐fillers to {output_csv} ({len(df)} rows), "
           f"dropped {len(dropped)} tokens.")
     return df
 
