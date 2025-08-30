@@ -19,10 +19,23 @@ from .get_contexts import (
     get_contexts,
     )
 
+from .trimming import (
+    trim_and_merge,
+    spe_group
+)
+
+from .slot_df import (
+    build_slot_df,
+    sample_slot_df
+)
 __all__ = [
     arg_comb_explorer,
     arg_explorer,
     full_rel_explorer,
     get_contexts,
     rel_explorer,
+    trim_and_merge,
+    spe_group,
+    build_slot_df,
+    sample_slot_df
     ]

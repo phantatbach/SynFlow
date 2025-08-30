@@ -4,40 +4,27 @@ import json
 import pandas as pd
 import plotly.express as px
 import random
-def count_keyword_tokens_by_period(corpus_path, keyword_string, pattern, mode='half_decade'):
-    """
-    Count how many times the keyword string appears in each time period.
-
-    Parameters:
-        corpus_path (str): Folder with text files.
-        keyword_string (str): Target string (e.g., 'air\\tair\\tNOUN').
-        mode (str): 'decade' or 'half_decade'.
-
-    Returns:
-        dict: {period (int): token count}
-    """
-    assert mode in {'decade', 'half_decade'}, "Mode must be 'decade' or 'half_decade'"
-
+def count_keyword_tokens_by_period(corpus_path, keyword_string, fname_pattern, mode='half_decade'):
     # Use custom pattern to extract year from full filename
-    pattern = pattern
     counts_by_period = defaultdict(int)
 
-    for filename in os.listdir(corpus_path):
-        file_path = os.path.join(corpus_path, filename)
-        match = pattern.search(filename) 
+    # Loop through each subfolder
+    for subfolder in os.listdir(corpus_path):
+        subfolder_path = os.path.join(corpus_path, subfolder)
+        # Loop through each file in the subfolder
+        for filename in os.listdir(subfolder_path):
+            file_path = os.path.join(subfolder_path, filename)
+            match = fname_pattern.search(filename) 
 
-        if not match:
-            continue
+            if not match:
+                continue
 
-        year = int(match.group("year"))
-        period = (year // 10) * 10 if mode == 'decade' else (year // 5) * 5
-
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    counts_by_period[period] += line.count(keyword_string)
-        except Exception as e:
-            print(f"Warning: failed to read {file_path}: {e}")
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        counts_by_period[subfolder] += line.count(keyword_string)
+            except Exception as e:
+                print(f"Warning: failed to read {file_path}: {e}")
 
     return dict(sorted(counts_by_period.items()))
 
