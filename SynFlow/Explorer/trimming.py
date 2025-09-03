@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import csv, json, pathlib
 
+NON_SLOT_COLS = {"Subfolder", "Frequency", "Target"}
 def trimming(df_file, trimmed_rels):
     """
     Xóa các slot từ trimmed_rels trở đi trong mỗi cell của các slot.
@@ -15,8 +16,8 @@ def trimming(df_file, trimmed_rels):
     """
     df = pd.read_csv(df_file, sep='&')
 
-    # Lấy các cột slot (bỏ Frequency và Target)
-    slot_cols = df.columns[2:]
+    # Lấy các cột slot (bỏ Subfolder, Frequency và Target)
+    slot_cols = [c for c in df.columns if c not in NON_SLOT_COLS]
 
     def trim_cell(cell):
         """
@@ -68,7 +69,7 @@ def merging(df, df_file):
     Returns:
         pd.DataFrame: DataFrame đã merge.
     """
-    slot_cols = df.columns[2:]
+    slot_cols = [c for c in df.columns if c not in NON_SLOT_COLS]
 
     # Loại duplicate trong từng row (chiều ngang), sort để nhất quán
     df['slot_key'] = df[slot_cols].apply(
@@ -81,7 +82,7 @@ def merging(df, df_file):
 
     # Merge theo slot_key và Target
     merged = (
-        df.groupby(['Target', 'slot_key'], as_index=False)
+        df.groupby(['Subfolder', 'Target', 'slot_key'], as_index=False)
         .agg({'Frequency': 'sum'})
     )
 
@@ -90,9 +91,9 @@ def merging(df, df_file):
     slot_df = pd.DataFrame(merged['slot_key'].apply(lambda x: list(x) + [np.nan]*(max_len - len(x))).tolist(),
                            columns=[f"Slot_{i+1}" for i in range(max_len)])
 
-    merged = pd.concat([merged[['Frequency', 'Target']], slot_df], axis=1)
+    merged = pd.concat([merged[['Subfolder', 'Frequency', 'Target']], slot_df], axis=1)
 
-    merged = merged.sort_values(by="Frequency", ascending=False)
+    merged = merged.sort_values(['Subfolder','Frequency'], ascending=[True, False])
 
     # Lưu file
     df_file = df_file.rsplit('.', 1)[0]
@@ -106,21 +107,97 @@ def trim_and_merge(df_file, trimmed_rels):
     merged = merging(df, df_file)
     return merged
 
+# def spe_group(df_path: str, output_folder: str, target_lemma: str):
+#     """
+#     Nhóm các row có cùng slot list (đã loại duplicate theo chiều ngang)
+#     và lưu file JSON.
+
+#     Args:
+#         df_path (str): Đường dẫn đến file CSV (sep='&').
+#         output_folder (str): Thư mục để lưu file JSON.
+
+#     Returns:
+#         list: Danh sách các node đã được nhóm.
+#     """
+#     def first_level(slot: str) -> str:
+#         """
+#         Trả về phần đầu tiên của slot (tách ra bởi '>') sau khi loại bỏ
+#         các dấu '>' và khoảng trắng thừa.
+
+#         Args:
+#             slot (str): Chuỗi slot.
+
+#         Returns:
+#             str: Phần đầu tiên của slot.
+#         """
+#         return slot.lstrip('>').split('>')[0].strip()
+
+#     nodes = {}
+
+#     with open(df_path, encoding='utf-8-sig') as f:
+#         reader = csv.reader(f, delimiter='&')
+
+#         # skip header if present
+#         header = next(reader, None)
+#         if header and header[0].strip().lower() != 'frequency':
+#             f.seek(0); reader = csv.reader(f, delimiter='&')
+
+#         for row in reader:
+#             if len(row) < 3:
+#                 continue
+#             try:
+#                 freq = int(row[0].strip())
+#             except ValueError:
+#                 continue
+
+#             raw_slots  = [c.strip() for c in row[2:] if c.strip()]
+#             flat_slots = {first_level(s) for s in raw_slots}
+#             key        = frozenset(flat_slots)
+
+#             node = nodes.setdefault(
+#                 key,
+#                 {
+#                     "id": f"node_{len(nodes)+1}",
+#                     "slot_combs": sorted(flat_slots),
+#                     "frequency": 0,            # <── NEW
+#                     "specialisations": []
+#                 }
+#             )
+
+#             node["specialisations"].append({
+#                 "specialisation": raw_slots,
+#                 "frequency": freq
+#             })
+#             node["frequency"] += freq           # <── NEW
+
+#     out_dir = pathlib.Path(output_folder)
+#     out_dir.mkdir(parents=True, exist_ok=True)
+#     out_file = f'{out_dir}/{target_lemma}_arg_comb_grouped.json'
+#     with open(out_file, 'w', encoding='utf-8') as f:
+#         json.dump(list(nodes.values()), f, ensure_ascii=False, indent=2)
+#     print(f'Saved to {out_dir}/{target_lemma}_arg_comb_grouped.json')
+#     return list(nodes.values())
+
 def spe_group(df_path: str, output_folder: str, target_lemma: str):
     """
-    Nhóm các row có cùng slot list (đã loại duplicate theo chiều ngang)
-    và lưu file JSON.
+    Đọc CSV (sep='&') có cột: Subfolder, Frequency, Target, Slot_*...
+    Nhóm các row có cùng slot list (đã loại duplicate theo chiều ngang) 
+    trong cùng 1 Subfolder và lưu file JSON.
 
     Args:
         df_path (str): Đường dẫn đến file CSV (sep='&').
         output_folder (str): Thư mục để lưu file JSON.
 
     Returns:
-        list: Danh sách các node đã được nhóm.
+    Danh sách các node đã được nhóm trong file json
+    {
+      "1750": [ {id, slot_combs, frequency, specialisations:[...]}, ... ],
+      "1755": [ ... ]
+    }
     """
     def first_level(slot: str) -> str:
         """
-        Trả về phần đầu tiên của slot (tách ra bởi '>') sau khi loại bỏ
+        Trả về level đầu tiên của slot (tách ra bởi '>') sau khi loại bỏ
         các dấu '>' và khoảng trắng thừa.
 
         Args:
@@ -131,48 +208,79 @@ def spe_group(df_path: str, output_folder: str, target_lemma: str):
         """
         return slot.lstrip('>').split('>')[0].strip()
 
-    nodes = {}
+    out_dir = pathlib.Path(output_folder) # Chuẩn bị thư mục output
+    out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Đọc CSV và xác định vị trí các cột quan trọng
     with open(df_path, encoding='utf-8-sig') as f:
-        reader = csv.reader(f, delimiter='&')
+        reader = csv.reader(f, delimiter='&') # Iterator of rows
 
-        # skip header if present
         header = next(reader, None)
-        if header and header[0].strip().lower() != 'frequency':
-            f.seek(0); reader = csv.reader(f, delimiter='&')
+        if not header:
+            raise ValueError("Empty CSV")
 
+        try:
+            i_sub  = header.index('Subfolder')
+            i_freq = header.index('Frequency')
+            i_tgt  = header.index('Target')  # 3 cột chính, mọi cột sau Target là slot
+        except ValueError as e:
+            raise ValueError("CSV must contain columns: Subfolder, Frequency, Target") from e
+
+        slot_cols = list(range(i_tgt + 1, len(header))) # Các cột slots
+
+        # bucket theo subfolder
+        buckets = {}
         for row in reader:
-            if len(row) < 3:
+            if len(row) <= max(i_sub, i_freq):
                 continue
+            subf = row[i_sub].strip()
+            buckets.setdefault(subf, []).append(row) # Add rows into buckets of subfolders
+
+    # xử lý từng subfolder
+    spe_by_subfolder = {}
+
+    for subf, rows in buckets.items():
+        nodes = {}  # key = frozenset(first-level slots) -> node dict
+        for row in rows:
+            # Get all frequencies
             try:
-                freq = int(row[0].strip())
-            except ValueError:
+                freq = int(row[i_freq].strip())
+            except Exception:
                 continue
 
-            raw_slots  = [c.strip() for c in row[2:] if c.strip()]
+            # Get all raw slots
+            raw_slots = []
+            for c in slot_cols:
+                if c < len(row):
+                    s = (row[c] or "").strip()
+                    if s:
+                        raw_slots.append(s)
+            if not raw_slots:
+                continue
+
+            # group theo tập first-level slots (logic cũ)
             flat_slots = {first_level(s) for s in raw_slots}
-            key        = frozenset(flat_slots)
+            key = frozenset(flat_slots) # Create dictionary keys from flat_slots
 
             node = nodes.setdefault(
                 key,
                 {
-                    "id": f"node_{len(nodes)+1}",
+                    "id": f"{subf}_node_{len(nodes)+1}",  # reset theo subfolder
                     "slot_combs": sorted(flat_slots),
-                    "frequency": 0,            # <── NEW
+                    "frequency": 0,
                     "specialisations": []
                 }
             )
-
             node["specialisations"].append({
                 "specialisation": raw_slots,
                 "frequency": freq
             })
-            node["frequency"] += freq           # <── NEW
+            node["frequency"] += freq
 
-    out_dir = pathlib.Path(output_folder)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_file = f'{out_dir}/{target_lemma}_arg_comb_grouped.json'
+        spe_by_subfolder[subf] = list(nodes.values()) # Add nodes to final dict, grouped by subfolders
+
+    out_file = pathlib.Path(output_folder) / f"{target_lemma}_arg_comb_grouped.json"
     with open(out_file, 'w', encoding='utf-8') as f:
-        json.dump(list(nodes.values()), f, ensure_ascii=False, indent=2)
-    print(f'Saved to {out_dir}/{target_lemma}_arg_comb_grouped.json')
-    return list(nodes.values())
+        json.dump(spe_by_subfolder, f, ensure_ascii=False, indent=2)
+    print(f"Saved to {out_file}")
+    return spe_by_subfolder

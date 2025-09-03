@@ -5,6 +5,7 @@ from collections import Counter
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 from SynFlow.utils import build_graph
+from typing import Dict
 
 DEFAULT_PATTERN = re.compile(
     r'([^\t]+)\t'      # FORM
@@ -15,40 +16,30 @@ DEFAULT_PATTERN = re.compile(
     r'([^\t]+)'        # DEPREL
 )
 
-def find_paths(id2lp, graph, id2d, target_lp, max_length):
+def find_paths_from(id2lp, graph, id2d, start_id, max_length):
     out = []
 
-    for t, lp in id2lp.items():
-        if lp != target_lp:
-            continue
-
-        def dfs(node, depth, seen, rel_path):
-            if depth == max_length:
+    def dfs(node, depth, seen, rel_path):
+        if depth == max_length:
+            if rel_path:                     # tránh append chuỗi rỗng
                 out.append(" > ".join(rel_path))
-                return
+            return
 
-            has_child = False
-            for nb in graph.get(node, []):
-                if nb in seen:
-                    continue
-                lbl = id2d.get((node, nb))
-                if not lbl:
-                    continue
+        has_child = False
+        for nb in graph.get(node, []):
+            if nb in seen:
+                continue
+            lbl = id2d.get((node, nb))
+            if not lbl:
+                continue
 
-                has_child = True
-                dfs(
-                    nb,
-                    depth + 1,
-                    seen | {nb},
-                    rel_path + [lbl]
-                )
+            has_child = True
+            dfs(nb, depth + 1, seen | {nb}, rel_path + [lbl])
 
-            # Nếu không còn child nào để đi, và path chưa đủ max_depth nhưng đây là leaf → cũng append
-            if not has_child and rel_path:
-                out.append(" > ".join(rel_path))
+        if not has_child and rel_path:
+            out.append(" > ".join(rel_path))
 
-        dfs(t, 0, {t}, [])
-
+    dfs(start_id, 0, {start_id}, [])
     return out
 
 def process_file(args) -> Counter:
@@ -84,47 +75,41 @@ def process_file(args) -> Counter:
                     if lp != target_lp:
                         continue
 
-                    # find all paths of length ≤ max_length
-                    paths = find_paths(id2lp, graph, id2d, target_lp, max_length)
-                    # get unique paths
-                    unique = sorted(set(paths))
+                    paths  = find_paths_from(id2lp, graph, id2d, tid, max_length)  # <— dùng tid to get all the path from each target token
+                    unique = sorted(set(paths)) # Take only 1 type of slot for each token. Need to think about cases where there are duplicate slots of the same token (e.g., big bad wolf)
 
-                    # build the full-pattern string:
-                    #   target_lemma & > path1 & > path2 > path3 & ...
                     parts = [target_lemma] + ["> " + p for p in unique]
                     pattern_str = " & ".join(parts)
-
                     ctr[pattern_str] += 1
             else:
                 sent.append(line)
     return ctr
 
-def save_to_csv(counter, output_path="output.csv"):
-    split_patterns = []
+def save_to_csv_with_subfolder(rows, output_path="output.csv"):
+    """
+    rows: iterable of (subfolder, freq, target, [slots...])
+    Ghi một CSV duy nhất, delimiter '&', có cột Subfolder.
+    """
+    # Tính max số slot để pad
     max_slots = 0
-
-    # Tách pattern và tính max slots
-    for pattern_str, freq in counter.items():
-        parts = pattern_str.split(" & ")
-        target = parts[0]
-        slots = parts[1:]
-        split_patterns.append((freq, target, slots))
+    for _, _, _, slots in rows:
         if len(slots) > max_slots:
             max_slots = len(slots)
 
+    # Ghi file
     with open(output_path, mode="w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f, delimiter='&')
-
-        # Header
-        header = ["Frequency", "Target"] + [f"Slot{i+1}" for i in range(max_slots)]
+        header = ["Subfolder", "Frequency", "Target"] + [f"Slot{i+1}" for i in range(max_slots)]
         writer.writerow(header)
 
-        # Ghi từng row, pad nếu slot thiếu
-        for freq, target, slots in sorted(split_patterns, key=lambda x: -x[0]):
-            row = [freq, target] + slots + [""] * (max_slots - len(slots))
+        # Sắp xếp: subfolder rồi freq giảm dần
+        rows_sorted = sorted(rows, key=lambda r: (r[0], -r[1], r[2]))
+        for subf, freq, target, slots in rows_sorted:
+            row = [subf, freq, target] + slots + [""] * (max_slots - len(slots))
             writer.writerow(row)
 
     print(f"CSV saved to {output_path}")
+
 
 def arg_comb_explorer(
     corpus_folder: str,
@@ -135,34 +120,65 @@ def arg_comb_explorer(
     top_n: int = 20,
     num_processes: int = None,
     pattern: re.Pattern = None
-) -> Counter:
+) -> Dict[str, Counter]:
+    """
+    Trả về dict{subfolder: Counter}, và vẽ top_n theo từng subfolder.
+    Đồng thời ghi một CSV tổng hợp có cột Subfolder.
+    """
     pattern   = pattern or DEFAULT_PATTERN
     num_procs = num_processes or max(1, cpu_count()-1)
 
-    files = [f for f in os.listdir(corpus_folder)
-             if f.endswith((".conllu", ".txt"))]
-    args = [
-        (corpus_folder, f, pattern,
-         target_lemma, target_pos, max_length)
-        for f in files
-    ]
+    all_totals: Dict[str, Counter] = {}
+    csv_rows = []  # sẽ chứa (subfolder, freq, target, slots)
 
-    total = Counter()
-    with Pool(num_procs) as pool:
-        for file_ctr in pool.imap_unordered(process_file, args, chunksize=10):
-            total.update(file_ctr)
+    for subfolder in os.listdir(corpus_folder):
+        subfolder_path = os.path.join(corpus_folder, subfolder)
+        if not os.path.isdir(subfolder_path):
+            continue
 
-    print(f"Total instances: {sum(total.values())}, distinct patterns: {len(total)}")
-    if total:
-        labels, freqs = zip(*total.most_common(top_n))
-        plt.figure(figsize=(min(12, 0.3*len(labels)), 6))
-        plt.bar(range(len(freqs)), freqs)
-        plt.xticks(range(len(labels)), labels, rotation=90)
-        plt.ylabel("Count")
-        plt.title(f"Top {top_n} unique combinations around {target_lemma}/{target_pos} (≤{max_length}-hop)")
-        plt.tight_layout()
-        plt.show()
+        files = [f for f in os.listdir(subfolder_path)
+                 if f.endswith((".conllu", ".txt"))]
 
-        save_to_csv(total, output_path=f"{output_folder}/{target_lemma}_arg_comb_{max_length}_hops.csv")
-    return total
+        args = [
+            (subfolder_path, f, pattern, target_lemma, target_pos, max_length)
+            for f in files
+        ]
+
+        total = Counter()
+        if args:
+            with Pool(num_procs) as pool:
+                for file_ctr in pool.imap_unordered(process_file, args, chunksize=10):
+                    total.update(file_ctr)
+
+        all_totals[subfolder] = total
+
+        print(f"[{subfolder}] Total instances: {sum(total.values())}, distinct patterns: {len(total)}")
+
+        # Vẽ top_n cho subfolder này
+        if total:
+            labels, freqs = zip(*total.most_common(top_n)) # Tuple unpacking then zipping to list for plotting
+            plt.figure(figsize=(min(14, 0.35*len(labels)), 6))
+            plt.bar(range(len(freqs)), freqs)
+            plt.xticks(range(len(labels)), labels, rotation=90)
+            plt.ylabel("Count")
+            plt.title(f"{subfolder}: Top {top_n} unique combinations around {target_lemma}/{target_pos} (≤{max_length}-hop)")
+            plt.tight_layout()
+            plt.show()
+
+            # Chuẩn bị row CSV cho mọi pattern của subfolder này
+            for pattern_str, freq in total.items():
+                parts  = pattern_str.split(" & ")
+                target = parts[0]
+                slots  = parts[1:] # This also contains '>'
+                csv_rows.append((subfolder, freq, target, slots))
+
+    # Ghi CSV tổng hợp
+    os.makedirs(output_folder, exist_ok=True)
+    out_csv = os.path.join(
+        output_folder,
+        f"{target_lemma}_{target_pos}_arg_comb_{max_length}_hops.csv"
+    )
+    save_to_csv_with_subfolder(csv_rows, output_path=out_csv)
+
+    return all_totals
 

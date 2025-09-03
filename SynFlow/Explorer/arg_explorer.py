@@ -16,38 +16,32 @@ DEFAULT_PATTERN = re.compile(
     r'([^\t]+)'        # DEPREL
 )
 
-def get_contexts(graph, id2lemma_pos, id2deprel, tgt_ids, max_length):
+def get_contexts(graph, id2lp, id2dep, tgt_ids, max_length):
     """
     Given a dependency graph, a mapping of id to lemma/pos, a mapping of edge to deprel,
     a list of target ids, and a maximum length, find all context argument paths (up to max_length)
-    that start from any of the target ids. Use a breadth‐first search.
+    that start from any of the target ids. Use a breadth-first search.
 
     Returns a list of context paths, where each path is a string of dependency labels
     joined by ' > '.
     """
-    contexts = [] # Create an empty list to save the context paths
+    out = [] # Create an empty list to save the context paths
     for t in tgt_ids:
-        '''
-        Breadth-first search
-        Create a double-ended queue for a list of neightbours and a set to keep track of visited nodes
-        Items in the queue have the following format: (node, depth, arg_path to the node)
-        For each node in the queue, get the neighbours and depths and add them to the queue.
-        '''
-        q, visited = deque([(t, 0, [])]), {t}
+        q = deque([(t, 0, [], {t})])  # seen riêng cho từng path
         while q:
-            node, depth, arg_path = q.popleft() # Continue as long as there are nodes to visit
+            node, depth, path, seen = q.popleft() # seen riêng cho từng path
             if depth == max_length:
                 continue # Skip to the next item in the queue if we've reached the maximum path length
-            for nb in graph[node]: # For each neighbour
-                if nb in visited: # Prevent revisiting the same node
+            for nb in graph.get(node, []): # For each neighbour
+                if nb in seen: # Prevent revisiting the same node in the same path
                     continue
-                lbl = id2deprel[(node, nb)] # Get the edge label from node to neighbour
-                new_path = arg_path + [lbl]
-                contexts.append(' > '.join(new_path))
-
-                visited.add(nb)
-                q.append((nb, depth + 1, new_path))
-    return contexts
+                lbl = id2dep.get((node, nb)) # Get the edge label from node to neighbour
+                if not lbl:
+                    continue
+                new_path = path + [lbl]
+                out.append(" > ".join(new_path))
+                q.append((nb, depth + 1, new_path, seen | {nb}))
+    return out
 
 def process_file(args):
     """
@@ -127,34 +121,42 @@ def arg_explorer(
     """
     pattern        = pattern or DEFAULT_PATTERN
     num_processes  = num_processes or max(1, cpu_count() - 1)
+    all_results = {}  # <-- dict of dict
 
-    # gather filenames
-    files = [
-        f for f in os.listdir(corpus_folder)
-        if f.endswith(('.conllu', '.txt'))
-    ]
+    # Go through each subfolder in the corpus folder
+    for subfolder in os.listdir(corpus_folder):
+        subfolder_path = os.path.join(corpus_folder, subfolder)
 
-    # prepare per‐file args tuples
-    args_list = [
-        (f, corpus_folder, pattern,
-         target_lemma, target_pos, max_length)
-        for f in files
-    ]
+        # Gather filenames within each subfolder in the corpus folder
+        files = [
+            f for f in os.listdir(subfolder_path)
+            if f.endswith(('.conllu', '.txt'))
+        ]
 
-    global_counter = Counter()
-    with Pool(num_processes) as pool:
-        for ctr in pool.imap_unordered(process_file, args_list, chunksize=10):
-            global_counter.update(ctr)
+        # prepare per‐file args tuples
+        args_list = [
+            (f, subfolder_path, pattern,
+            target_lemma, target_pos, max_length)
+            for f in files
+        ]
 
-    print(f'Collected {sum(global_counter.values())} context links, '
-          f'{len(global_counter)} distinct arguments.')
-    plot_dist(global_counter, target_lemma, max_length, top_n)
+        global_counter = Counter()
+        with Pool(num_processes) as pool:
+            for ctr in pool.imap_unordered(process_file, args_list, chunksize=10):
+                global_counter.update(ctr)
 
-    # SAVE COUNTER AS DICT
-    sorted_args = dict(sorted(global_counter.items(), key=lambda x: x[1], reverse=True))
+        print(f'[{subfolder}] Collected {sum(global_counter.values())} context links, '
+              f'{len(global_counter)} distinct arguments.')
+
+        plot_dist(global_counter, target_lemma, max_length, top_n)
+
+        # SAVE COUNTER AS DICT
+        sorted_args = dict(sorted(global_counter.items(), key=lambda x: x[1], reverse=True))
+        all_results[subfolder] = sorted_args  # <-- save by subfolder
+
     output_path = os.path.join(output_folder, f'{target_lemma}_{target_pos}_arguments.json')
     with open(output_path, 'w', encoding='utf-8') as f_out:
-        json.dump(sorted_args, f_out, ensure_ascii=False, indent=2)
+        json.dump(all_results, f_out, ensure_ascii=False, indent=2)
     print(f'Saved path frequencies to: {output_path}')
 
     return global_counter

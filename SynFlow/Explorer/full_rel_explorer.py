@@ -268,20 +268,24 @@ def full_rel_explorer(corpus_folder: str,
 
     pattern       = pattern or DEFAULT_PATTERN
     num_procs     = max(1, num_processes)
-    files = [
-        f for f in os.listdir(corpus_folder)
-        if f.endswith((".conllu", ".txt"))
-    ]
-    if not files:
-        print(f"No .conllu or .txt files found in '{corpus_folder}'.")
-        return []
-    args = [
-        (corpus_folder, f, pattern, target_lemma, target_pos, rel, mode) # Pass new argument
-        for f in files
-    ]
     all_results: List[Tuple[str, str, List[Tuple[List[str], str]]]] = []
-    with Pool(num_procs) as pool:
-        for file_res in pool.imap_unordered(process_file, args, chunksize=10):
-            all_results.extend(file_res)
+    
+    # Go through each subfolder in the corpus folder
+    for subfolder in os.listdir(corpus_folder):
+        subfolder_path = os.path.join(corpus_folder, subfolder)
+        files = [
+            f for f in os.listdir(subfolder_path)
+            if f.endswith((".conllu", ".txt"))
+        ]
+        if not files:
+            print(f"No .conllu or .txt files found in '{subfolder_path}'.")
+            return []
+        args = [
+            (subfolder_path, f, pattern, target_lemma, target_pos, rel, mode) # Pass new argument
+            for f in files
+        ]
+        with Pool(num_procs) as pool:
+            for file_res in pool.imap_unordered(process_file, args, chunksize=10):
+                all_results.extend(file_res)
 
     return all_results

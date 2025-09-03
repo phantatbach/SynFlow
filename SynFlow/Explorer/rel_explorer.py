@@ -101,20 +101,24 @@ def rel_explorer(corpus_folder: str,
     """
     pattern       = pattern or DEFAULT_PATTERN
     num_procs     = num_processes or max(1, cpu_count()-1)
-
-    files = [
-        f for f in os.listdir(corpus_folder)
-        if f.endswith((".conllu", ".txt"))
-    ]
-    args = [
-        (corpus_folder, f, pattern, target_lemma, target_pos, rel)
-        for f in files
-    ]
-
+    
     all_results = []
-    with Pool(num_procs) as pool:
-        for file_res in pool.imap_unordered(process_file, args, chunksize=10):
-            all_results.extend(file_res)
+    # Go through each subfolder in the corpus folder
+    for subfolder in os.listdir(corpus_folder):
+        subfolder_path = os.path.join(corpus_folder, subfolder)
+
+        files = [
+            f for f in os.listdir(subfolder_path)
+            if f.endswith((".conllu", ".txt"))
+        ]
+        args = [
+            (subfolder_path, f, pattern, target_lemma, target_pos, rel)
+            for f in files
+        ]
+
+        with Pool(num_procs) as pool:
+            for file_res in pool.imap_unordered(process_file, args, chunksize=10):
+                all_results.extend(file_res)
 
     return all_results
 

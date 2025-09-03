@@ -1,6 +1,8 @@
 import os
 import re
 import pandas as pd
+import numpy as np
+from ast import literal_eval
 from multiprocessing import Pool, cpu_count
 from typing import List
 from SynFlow.utils import build_graph
@@ -21,6 +23,7 @@ def reformat_deprel(label: str) -> str:
 
 def process_file(args) -> List[dict]:
     corpus_folder, fname, pattern, target_lemma, target_pos, slots, filtered_pos, filler_format = args # Use this for multiprocess.Pool
+    subfolder = os.path.basename(corpus_folder)  # <— tên subfolder
     filtered_pos = filtered_pos or [] # Guard if filtered_pos is None
     out = []
     path = os.path.join(corpus_folder, fname)
@@ -77,7 +80,10 @@ def process_file(args) -> List[dict]:
                     if lp != target_lp: # Only process the matched token
                         continue
                     token_line = sent_lines[int(tid)-1]
-                    row = {"id": f"{target_lemma}/{fname}/{token_line}"}
+                    row = {
+                        "id": f"{target_lemma}/{fname}/{token_line}",
+                        "subfolder": subfolder,
+                        }
 
                     for slot in slots:
                         slot_fillers = []
@@ -100,8 +106,7 @@ def process_file(args) -> List[dict]:
                                         prev_id = nid
                                         continue
 
-                                    if filler_format == "lemma/deprel":
-                                        # ←— CHỖ ĐÃ SỬA —→
+                                    if filler_format == "lemma/deprel": # This filler is used to get the original deprel of the context words, not the deprel between target and context
                                         raw_label = (
                                             id2deprel.get((prev_id, nid))    # child→parent ⇒ pa_…
                                             or id2deprel.get((nid, prev_id))  # parent→child ⇒ chi_…
@@ -110,7 +115,7 @@ def process_file(args) -> List[dict]:
                                         if raw_label.startswith('chi_'):
                                             deprel = reformat_deprel(raw_label)
                                         else:
-                                            orig_line = sent_toks[int(nid)-1]
+                                            orig_line = sent_toks[int(nid)-1] # fall back to the original line
                                             m = pattern.match(orig_line)
                                             raw_field = m.group(6) if m else 'UNK'
                                             deprel = reformat_deprel(raw_field)
@@ -157,28 +162,36 @@ def build_slot_df(
     pattern   = pattern or DEFAULT_PATTERN
     num_procs = num_processes or max(1, cpu_count()-1)
     slots     = template.strip("[]").split("][")
-    fnames    = [f for f in os.listdir(corpus_folder)
-                 if f.endswith((".conllu", ".txt"))]
     filtered_pos = filtered_pos or [] # Guard if filtered_POS is None
     filler_format = filler_format or 'lemma/pos'
-    args = [
-        (corpus_folder, f, pattern, target_lemma, target_pos, slots, filtered_pos, filler_format)
-        for f in fnames
-    ]
+    
+    all_rows = []
+
+    # Go through each subfolder in the corpus folder
+    for subfolder in os.listdir(corpus_folder):
+        subfolder_path = os.path.join(corpus_folder, subfolder)
+
+        fnames    = [f for f in os.listdir(subfolder_path)
+                if f.endswith((".conllu", ".txt"))]
+        
+        args = [
+            (subfolder_path, f, pattern, target_lemma, target_pos, slots, filtered_pos, filler_format)
+            for f in fnames
+        ]
     
 
-    # Parallel file processing
-    all_rows = []
-    with Pool(num_procs) as pool:
-        for rows in pool.imap_unordered(process_file, args, chunksize=10):
-            all_rows.extend(rows)
+        # Parallel file processing
+        with Pool(num_procs) as pool:
+            for rows in pool.imap_unordered(process_file, args, chunksize=10):
+                all_rows.extend(rows)
 
+    # Build DataFrame   
     df = pd.DataFrame(all_rows).set_index("id", drop=True)
 
     # ensure each slot column exists, even empty columns
     for slot in slots:
         if slot not in df:
-            df[slot] = [[]]
+            df[slot] = [[]] * len(df)
     
     # Frequency filtering
     if freq_path:
@@ -215,13 +228,13 @@ def build_slot_df(
     # --- Optional: insert the new "target" slot at column 0 ------------
     target_slot = f"{target_lemma}/{target_pos}"
     # Create a column of single‐item lists [target_slot] for every row:
-    df.insert(0, target_slot, [[target_slot]] * len(df))
+    df.insert(1, "target", [[target_slot]] * len(df))
 
     # save
     output_csv = f"{output_folder}/{target_lemma}_samples_all_slots.csv"
     df.to_csv(output_csv)
     print(f"Wrote slot‐fillers to {output_csv} ({len(df)} rows), "
-          f"dropped {len(dropped)} tokens.")
+        f"dropped {len(dropped)} tokens.")
     return df
 
 def sample_slot_df(
@@ -232,9 +245,9 @@ def sample_slot_df(
     mode: str = None
 ) -> pd.DataFrame:
     """
-    Read a slot‐filling CSV (with your 'id' as index), sample n rows
-    using the given random seed, write them to output_csv, and return
-    the sampled DataFrame.
+    Read a slot‐filling CSV (with your 'id' as index), sample n rows from 
+    each subfolder using the given random seed, write them to output_csv,
+    and return the sampled DataFrame.
     """
     # load, treating the first column as the index
     df = pd.read_csv(input_csv, index_col=0)
@@ -246,15 +259,17 @@ def sample_slot_df(
             try:
                 # Use literal_eval to safely convert string representation of lists
                 # or fillna for NaN values which might occur if a slot was truly empty
-                df[col] = df[col].apply(lambda x: eval(x) if pd.notna(x) and isinstance(x, str) else x)
+                df[col] = df[col].apply(lambda x: literal_eval(x) if pd.notna(x) and isinstance(x, str) else x)
             except Exception as e:
                 # Fallback if eval fails (e.g., if it's not a list string)
                 print(f"Warning: Could not convert column {col} to list type. Error: {e}")
                 # If conversion fails, ensure it's still treated appropriately,
                 # e.g., if it's still a string '[]', it will be handled by len(x)==0 check
+    
+    if 'subfolder' not in df.columns:
+        raise ValueError("CSV does not contain 'subfolder'.")
 
-    target_slot_col_name = df.columns[0]
-    slot_cols = [col for col in df.columns if col != target_slot_col_name]
+    slot_cols = [c for c in df.columns if c not in {'target', 'subfolder', 'id'}]
 
     if mode == 'filled':
         # Filter for rows where ALL identified slot columns are non-empty lists
@@ -263,9 +278,19 @@ def sample_slot_df(
         # Use boolean masking
         mask_all_filled = df[slot_cols].apply(lambda r: all(len(x) > 0 for x in r), axis=1)
         df = df[mask_all_filled]
+    
+    # stratify: tối đa n mỗi subfolder, với seed con ổn định cho từng nhóm
+    random_gen = np.random.RandomState(seed)
+    per_group_seed = {sf: int(random_gen.randint(0, 2**31-1)) for sf in df['subfolder'].unique()}
 
-    # sample
-    sampled = df.sample(n=n, random_state=seed)
+    parts = []
+    for subf, subf_df in df.groupby('subfolder', group_keys=False):   # ← đúng unpack
+        k_rows = min(n, len(subf_df))
+        if k_rows > 0:
+            parts.append(subf_df.sample(n=k_rows, random_state=per_group_seed[subf]))
+
+    # Collect all sampled rows
+    sampled = pd.concat(parts, axis=0) if parts else df.iloc[0:0]
     # write out
     sampled.to_csv(output_csv)
     print(f"Sampled {len(sampled)} rows from {input_csv} → {output_csv}")
