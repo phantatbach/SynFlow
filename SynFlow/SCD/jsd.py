@@ -7,7 +7,7 @@ import json
 import numpy as np
 
 # Print JSD
-def print_js_shifts(js_results):
+def print_jsd_by_period(js_results):
     for period, result in js_results.items():
         print(f"\n=== Shift to period {period} ===")
         print(f"Jensen-Shannon Divergence: {result['JSD']:.4f}")
@@ -16,7 +16,7 @@ def print_js_shifts(js_results):
             print(f"  {slot}: {score:.4f}")
 
 # Plot JSD
-def plot_jsd_over_time(js_results):
+def plot_jsd_by_period(js_results):
     periods = list(js_results.keys())
     jsd_scores = [js_results[d]['JSD'] for d in periods]
 
@@ -30,21 +30,28 @@ def plot_jsd_over_time(js_results):
     plt.show()
 
 # Plot top-N shifting items
-def plot_all_jsd_shifts(js_results, top_n=10, cols=3):
+def plot_items_jsd_by_period(js_results, top_n=10, cols=3):
     """
-    Plot all top-N shifting items across periods in a grid of subplots.
+    Plot all top-N shifting items across periods in a grid of subplots,
+    with shared x-axis scaling across all plots.
     """
     num_periods = len(js_results)
     rows = math.ceil(num_periods / cols)
 
+    # Find global max contribution across all periods
+    global_max = max(
+        result['top_shifted_items'].head(top_n).max()
+        for result in js_results.values()
+    )
+
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4))
-    axes = axes.flatten()  # Flatten in case of 2D grid
+    axes = axes.flatten()
 
     for idx, (decade, result) in enumerate(js_results.items()):
         ax = axes[idx]
         top_words = result['top_shifted_items'].head(top_n)
 
-        # Định nghĩa màu dựa theo prefix
+        # Colors by prefix
         colors = [
             "green" if w.startswith("in_") else 
             "red" if w.startswith("de_") else 
@@ -52,19 +59,24 @@ def plot_all_jsd_shifts(js_results, top_n=10, cols=3):
             for w in top_words.index
         ]
 
-        sns.barplot(x=top_words.values, 
-                    y=top_words.index.str.replace("in_", "", regex=False).str.replace("de_", "", regex=False),
-                    ax=ax, legend=False, 
-                    hue=top_words.index,
-                    palette=dict(zip(top_words.index, colors))
-                    )
-        
+        sns.barplot(
+            x=top_words.values,
+            y=top_words.index.str.replace("in_", "", regex=False).str.replace("de_", "", regex=False),
+            ax=ax,
+            legend=False,
+            hue=top_words.index,
+            palette=dict(zip(top_words.index, colors))
+        )
+
         ax.set_title(f"{decade} (JSD: {result['JSD']:.3f})", fontsize=10)
         ax.set_xlabel("JSD Contribution", fontsize=9)
         ax.set_ylabel("")
         ax.tick_params(labelsize=8)
 
-    # Remove any unused subplots
+        # Fix x-axis across all subplots
+        ax.set_xlim(0, global_max * 1.05)  # small margin
+
+    # Remove unused subplots
     for i in range(idx + 1, len(axes)):
         fig.delaxes(axes[i])
 
@@ -89,7 +101,7 @@ def direction_prefix_map(vocab, p, q, prefix_in="in_", prefix_de="de_", neutral=
 
 
 # Compute JSD of syntactic slots across periods
-def slots_js_shift_by_period(json_path, top_n=10, min_count=0):
+def slots_jsd_by_period(json_path, top_n=10, min_count=0):
     """
     Compute JSD shift in the distribution of syntactic slots across periods.
 
@@ -147,7 +159,7 @@ def slots_js_shift_by_period(json_path, top_n=10, min_count=0):
 
     return output
 
-def sfillers_js_shift_by_period(df, word_col='chi_amod', period_col='half_decade', min_count=0):
+def sfillers_jsd_by_period(df, word_col='chi_amod', period_col='half_decade', min_count=0):
     output = {}
     periods = sorted(df[period_col].dropna().unique())
 

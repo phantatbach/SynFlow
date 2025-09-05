@@ -29,9 +29,9 @@ def count_keyword_tokens_by_period(corpus_path, keyword_string, fname_pattern, m
     return dict(sorted(counts_by_period.items()))
 
 # Plot the distribution of the union of top-N slots across periods
-def plot_top_n_union_slots(json_path, top_n=10, normalized=False, token_counts=None, chart_type="line"):
+def plot_freq_top_union_slots_by_period(json_path, top_n=10, normalized=False, token_counts=None, chart_type="line"):
     """
-    Plot the distribution of the union of top-n slots across periods as bar or line chart.
+    Plot the frequency distribution of the union of top-n slots across periods as bar or line chart.
 
     Parameters:
         json_path (str): Path to JSON with slot distributions per period.
@@ -67,7 +67,7 @@ def plot_top_n_union_slots(json_path, top_n=10, normalized=False, token_counts=N
     df_long.rename(columns={"index": "Period"}, inplace=True)
     df_long["Period"] = pd.Categorical(df_long["Period"], categories=sorted(df.index), ordered=True)
 
-    title = f"Top-{top_n} Slots Over Time"
+    title = f"Frequencies of top-{top_n} Slots by Period (Union Set)"
     if normalized:
         title += " (Normalized)"
 
@@ -103,7 +103,7 @@ def plot_top_n_union_slots(json_path, top_n=10, normalized=False, token_counts=N
     fig.show()
 
 # Plot the distribution of the union of top-N slot fillers across periods
-def plot_top_slot_fillers_by_period(csv_path, slot_type=None, top_n=10, normalized=False, time_col=None, chart_type='bar'):
+def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10, normalized=False, time_col=None, chart_type='bar'):
     """
     Interactive chart (bar or line) of top slot fillers per period.
 
@@ -153,9 +153,9 @@ def plot_top_slot_fillers_by_period(csv_path, slot_type=None, top_n=10, normaliz
     color_map = {slot_filler: "#{:06x}".format(random.randint(0, 0xFFFFFF)) for slot_filler in unique_slot_fillers}
 
     # --- Step 5: Plot using Plotly ---
-    title = f"Top {top_n} {slot_type} per {time_col} (union set)"
+    title = f"Frequencies of top-{top_n} {slot_type} per {time_col} (Union Set)"
     if normalized:
-        title += " (normalized)"
+        title += " (Normalized)"
 
     if chart_type == 'bar':
         fig = px.bar(

@@ -93,6 +93,21 @@ def find_by_path(graph: Dict[int, List[int]], id2wordpos: Dict[int, str],
 
 def _find_all_unique_paths(graph: Dict[int, List[int]], id2deprel: Dict[Tuple[int, int], str],
                            tgt_id: int, max_path_depth: int) -> Set[str]:
+    """
+    Finds all unique paths in a dependency graph starting from a single target ID
+    up to a given maximum depth.
+
+    Args:
+        graph (dict): Adjacency list representation of the dependency graph.
+                      Keys are parent IDs, values are lists of child IDs.
+        id2deprel (dict): Maps (parent_id, child_id) tuple to dependency relation string.
+        tgt_id (int): A single ID of the target token.
+        max_path_depth (int): Maximum depth of paths to search for.
+
+    Returns:
+        set: A set of strings, each representing a unique path found in the graph.
+             Each string is a sequence of dependency relations joined by ' > '.
+    """
     out: Set[str] = set()
     def dfs(node: int, depth: int, seen: Set[int], rel_path: List[str]):
         if depth == max_path_depth:
@@ -129,9 +144,9 @@ def process_file(args: Tuple[str, str, re.Pattern, str, str, str, str]) -> List[
             - target_pos (str)
             - rel (str): The combined relation path string.
             - mode (str): 'open' (default) or 'close' or 'closeh'.
-                'open': Sentence must contain at least the specified independent paths.
-                'close': Restrict both horizontal expansion and vertical specialisation (no more, no less).
-                'closeh': Only restrict horizontal expansion
+                'open': Match targets that include at least all required paths; extra slots and deeper specialisations allowed.
+                'close': Match targets whose paths equal the required set exactly; no extra slots and no deeper specialisations.
+                'closeh': Match targets with exactly the required slots; deeper specialisations under those slots allowed.
 
     Returns:
         List[Tuple[str, str, List[Tuple[List[str], str]]]]: A list of results.
@@ -176,19 +191,25 @@ def process_file(args: Tuple[str, str, re.Pattern, str, str, str, str]) -> List[
 
                             if all_paths_found_for_this_target: # If at least all required paths are present
                                 if mode == 'close':
-                                    # For 'close' mode, we need to check if ONLY the required paths are present.
-                                    # derive max depth from the rel‐patterns themselves
+                                    # For 'close' mode, we need to check if ONLY the required PATHS are present.
+                                    # No horizontal expansion and no vertical specialisation are allowed
+
+                                    # Derive max depth from the rel‐patterns themselves
                                     depths = [ len(p.split('>')) for p in required_path_patterns_list ]
                                     max_check_depth = max(depths)
                                     all_unique_paths_from_target = _find_all_unique_paths(
                                         graph, id2d, current_target_id, max_check_depth # Use the new argument here
                                     )
+
                                     # Check if the set of all found paths (up to max_check_depth)
                                     # is exactly equal to the set of required paths.
                                     if all_unique_paths_from_target == required_path_patterns_set:
                                         results.append((fname, sentence_text, found_paths_details))
                                 
-                                elif mode == 'closeh':
+                                elif mode == 'closeh': 
+                                    # For 'closeh' mode, we need to check if ONLY the required SLOTS are present.
+                                    # No horizontal expansion is allowed but the slots can be vertically specialised.
+
                                     # 1) compute required first‐hop labels
                                     required_horizontals = {
                                         p.split('>')[0].strip()
@@ -244,10 +265,10 @@ def full_rel_explorer(corpus_folder: str,
         target_pos (str, optional): The POS tag of the target word.
         rel (str, optional): The combined relation path string, e.g., "chi_obl > chi_case & chi_nsubj & chi_nobj".
                              ' & ' separates independent required paths. '>' separates sequential steps within a path.
-        mode (str): Matching mode.
-                    'open' (default): Sentence must contain at least the specified independent paths.
-                    'close': Sentence must contain exactly the specified independent paths (no more, no less).
-                    'closeh': Restrict only horizontal expansion
+        mode (str): 'open' (default) or 'close' or 'closeh'.
+            'open': Match targets that include at least all required paths; extra slots and deeper specialisations allowed.
+            'close': Match targets whose paths equal the required set exactly; no extra slots and no deeper specialisations.
+            'closeh': Match targets with exactly the required slots; deeper specialisations under those slots allowed.
         num_processes (int, optional): Number of processes to use for parallel processing.
                                        Defaults to (CPU count - 1) or 1 if CPU count is 1.
 
@@ -273,6 +294,7 @@ def full_rel_explorer(corpus_folder: str,
     # Go through each subfolder in the corpus folder
     for subfolder in os.listdir(corpus_folder):
         subfolder_path = os.path.join(corpus_folder, subfolder)
+        # Go through each file in each subfolder
         files = [
             f for f in os.listdir(subfolder_path)
             if f.endswith((".conllu", ".txt"))
@@ -284,6 +306,7 @@ def full_rel_explorer(corpus_folder: str,
             (subfolder_path, f, pattern, target_lemma, target_pos, rel, mode) # Pass new argument
             for f in files
         ]
+        # Process the files in parallel
         with Pool(num_procs) as pool:
             for file_res in pool.imap_unordered(process_file, args, chunksize=10):
                 all_results.extend(file_res)

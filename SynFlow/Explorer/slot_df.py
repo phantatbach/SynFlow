@@ -231,7 +231,7 @@ def build_slot_df(
     df.insert(1, "target", [[target_slot]] * len(df))
 
     # save
-    output_csv = f"{output_folder}/{target_lemma}_samples_all_slots.csv"
+    output_csv = f"{output_folder}/{target_lemma}_samples_slotdf_all.csv"
     df.to_csv(output_csv)
     print(f"Wrote slot‐fillers to {output_csv} ({len(df)} rows), "
         f"dropped {len(dropped)} tokens.")
