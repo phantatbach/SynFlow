@@ -4,7 +4,9 @@ import json
 import pandas as pd
 import plotly.express as px
 import random
-def count_keyword_tokens_by_period(corpus_path, keyword_string, fname_pattern, mode='half_decade'):
+def count_keyword_tokens_by_period(corpus_path, keyword_string, fname_pattern, 
+                                #    mode='half_decade'
+                                   ):
     # Use custom pattern to extract year from full filename
     counts_by_period = defaultdict(int)
 

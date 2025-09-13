@@ -1,10 +1,10 @@
 # SynFlow/SynFlow/Explorer/__init__.py
-from .arg_explorer import (
-    arg_explorer,
+from .slotpath_explorer import (
+    slotpath_explorer,
     )
 
-from .arg_comb_explorer import (
-    arg_comb_explorer,
+from .slotpath_comb_explorer import (
+    slotpath_comb_explorer,
     )
 
 from .rel_explorer import (
@@ -24,18 +24,18 @@ from .trimming import (
     spe_group
 )
 
-from .slot_df import (
-    build_slot_df,
-    sample_slot_df
+from .sfiller_df import (
+    build_sfiller_df,
+    sample_sfiller_df
 )
 __all__ = [
-    arg_comb_explorer,
-    arg_explorer,
+    slotpath_comb_explorer,
+    slotpath_explorer,
     full_rel_explorer,
     get_contexts,
     rel_explorer,
     trim_and_merge,
     spe_group,
-    build_slot_df,
-    sample_slot_df
+    build_sfiller_df,
+    sample_sfiller_df
     ]

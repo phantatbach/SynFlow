@@ -111,7 +111,7 @@ def save_to_csv_with_subfolder(rows, output_path="output.csv"):
     print(f"CSV saved to {output_path}")
 
 
-def arg_comb_explorer(
+def slotpath_comb_explorer(
     corpus_folder: str,
     target_lemma: str,
     target_pos: str,
@@ -176,7 +176,7 @@ def arg_comb_explorer(
     os.makedirs(output_folder, exist_ok=True)
     out_csv = os.path.join(
         output_folder,
-        f"{target_lemma}_{target_pos}_arg_comb_{max_length}_hops.csv"
+        f"{target_lemma}_{target_pos}_slotpath_combs_{max_length}_hops.csv"
     )
     save_to_csv_with_subfolder(csv_rows, output_path=out_csv)
 

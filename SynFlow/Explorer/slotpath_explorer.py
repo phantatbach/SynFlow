@@ -19,7 +19,7 @@ DEFAULT_PATTERN = re.compile(
 def get_contexts(graph, id2lp, id2dep, tgt_ids, max_length):
     """
     Given a dependency graph, a mapping of id to lemma/pos, a mapping of edge to deprel,
-    a list of target ids, and a maximum length, find all context argument paths (up to max_length)
+    a list of target ids, and a maximum length, find all context slot paths (up to max_length)
     that start from any of the target ids. Use a breadth-first search.
 
     Returns a list of context paths, where each path is a string of dependency labels
@@ -50,7 +50,7 @@ def process_file(args):
     Given a filename, a corpus folder, a regex pattern, a target lemma, a target POS,
     and a maximum path length, 
     read the file, build a dependency graph for each sentence,
-    find all context argument paths (up to max_length) that start from any of the target ids,
+    find all context slot paths (up to max_length) that start from any of the target ids,
     and count each distinct path.
 
     Returns a Counter object with the path counts.
@@ -92,11 +92,11 @@ def plot_dist(counter, target_lemma, max_length, top_n):
     plt.bar(range(len(freqs)), freqs)
     plt.xticks(range(len(labels)), labels, rotation=90)
     plt.ylabel('Frequency')
-    plt.title(f'Top {top_n} arguments of “{target_lemma}” (max_length={max_length})')
+    plt.title(f'Top {top_n} slot-paths of “{target_lemma}” (max_length={max_length})')
     plt.tight_layout()
     plt.show()
 
-def arg_explorer(
+def slotpath_explorer(
     corpus_folder: str,
     target_lemma: str,
     target_pos: str,
@@ -107,7 +107,7 @@ def arg_explorer(
     pattern: re.Pattern = None
 ):
     """
-    Walks your folder in parallel, collects argument‐counts around target tokens,
+    Walks your folder in parallel, collects slot-path‐counts around target tokens,
     plots and returns the aggregated Counter.
 
     Args:
@@ -115,7 +115,7 @@ def arg_explorer(
       target_lemma      – lemma to look for (e.g. 'run')
       target_pos        – POS of target (e.g. 'v' or 'n')
       max_length        – how many hops in the undirected graph
-      top_n             – how many top arguments to plot
+      top_n             – how many top slot-paths to plot
       num_processes     – None (auto) or int
       pattern           – custom regex for your token lines
     """
@@ -133,8 +133,8 @@ def arg_explorer(
             if f.endswith(('.conllu', '.txt'))
         ]
 
-        # prepare per‐file args tuples
-        args_list = [
+        # prepare per‐file slot-paths tuples
+        slotpaths_list = [
             (f, subfolder_path, pattern,
             target_lemma, target_pos, max_length)
             for f in files
@@ -142,7 +142,7 @@ def arg_explorer(
 
         global_counter = Counter()
         with Pool(num_processes) as pool:
-            for ctr in pool.imap_unordered(process_file, args_list, chunksize=10):
+            for ctr in pool.imap_unordered(process_file, slotpaths_list, chunksize=10):
                 global_counter.update(ctr)
 
         print(f'[{subfolder}] Collected {sum(global_counter.values())} context links, '
@@ -151,12 +151,12 @@ def arg_explorer(
         plot_dist(global_counter, target_lemma, max_length, top_n)
 
         # SAVE COUNTER AS DICT
-        sorted_args = dict(sorted(global_counter.items(), key=lambda x: x[1], reverse=True))
-        all_results[subfolder] = sorted_args  # <-- save by subfolder
+        sorted_slotpaths = dict(sorted(global_counter.items(), key=lambda x: x[1], reverse=True))
+        all_results[subfolder] = sorted_slotpaths  # <-- save by subfolder
 
-    output_path = os.path.join(output_folder, f'{target_lemma}_{target_pos}_arguments.json')
+    output_path = os.path.join(output_folder, f'{target_lemma}_{target_pos}_slotpaths.json')
     with open(output_path, 'w', encoding='utf-8') as f_out:
         json.dump(all_results, f_out, ensure_ascii=False, indent=2)
-    print(f'Saved path frequencies to: {output_path}')
+    print(f'Saved slot-path frequencies to: {output_path}')
 
     return global_counter

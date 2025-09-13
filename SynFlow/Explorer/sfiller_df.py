@@ -139,7 +139,7 @@ def process_file(args) -> List[dict]:
     return out
 
 
-def build_slot_df(
+def build_sfiller_df(
     corpus_folder: str,
     template: str,
     target_lemma: str,
@@ -231,13 +231,13 @@ def build_slot_df(
     df.insert(1, "target", [[target_slot]] * len(df))
 
     # save
-    output_csv = f"{output_folder}/{target_lemma}_samples_slotdf_all.csv"
+    output_csv = f"{output_folder}/{target_lemma}_samples_sfillerdf_all.csv"
     df.to_csv(output_csv)
     print(f"Wrote slot‐fillers to {output_csv} ({len(df)} rows), "
         f"dropped {len(dropped)} tokens.")
     return df
 
-def sample_slot_df(
+def sample_sfiller_df(
     input_csv: str,
     output_csv: str,
     n: int,
