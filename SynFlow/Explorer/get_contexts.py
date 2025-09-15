@@ -55,8 +55,8 @@ def corpus_handler(file: str, pattern: Optional[re.Pattern] = None) -> List[List
 def get_contexts(
     slots_df: pd.DataFrame,
     corpus_path: str,
+    output_path: str,
     pattern: Optional[re.Pattern] = None,
-    output_path: str
 ) -> pd.DataFrame:
     """
     Given slots_df (indexed by strings "target/file/line"), look up each file only once,
