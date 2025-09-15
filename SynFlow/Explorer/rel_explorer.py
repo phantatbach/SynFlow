@@ -1,18 +1,9 @@
 import re
 import os
 from multiprocessing import Pool, cpu_count
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from SynFlow.utils import build_graph
-
-# ——— your default pattern —————————————————————————————————————————————
-DEFAULT_PATTERN = re.compile(
-    r'([^\t]+)\t'      # word form
-    r'([^\t]+)\t'      # lemma
-    r'([^\t]+)\t' # POS
-    r'([^\t]+)\t'      # ID
-    r'([^\t]+)\t'      # HEAD
-    r'([^\t]+)'        # DEPREL
-)
+from Explorer.const import DEFAULT_PATTERN
 
 def find_by_path(graph, id2wordpos, id2deprel, tgt_ids, rel):
     """
@@ -60,12 +51,16 @@ def find_by_path(graph, id2wordpos, id2deprel, tgt_ids, rel):
 
     return out
 
-def process_file(args) -> List[Tuple[str, str, List[str], str]]:
+def process_file(
+        args: Tuple[str, str, Optional[re.Pattern], str, str, str]
+        ) -> List[Tuple[str, str, List[str], str]]:
     """
     args = (corpus_folder, fname, pattern, target_lemma, target_pos, rel)
     returns list of (filename, sentence, ctx_nodes, path_str)
     """
     corpus_folder, fname, pattern, target_lemma, target_pos, rel = args
+    pattern = pattern or DEFAULT_PATTERN
+
     results = []
     filepath = os.path.join(corpus_folder, fname)
     with open(filepath, encoding='utf8') as fh:

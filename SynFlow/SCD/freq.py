@@ -4,9 +4,9 @@ import json
 import pandas as pd
 import plotly.express as px
 import random
-def count_keyword_tokens_by_period(corpus_path, keyword_string, fname_pattern, 
-                                #    mode='half_decade'
-                                   ):
+
+def count_keyword_tokens_by_period(corpus_path, keyword_string, 
+                                   fname_pattern):
     # Use custom pattern to extract year from full filename
     counts_by_period = defaultdict(int)
 
@@ -31,16 +31,16 @@ def count_keyword_tokens_by_period(corpus_path, keyword_string, fname_pattern,
     return dict(sorted(counts_by_period.items()))
 
 # Plot the distribution of the union of top-N slots across periods
-def plot_freq_top_union_slots_by_period(json_path, top_n=10, normalized=False, token_counts=None, chart_type="line"):
+def plot_freq_top_union_slots_by_period(json_path, top_n=10,
+                                        normalized=False, token_counts=None):
     """
-    Plot the frequency distribution of the union of top-n slots across periods as bar or line chart.
-
+    Interactive line chart of the frequencies of top-n slots per period.
+    
     Parameters:
         json_path (str): Path to JSON with slot distributions per period.
         top_n (int): Number of top slot types per period to include.
         normalized (bool): If True, normalize by token_counts.
         token_counts (dict): {period: token count} for normalization.
-        chart_type (str): "line" or "bar"
     """
     with open(json_path, "r") as f:
         data = json.load(f)
@@ -73,27 +73,15 @@ def plot_freq_top_union_slots_by_period(json_path, top_n=10, normalized=False, t
     if normalized:
         title += " (Normalized)"
 
-    if chart_type == "line":
-        fig = px.line(
-            df_long,
-            x="Period",
-            y="Frequency",
-            color="Slot Type",
-            markers=True,
-            title=title,
-            line_group="Slot Type"
-        )
-    elif chart_type == "bar":
-        fig = px.bar(
-            df_long,
-            x="Period",
-            y="Frequency",
-            color="Slot Type",
-            barmode="group",
-            title=title
-        )
-    else:
-        raise ValueError("chart_type must be 'line' or 'bar'")
+    fig = px.line(
+        df_long,
+        x="Period",
+        y="Frequency",
+        color="Slot Type",
+        markers=True,
+        title=title,
+        line_group="Slot Type"
+    )
 
     fig.update_layout(
         xaxis_title="Period",
@@ -105,9 +93,10 @@ def plot_freq_top_union_slots_by_period(json_path, top_n=10, normalized=False, t
     fig.show()
 
 # Plot the distribution of the union of top-N slot fillers across periods
-def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10, normalized=False, time_col=None, chart_type='bar'):
+def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
+                                           normalized=False, time_col=None):
     """
-    Interactive chart (bar or line) of top slot fillers per period.
+    Interactive line chart of top slot fillers per period.
 
     Args:
         csv_path (str): CSV with columns 'id', slot_type, and time columns.
@@ -115,9 +104,7 @@ def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10, n
         top_n (int): Number of top adjectives per period to include in union.
         normalized (bool): Normalize frequency by number of documents.
         time_col (str): whatever the column name of the time column is, e.g. 'decade' or 'half_decade'.
-        chart_type (str): 'bar' or 'line' chart.
     """
-    assert chart_type in ['bar', 'line'], "chart_type must be 'bar' or 'line'"
     assert slot_type is not None, "slot_type must be specified"
     assert time_col is not None, "time_col must be specified"
 
@@ -159,35 +146,19 @@ def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10, n
     if normalized:
         title += " (Normalized)"
 
-    if chart_type == 'bar':
-        fig = px.bar(
-            count_df,
-            x=x_col,
-            y=y,
-            color=slot_type,
-            color_discrete_map=color_map,
-            title=title,
-            labels={
-                x_col: time_col,
-                y: ylabel,
-            }
-        )
-        fig.update_layout(barmode="group")
-
-    elif chart_type == 'line':
-        fig = px.line(
-            count_df,
-            x=x_col,
-            y=y,
-            color=slot_type,
-            color_discrete_map=color_map,
-            title=title,
-            markers=True,
-            labels={
-                x_col: time_col,
-                y: ylabel,
-            }
-        )
+    fig = px.line(
+        count_df,
+        x=x_col,
+        y=y,
+        color=slot_type,
+        color_discrete_map=color_map,
+        title=title,
+        markers=True,
+        labels={
+            x_col: time_col,
+            y: ylabel,
+        }
+    )
 
     fig.update_layout(
         xaxis=dict(

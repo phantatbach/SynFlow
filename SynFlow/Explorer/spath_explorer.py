@@ -5,18 +5,9 @@ from collections import Counter, deque
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 from SynFlow.utils import build_graph
+from Explorer.const import DEFAULT_PATTERN
 
-# ——— Default token‐pattern (you can override this) ————————————————
-DEFAULT_PATTERN = re.compile(
-    r'([^\t]+)\t'      # word form
-    r'([^\t]+)\t'      # lemma
-    r'([^\t]+)\t'      # POS (UPOS or XPOS)
-    r'([^\t]+)\t'      # ID
-    r'([^\t]+)\t'      # HEAD
-    r'([^\t]+)'        # DEPREL
-)
-
-def get_contexts(graph, id2lp, id2dep, tgt_ids, max_length):
+def get_contexts(graph, id2d, tgt_ids, max_length):
     """
     Given a dependency graph, a mapping of id to lemma/pos, a mapping of edge to deprel,
     a list of target ids, and a maximum length, find all context slot paths (up to max_length)
@@ -35,7 +26,7 @@ def get_contexts(graph, id2lp, id2dep, tgt_ids, max_length):
             for nb in graph.get(node, []): # For each neighbour
                 if nb in seen: # Prevent revisiting the same node in the same path
                     continue
-                lbl = id2dep.get((node, nb)) # Get the edge label from node to neighbour
+                lbl = id2d.get((node, nb)) # Get the edge label from node to neighbour
                 if not lbl:
                     continue
                 new_path = path + [lbl]
@@ -67,7 +58,7 @@ def process_file(args):
             elif line.startswith('</s>'):
 
                 # Build a dependency graph when the whole sentence is appended
-                id2lp, graph, id2dep = build_graph(sentence, pattern)
+                id2lp, graph, id2d = build_graph(sentence, pattern)
                 # Find words with the target lemma and POS
                 tgt_ids = [
                     idx for idx, lp in id2lp.items()
@@ -76,7 +67,7 @@ def process_file(args):
                 ]
                 # If match then find contexts
                 if tgt_ids:
-                    for p in get_contexts(graph, id2lp, id2dep, tgt_ids, max_length):
+                    for p in get_contexts(graph, id2d, tgt_ids, max_length):
                         counter[p] += 1
 
             else:
@@ -96,7 +87,7 @@ def plot_dist(counter, target_lemma, max_length, top_n):
     plt.tight_layout()
     plt.show()
 
-def slotpath_explorer(
+def spath_explorer(
     corpus_folder: str,
     target_lemma: str,
     target_pos: str,
@@ -154,7 +145,7 @@ def slotpath_explorer(
         sorted_slotpaths = dict(sorted(global_counter.items(), key=lambda x: x[1], reverse=True))
         all_results[subfolder] = sorted_slotpaths  # <-- save by subfolder
 
-    output_path = os.path.join(output_folder, f'{target_lemma}_{target_pos}_slotpaths.json')
+    output_path = os.path.join(output_folder, f'{target_lemma}_{target_pos}_spaths.json')
     with open(output_path, 'w', encoding='utf-8') as f_out:
         json.dump(all_results, f_out, ensure_ascii=False, indent=2)
     print(f'Saved slot-path frequencies to: {output_path}')

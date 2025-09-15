@@ -1,9 +1,10 @@
 import os
 import re
 import pandas as pd
-from typing import List, Dict
+from typing import List, Dict, Optional
+from Explorer.const import DEFAULT_PATTERN
 
-def corpus_handler(file: str, pattern: re.Pattern) -> List[List[Dict]]:
+def corpus_handler(file: str, pattern: Optional[re.Pattern] = None) -> List[List[Dict]]:
     """
     Read one CoNLL‐style file and split into sentences.
     Each sentence is a list of token‐dicts, where each dict has:
@@ -17,6 +18,8 @@ def corpus_handler(file: str, pattern: re.Pattern) -> List[List[Dict]]:
         "deprel": str
       }
     """
+    pattern = pattern or DEFAULT_PATTERN
+
     sentences = []
     current = []
     with open(file, encoding="utf8") as fh:
@@ -52,7 +55,7 @@ def corpus_handler(file: str, pattern: re.Pattern) -> List[List[Dict]]:
 def get_contexts(
     slots_df: pd.DataFrame,
     corpus_path: str,
-    pattern: re.Pattern,
+    pattern: Optional[re.Pattern] = None,
     output_path: str
 ) -> pd.DataFrame:
     """
@@ -69,6 +72,8 @@ def get_contexts(
 
     Returns the new DataFrame.
     """
+    pattern = pattern or DEFAULT_PATTERN
+    
     # We'll build a new DataFrame that starts with slots_df and adds "context"
     df = pd.DataFrame(index=slots_df.index) # Take only the index of slots_df
     # df = slots_df.copy() # Keep all the slots

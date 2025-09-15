@@ -1,18 +1,9 @@
 import re
 import os
 from multiprocessing import Pool, cpu_count
-from typing import List, Tuple, Dict, Set
+from typing import List, Tuple, Dict, Set, Optional
 from SynFlow.utils import build_graph
-
-# ——— your default pattern —————————————————————————————————————————————
-DEFAULT_PATTERN = re.compile(
-    r'([^\t]+)\t'      # word form
-    r'([^\t]+)\t'      # lemma
-    r'([^\t]+)\t'      # POS
-    r'([^\t]+)\t'      # ID
-    r'([^\t]+)\t'      # HEAD
-    r'([^\t]+)'        # DEPREL
-)
+from Explorer.const import DEFAULT_PATTERN
 
 # Find a single, sequential path
 # It will be called multiple times by process_file.
@@ -130,7 +121,9 @@ def _find_all_unique_paths(graph: Dict[int, List[int]], id2deprel: Dict[Tuple[in
     dfs(tgt_id, 0, {tgt_id}, [])
     return out
 
-def process_file(args: Tuple[str, str, re.Pattern, str, str, str, str]) -> List[Tuple[str, str, List[Tuple[List[str], str]]]]:
+def process_file(
+        args: Tuple[str, str, Optional[re.Pattern], str, str, str, str]
+        ) -> List[Tuple[str, str, List[Tuple[List[str], str]]]]:
     """
     Processes a single file to find sentences matching the given criteria.
     Now supports multiple independent path patterns and 'open'/'close'/'closeh' mode.
@@ -152,6 +145,7 @@ def process_file(args: Tuple[str, str, re.Pattern, str, str, str, str]) -> List[
         List[Tuple[str, str, List[Tuple[List[str], str]]]]: A list of results.
     """
     corpus_folder, fname, pattern, target_lemma, target_pos, rel_combined, mode = args
+    pattern = pattern or DEFAULT_PATTERN
     results: List[Tuple[str, str, List[Tuple[List[str], str]]]] = []
 
     # Parse the combined 'rel' string into individual required path patterns

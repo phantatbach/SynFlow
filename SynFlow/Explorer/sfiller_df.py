@@ -6,15 +6,7 @@ from ast import literal_eval
 from multiprocessing import Pool, cpu_count
 from typing import List
 from SynFlow.utils import build_graph
-
-DEFAULT_PATTERN = re.compile(
-    r'([^\t]+)\t'      # FORM
-    r'([^\t]+)\t'      # LEMMA
-    r'([^\t])[^\t]*\t' # POS
-    r'([^\t]+)\t'      # ID
-    r'([^\t]+)\t'      # HEAD
-    r'([^\t]+)'        # DEPREL
-)
+from Explorer.const import DEFAULT_PATTERN
 
 # Reformat deprel because build_graph keeps the directions
 def reformat_deprel(label: str) -> str:
@@ -23,6 +15,8 @@ def reformat_deprel(label: str) -> str:
 
 def process_file(args) -> List[dict]:
     corpus_folder, fname, pattern, target_lemma, target_pos, slots, filtered_pos, filler_format = args # Use this for multiprocess.Pool
+    pattern = pattern or DEFAULT_PATTERN
+    
     subfolder = os.path.basename(corpus_folder)  # <— tên subfolder
     filtered_pos = filtered_pos or [] # Guard if filtered_pos is None
     out = []

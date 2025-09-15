@@ -32,7 +32,7 @@ def plot_jsd_by_period(js_results):
 # Plot top-N shifting items
 def plot_items_jsd_by_period(js_results, top_n=10, cols=3):
     """
-    Plot all top-N shifting items across periods in a grid of subplots,
+    Plot top-n shifting items across periods in a grid of subplots,
     with shared x-axis scaling across all plots.
     """
     num_periods = len(js_results)

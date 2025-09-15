@@ -6,17 +6,9 @@ import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 from SynFlow.utils import build_graph
 from typing import Dict
+from Explorer.const import DEFAULT_PATTERN
 
-DEFAULT_PATTERN = re.compile(
-    r'([^\t]+)\t'      # FORM
-    r'([^\t]+)\t'      # LEMMA
-    r'([^\t]+)\t'      # POS
-    r'([^\t]+)\t'      # ID
-    r'([^\t]+)\t'      # HEAD
-    r'([^\t]+)'        # DEPREL
-)
-
-def find_paths_from(id2lp, graph, id2d, start_id, max_length):
+def find_paths_from(graph, id2d, start_id, max_length):
     out = []
 
     def dfs(node, depth, seen, rel_path):
@@ -75,7 +67,7 @@ def process_file(args) -> Counter:
                     if lp != target_lp:
                         continue
 
-                    paths  = find_paths_from(id2lp, graph, id2d, tid, max_length)  # <— dùng tid to get all the path from each target token
+                    paths  = find_paths_from(graph, id2d, tid, max_length)  # <— dùng tid to get all the path from each target token
                     unique = sorted(set(paths)) # Take only 1 type of slot for each token. Need to think about cases where there are duplicate slots of the same token (e.g., big bad wolf)
 
                     parts = [target_lemma] + ["> " + p for p in unique]
@@ -111,7 +103,7 @@ def save_to_csv_with_subfolder(rows, output_path="output.csv"):
     print(f"CSV saved to {output_path}")
 
 
-def slotpath_comb_explorer(
+def spath_comb_explorer(
     corpus_folder: str,
     target_lemma: str,
     target_pos: str,
@@ -176,7 +168,7 @@ def slotpath_comb_explorer(
     os.makedirs(output_folder, exist_ok=True)
     out_csv = os.path.join(
         output_folder,
-        f"{target_lemma}_{target_pos}_slotpath_combs_{max_length}_hops.csv"
+        f"{target_lemma}_{target_pos}_spath_combs_{max_length}_hops.csv"
     )
     save_to_csv_with_subfolder(csv_rows, output_path=out_csv)
 

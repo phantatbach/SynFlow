@@ -1,10 +1,10 @@
 # SynFlow/SynFlow/Explorer/__init__.py
-from .slotpath_explorer import (
-    slotpath_explorer,
+from .spath_explorer import (
+    spath_explorer,
     )
 
-from .slotpath_comb_explorer import (
-    slotpath_comb_explorer,
+from .spath_comb_explorer import (
+    spath_comb_explorer,
     )
 
 from .rel_explorer import (
@@ -29,8 +29,8 @@ from .sfiller_df import (
     sample_sfiller_df
 )
 __all__ = [
-    slotpath_comb_explorer,
-    slotpath_explorer,
+    spath_comb_explorer,
+    spath_explorer,
     full_rel_explorer,
     get_contexts,
     rel_explorer,
