@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import plotly.express as px
 import random
+import numpy as np
 
 def count_keyword_tokens_by_period(corpus_path, keyword_string, 
                                    fname_pattern):
@@ -30,17 +31,96 @@ def count_keyword_tokens_by_period(corpus_path, keyword_string,
 
     return dict(sorted(counts_by_period.items()))
 
-# Plot the distribution of the union of top-N slots across periods
-def plot_freq_top_union_slots_by_period(json_path, top_n=10,
-                                        normalized=False, token_counts=None):
+#-------------------------------------------------------------------------------------------------
+# SLOT LEVEL
+# Compute the frequency of ALL slots in each period
+def freq_all_slots_by_period(json_path):
     """
-    Interactive line chart of the frequencies of top-n slots per period.
-    
+    Compute the frequency of all slots.
+
     Parameters:
-        json_path (str): Path to JSON with slot distributions per period.
-        top_n (int): Number of top slot types per period to include.
-        normalized (bool): If True, normalize by token_counts.
+        json_path (str): Path to JSON file (period → slot counts).
+
+    Returns:
+        df (pd.DataFrame): A DataFrame with columns 'Period' and slot types as columns.
+    """
+    with open(json_path, "r") as f:
+        data = json.load(f)
+
+    df = pd.DataFrame.from_dict(data, orient="index").fillna(0).astype(float)
+    return df
+# Compute the frequency (normalized by the number of tokens in that period) of ALL slots
+def freq_all_slots_by_period_normalised_token_counts(json_path, normalized = False, 
+                                                     token_counts = None):
+    """
+    Compute the frequency (normalized by the number of tokens in that period) of all slots
+
+    Parameters:
+        json_path (str): Path to JSON file (period → slot counts).
+        normalized (bool): Normalize frequency by number of tokens.
         token_counts (dict): {period: token count} for normalization.
+
+    Returns:
+        df_long (pd.DataFrame): A long-form DataFrame with columns 'Period', 'Slot Type', and 'Frequency'.
+    """
+    df = freq_all_slots_by_period(json_path)
+
+    # Normalised by the number of token counts in that period
+    if normalized:
+        if token_counts is None:
+            raise ValueError("token_counts must be provided when normalized=True")
+        token_counts_str = {str(k).replace("_", "-"): v for k, v in token_counts.items()}
+        missing = set(df.index) - set(token_counts_str.keys())
+        if missing:
+            raise ValueError(f"Missing token counts for: {missing}")
+        for period in df.index:
+            df.loc[period] /= token_counts_str[period]
+
+    df_long = df.reset_index().melt(id_vars="index", var_name="Slot Type", value_name="Frequency")
+    df_long.rename(columns={"index": "Period"}, inplace=True)
+    df_long["Period"] = pd.Categorical(df_long["Period"], categories=sorted(df.index), ordered=True)
+
+    return df_long
+# Compute the relative frequency of ALL slots in each period
+def freq_all_slots_by_period_relative(json_path):
+    """
+    Compute the relative frequency of all slots.
+
+    Parameters:
+        json_path (str): Path to JSON file (period → slot counts).
+
+    Returns:
+        df_long (pd.DataFrame): A long-form DataFrame with columns 'Period', 'Slot Type', and 'Frequency'.
+    """
+    df = freq_all_slots_by_period(json_path)
+
+    row_sum = df.sum(axis=1)
+    df_rel = df.div(row_sum.replace(0, np.nan), axis=0).fillna(0.0)
+
+    df_long = (df_rel.reset_index()
+                     .melt(id_vars="index", var_name="Slot Type", value_name="Frequency")
+                     .rename(columns={"index": "Period"}))
+    df_long["Period"] = pd.Categorical(df_long["Period"],
+                                       categories=sorted(df.index),
+                                       ordered=True)
+    return df_long
+
+
+
+#  Plot the distribution of the union of TOP-N slots across periods
+def freq_top_union_slots_by_period(json_path, top_n=10,
+                                    normalized=False, token_counts=None):
+    """
+    Compute the distribution of the union of top-N slots across periods.
+
+    Parameters:
+        json_path (str): Path to JSON file (period → slot counts).
+        top_n (int): Number of top slots per period to include in union.
+        normalized (bool): Normalize frequency by number of documents.
+        token_counts (dict): {period: token count} for normalization.
+
+    Returns:
+        df_long (pd.DataFrame): A long-form DataFrame with columns 'Period', 'Slot Type', and 'Frequency'.
     """
     with open(json_path, "r") as f:
         data = json.load(f)
@@ -69,6 +149,24 @@ def plot_freq_top_union_slots_by_period(json_path, top_n=10,
     df_long.rename(columns={"index": "Period"}, inplace=True)
     df_long["Period"] = pd.Categorical(df_long["Period"], categories=sorted(df.index), ordered=True)
 
+    return df_long
+def plot_freq_top_union_slots_by_period(json_path, top_n=10,
+                                        normalized=False, token_counts=None):
+    
+    """
+    Plot the distribution of the union of top-N frequent slots across periods.
+
+    Parameters:
+        json_path (str): Path to JSON with slot distributions per period.
+        top_n (int): Number of top slot types per period to include.
+        normalized (bool): If True, normalize by token_counts.
+        token_counts (dict): {period: token count} for normalization.
+
+    Returns:
+        fig (plotly.graph_objs.Figure): The plotted figure.
+    """
+    df_long = freq_top_union_slots_by_period(json_path, top_n, normalized, token_counts)
+
     title = f"Frequencies of top-{top_n} Slots by Period (Union Set)"
     if normalized:
         title += " (Normalized)"
@@ -92,23 +190,32 @@ def plot_freq_top_union_slots_by_period(json_path, top_n=10,
     )
     fig.show()
 
+
+#-----------------------------------------------------------------------------------
+# SLOT FILLER LEVEL
 # Plot the distribution of the union of top-N slot fillers across periods
-def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
+def freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
                                            normalized=False, time_col=None):
-    """
-    Interactive line chart of top slot fillers per period.
 
-    Args:
-        csv_path (str): CSV with columns 'id', slot_type, and time columns.
-        slot_type (str): The specific type of slot
-        top_n (int): Number of top adjectives per period to include in union.
+    """
+    Compute the distribution of the union of top-N slot fillers across periods.
+
+    Parameters:
+        csv_path (str): Path to CSV file with slot fillers per period.
+        slot_type (str): Name of the column containing the slot type.
+        top_n (int): Number of top slot fillers per period to include in union.
         normalized (bool): Normalize frequency by number of documents.
-        time_col (str): whatever the column name of the time column is, e.g. 'decade' or 'half_decade'.
-    """
-    assert slot_type is not None, "slot_type must be specified"
-    assert time_col is not None, "time_col must be specified"
+        time_col (str): Name of the column containing the period information.
 
-    # --- Step 1: Load and prepare data ---
+    Returns:
+        df_long (pd.DataFrame): A long-form DataFrame with columns 'Period', 'Slot Type', and 'Frequency'.
+    """
+    if slot_type is None:
+        raise ValueError("slot_type must be specified")
+    if time_col is None:
+        raise ValueError("time_col must be specified")
+
+    # Load and prepare data ---
     df = pd.read_csv(csv_path)
 
     top_n_ovr = set()
@@ -118,30 +225,55 @@ def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
 
     df_top = df[df[slot_type].isin(top_n_ovr)]
 
-    # --- Step 2: Compute frequency ---
+    # Compute frequency ---
     if normalized:
         token_counts = df_top.groupby(time_col)['id'].nunique().reset_index(name='token_count')
         count_df = df_top.groupby([time_col, slot_type]).size().reset_index(name='count')
         count_df = count_df.merge(token_counts, on=time_col)
         count_df['norm_count'] = count_df['count'] / count_df['token_count']
-        y = 'norm_count'
-        ylabel = 'Frequency per occurrence of target token'
     else:
         count_df = df_top.groupby([time_col, slot_type]).size().reset_index(name='count')
+    
+    return count_df
+
+def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
+                                           normalized=False, time_col=None):
+
+    """
+    Plot the distribution of the union of top-N slot fillers across periods.
+
+    Parameters:
+        csv_path (str): Path to CSV file with slot fillers per period.
+        slot_type (str): Name of the column containing the slot type.
+        top_n (int): Number of top slot fillers per period to include in union.
+        normalized (bool): Normalize frequency by number of documents.
+        time_col (str): Name of the column containing the period information.
+
+    Returns:
+        fig (plotly.graph_objs.Figure): The plotted figure.
+    """
+    count_df = freq_top_union_sfillers_by_period(csv_path, slot_type=slot_type, top_n=10,
+                                           normalized=normalized, time_col=time_col)
+
+    # Assign y_axis
+    if normalized:
+        y = 'norm_count'
+        ylabel = 'Frequency per occurrence of target token'
+    else: 
         y = 'count'
         ylabel = 'Absolute Frequency'
 
-    # --- Step 3: Assign numeric x-axis for correct time ordering ---
+    # Assign numeric x-axis for correct time ordering
     count_df['time_num'] = count_df[time_col]
     tick_map = count_df.drop_duplicates('time_num')[['time_num', time_col]].sort_values('time_num')
     x_col = 'time_num'
 
-    # --- Step 4: Assign random colors to slot fillers ---
+    # Assign random colors to slot fillers
     unique_slot_fillers = sorted(count_df[slot_type].unique())
     random.seed(42)
     color_map = {slot_filler: "#{:06x}".format(random.randint(0, 0xFFFFFF)) for slot_filler in unique_slot_fillers}
 
-    # --- Step 5: Plot using Plotly ---
+    # Plot using Plotly
     title = f"Frequencies of top-{top_n} {slot_type} per {time_col} (Union Set)"
     if normalized:
         title += " (Normalized)"

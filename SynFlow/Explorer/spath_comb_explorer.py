@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 from SynFlow.utils import build_graph
 from typing import Dict
-from Explorer.const import DEFAULT_PATTERN
+from .const import DEFAULT_PATTERN
 
 def find_paths_from(graph, id2d, start_id, max_length):
     out = []

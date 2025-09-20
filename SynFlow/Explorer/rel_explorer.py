@@ -3,7 +3,7 @@ import os
 from multiprocessing import Pool, cpu_count
 from typing import List, Tuple, Optional
 from SynFlow.utils import build_graph
-from Explorer.const import DEFAULT_PATTERN
+from .const import DEFAULT_PATTERN
 
 def find_by_path(graph, id2wordpos, id2deprel, tgt_ids, rel):
     """

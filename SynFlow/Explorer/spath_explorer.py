@@ -5,7 +5,7 @@ from collections import Counter, deque
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 from SynFlow.utils import build_graph
-from Explorer.const import DEFAULT_PATTERN
+from .const import DEFAULT_PATTERN
 
 def get_contexts(graph, id2d, tgt_ids, max_length):
     """

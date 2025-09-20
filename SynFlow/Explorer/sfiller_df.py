@@ -1,17 +1,54 @@
+from ast import literal_eval
 import os
 import re
 import pandas as pd
 import numpy as np
-from ast import literal_eval
 from multiprocessing import Pool, cpu_count
 from typing import List
 from SynFlow.utils import build_graph
-from Explorer.const import DEFAULT_PATTERN
+from .const import DEFAULT_PATTERN
+
 
 # Reformat deprel because build_graph keeps the directions
 def reformat_deprel(label: str) -> str:
     """Strip 'chi_' or 'pa_' prefixes from a dependency label."""
     return re.sub(r'^(chi_|pa_)', '', label)
+
+def follow_path(graph, id2deprel, start, rel_seq):
+    """
+    Follows a path specified by rel_seq from start in graph.
+    
+    Args:
+        graph (dict): Dependency graph mapping each token id to its neighbors.
+        id2deprel (dict): Mapping of edge (tuple of token ids) to dependency relation label.
+        start (int): The id of the starting node.
+        rel_seq (list[str]): The sequence of dependency labels to follow.
+    
+    Returns:
+        list[list[int]]: A list of paths, where each path is a list of node ids.
+    """
+    chains = []
+    def dfs(node, i, path_nodes):
+        """
+        Recursively follows a path specified by rel_seq from node in graph.
+        
+        Args:
+            node (int): The id of the current node.
+            i (int): The index in rel_seq we're currently at.
+            path_nodes (list[int]): The list of node ids we've seen so far.
+        
+        Returns:
+            None
+        """       
+        if i == len(rel_seq): # if index = len(rel_seq), we've reached the end
+            chains.append(path_nodes) # append all nodes in the path
+            return # End the current path
+        want = rel_seq[i]
+        for nb in graph[node]:
+            if id2deprel.get((node, nb)) == want: # Check if the edge label is the one we want
+                dfs(nb, i+1, path_nodes + [nb])
+    dfs(start, 0, [])
+    return chains
 
 def process_file(args) -> List[dict]:
     corpus_folder, fname, pattern, target_lemma, target_pos, slots, filtered_pos, filler_format = args # Use this for multiprocess.Pool
@@ -21,42 +58,6 @@ def process_file(args) -> List[dict]:
     filtered_pos = filtered_pos or [] # Guard if filtered_pos is None
     out = []
     path = os.path.join(corpus_folder, fname)
-
-    def follow_path(graph, id2deprel, start, rel_seq):
-        """
-        Follows a path specified by rel_seq from start in graph.
-        
-        Args:
-            graph (dict): Dependency graph mapping each token id to its neighbors.
-            id2deprel (dict): Mapping of edge (tuple of token ids) to dependency relation label.
-            start (int): The id of the starting node.
-            rel_seq (list[str]): The sequence of dependency labels to follow.
-        
-        Returns:
-            list[list[int]]: A list of paths, where each path is a list of node ids.
-        """
-        chains = []
-        def dfs(node, i, path_nodes):
-            """
-            Recursively follows a path specified by rel_seq from node in graph.
-            
-            Args:
-                node (int): The id of the current node.
-                i (int): The index in rel_seq we're currently at.
-                path_nodes (list[int]): The list of node ids we've seen so far.
-            
-            Returns:
-                None
-            """       
-            if i == len(rel_seq): # if index = len(rel_seq), we've reached the end
-                chains.append(path_nodes) # append all nodes in the path
-                return # End the current path
-            want = rel_seq[i]
-            for nb in graph[node]:
-                if id2deprel.get((node, nb)) == want: # Check if the edge label is the one we want
-                    dfs(nb, i+1, path_nodes + [nb])
-        dfs(start, 0, [])
-        return chains
 
     with open(path, encoding='utf8') as fh:
         file_line = 0
@@ -289,3 +290,41 @@ def sample_sfiller_df(
     sampled.to_csv(output_csv)
     print(f"Sampled {len(sampled)} rows from {input_csv} → {output_csv}")
     return sampled
+
+def replace_in_sfiller_df_column(sfiller_csv_path, column_name, replacements, output_path=None):
+    sfiller_df = pd.read_csv(sfiller_csv_path, encoding="utf-8")
+
+    def replace_list_str(cell):
+        try:
+            items = literal_eval(cell)   # parse '["Open/A", "big/A"]' → list
+            if isinstance(items, list):
+                return str([replacements.get(x, x) for x in items])
+        except Exception:
+            pass
+        return cell  # nếu parse không được thì giữ nguyên
+
+    sfiller_df[column_name] = sfiller_df[column_name].astype(str).map(replace_list_str)
+
+    sfiller_df.to_csv(output_path, index=False, encoding="utf-8")
+
+def filter_frequency_sfiller(df_path, col_name, min_freq=1):
+    df = pd.read_csv(df_path)
+
+    # Convert string representation of list into actual Python list
+    df[col_name] = df[col_name].apply(literal_eval)
+
+    # Explode into separate rows
+    df = df.explode(col_name).reset_index(drop=True)
+
+    # Filter by frequency
+    freq = df[col_name].value_counts()
+    df = df[df[col_name].map(freq) >= min_freq]
+
+    # Sort by subfolder (numeric if possible)
+    df['subfolder'] = pd.to_numeric(df['subfolder'], errors='coerce')
+    df = df.sort_values('subfolder', kind='stable').reset_index(drop=True)
+
+    # Overwrite file
+    df.to_csv(df_path, index=False)
+
+    return df

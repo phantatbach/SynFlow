@@ -2,7 +2,7 @@ import os
 import re
 import pandas as pd
 from typing import List, Dict, Optional
-from Explorer.const import DEFAULT_PATTERN
+from .const import DEFAULT_PATTERN
 
 def corpus_handler(file: str, pattern: Optional[re.Pattern] = None) -> List[List[Dict]]:
     """

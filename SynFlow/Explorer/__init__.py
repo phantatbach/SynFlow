@@ -26,16 +26,20 @@ from .trimming import (
 
 from .sfiller_df import (
     build_sfiller_df,
-    sample_sfiller_df
+    filter_frequency_sfiller,
+    replace_in_sfiller_df_column,
+    sample_sfiller_df,
 )
 __all__ = [
-    spath_comb_explorer,
-    spath_explorer,
+    build_sfiller_df,
+    filter_frequency_sfiller,
     full_rel_explorer,
     get_contexts,
     rel_explorer,
-    trim_and_merge,
+    replace_in_sfiller_df_column,
+    sample_sfiller_df,
+    spath_comb_explorer,
+    spath_explorer,
     spe_group,
-    build_sfiller_df,
-    sample_sfiller_df
+    trim_and_merge,    
     ]
