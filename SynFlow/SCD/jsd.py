@@ -339,13 +339,16 @@ def weighted_total_divergence_col(consecutive_jsd_df, freq_col_slot_by_period_df
         float: The weighted total divergence for the given slot type column.
     """
     total_divergence_col_val = 0
+    total_weight_freq = 0
     for row in consecutive_jsd_df.itertuples():
         freq_period_1 = freq_col_slot_by_period_df.loc[freq_col_slot_by_period_df["Period"].astype(int) == row.Period1, "Frequency"].iloc[0]
         freq_period_2 = freq_col_slot_by_period_df.loc[freq_col_slot_by_period_df["Period"].astype(int) == row.Period2, "Frequency"].iloc[0]
 
         # Conservative = Min
         # Max = more laxed
-        total_divergence_col_val += row.JSD * max(freq_period_1, freq_period_2)
+        weight_freq = min(freq_period_1, freq_period_2)
+
+        total_divergence_col_val += row.JSD * weight_freq
 
     return total_divergence_col_val
 
@@ -388,12 +391,14 @@ def total_divergence_slots(slot_json_path, all_sfillers_csv_path, min_freq=1):
         freq_col_slot_by_period_df = rel_freq_all_slots_by_period_df[rel_freq_all_slots_by_period_df["Slot Type"] == col].reset_index(drop=True)
         pos_pairs_counts = pairs_with_pos_freq(freq_col_slot_by_period_df)
 
+        total_divergence = weighted_total_divergence_col(consecutive_jsd_df, freq_col_slot_by_period_df)
+
         if pos_pairs_counts == 0:
-            total_divergence = 0
+            normalised_total_divergence = 0
         else:
-            total_divergence = weighted_total_divergence_col(consecutive_jsd_df, freq_col_slot_by_period_df) / pos_pairs_counts
-            
-        rows.append((col, total_divergence))
+            normalised_total_divergence = total_divergence / pos_pairs_counts
+
+        rows.append((col, normalised_total_divergence))
 
     total_divergence_df = (
         pd.DataFrame(rows, columns=["Slot Type", "Weighted Total Divergence"])
