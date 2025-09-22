@@ -346,7 +346,8 @@ def weighted_total_divergence_col(consecutive_jsd_df, freq_col_slot_by_period_df
 
         # Conservative = Min
         # Max = more laxed
-        weight_freq = min(freq_period_1, freq_period_2)
+        # weight_freq = freq_period_1 + freq_period_2
+        weight_freq = max(freq_period_1, freq_period_2)
 
         total_divergence_col_val += row.JSD * weight_freq
 

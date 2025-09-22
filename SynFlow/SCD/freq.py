@@ -49,6 +49,7 @@ def freq_all_slots_by_period(json_path):
 
     df = pd.DataFrame.from_dict(data, orient="index").fillna(0).astype(float)
     return df
+
 # Compute the frequency (normalized by the number of tokens in that period) of ALL slots
 def freq_all_slots_by_period_normalised_token_counts(json_path, normalized = False, 
                                                      token_counts = None):
@@ -105,28 +106,30 @@ def freq_all_slots_by_period_relative(json_path):
                                        ordered=True)
     return df_long
 
-
-
 #  Plot the distribution of the union of TOP-N slots across periods
-def freq_top_union_slots_by_period(json_path, top_n=10,
+def freq_top_union_slots_by_period(json_path, top_n=10, relative=False,
                                     normalized=False, token_counts=None):
     """
     Compute the distribution of the union of top-N slots across periods.
 
     Parameters:
-        json_path (str): Path to JSON file (period → slot counts).
-        top_n (int): Number of top slots per period to include in union.
-        normalized (bool): Normalize frequency by number of documents.
+        json_path (str): Path to JSON with slot distributions per period.
+        top_n (int): Number of top slot types per period to include.
+        relative (bool): If True, compute relative frequency.
+        normalized (bool): If True, normalize by token_counts.
         token_counts (dict): {period: token count} for normalization.
 
     Returns:
         df_long (pd.DataFrame): A long-form DataFrame with columns 'Period', 'Slot Type', and 'Frequency'.
     """
-    with open(json_path, "r") as f:
-        data = json.load(f)
 
-    df = pd.DataFrame.from_dict(data, orient="index").fillna(0).astype(int)
+    if relative and normalized:
+        raise ValueError("Choose either relative=True or normalized=True, not both.")
+    
+    # Get the frequency of all slots
+    df = freq_all_slots_by_period(json_path)
 
+    # Compute the union
     top_n_union = set()
     for period in df.index:
         top_slots = df.loc[period].sort_values(ascending=False).head(top_n).index
@@ -139,18 +142,26 @@ def freq_top_union_slots_by_period(json_path, top_n=10,
         if token_counts is None:
             raise ValueError("token_counts must be provided when normalized=True")
         token_counts_str = {str(k).replace("_", "-"): v for k, v in token_counts.items()}
+
+        # Handle missing token counts
         missing = set(df_filtered.index) - set(token_counts_str.keys())
         if missing:
             raise ValueError(f"Missing token counts for: {missing}")
+        
         for period in df_filtered.index:
             df_filtered.loc[period] /= token_counts_str[period]
+
+    # Relative frequency
+    if relative:
+        row_sum = df_filtered.sum(axis=1)
+        df_filtered = df_filtered.div(row_sum.replace(0, np.nan), axis=0).fillna(0.0)
 
     df_long = df_filtered.reset_index().melt(id_vars="index", var_name="Slot Type", value_name="Frequency")
     df_long.rename(columns={"index": "Period"}, inplace=True)
     df_long["Period"] = pd.Categorical(df_long["Period"], categories=sorted(df.index), ordered=True)
 
     return df_long
-def plot_freq_top_union_slots_by_period(json_path, top_n=10,
+def plot_freq_top_union_slots_by_period(json_path, top_n=10, relative=False,
                                         normalized=False, token_counts=None):
     
     """
@@ -165,11 +176,17 @@ def plot_freq_top_union_slots_by_period(json_path, top_n=10,
     Returns:
         fig (plotly.graph_objs.Figure): The plotted figure.
     """
-    df_long = freq_top_union_slots_by_period(json_path, top_n, normalized, token_counts)
+    if relative and normalized:
+        raise ValueError("Choose either relative=True or normalized=True, not both.")
+    
+    df_long = freq_top_union_slots_by_period(json_path, top_n, relative, normalized, token_counts)
 
     title = f"Frequencies of top-{top_n} Slots by Period (Union Set)"
     if normalized:
         title += " (Normalized)"
+
+    if relative:
+        title += " (Relative)"
 
     fig = px.line(
         df_long,
@@ -183,13 +200,37 @@ def plot_freq_top_union_slots_by_period(json_path, top_n=10,
 
     fig.update_layout(
         xaxis_title="Period",
-        yaxis_title="Frequency per occurrence of target token " if normalized else "Raw Count",
+        yaxis_title=("Frequency per occurrence of target token " if normalized 
+                     else "Relative Frequency" if relative 
+                     else "Raw Count"),
         legend_title="Slot Type",
         height=500,
         width=1000
     )
     fig.show()
 
+# Slot exist table to see when a slot appeared and disappeared
+def slot_exist_table(slot_json_path):
+    # Convert frequency json to df
+    df = freq_all_slots_by_period(slot_json_path)
+    df = df.sort_index()
+
+    # Create a binary df
+    present_df = (df >= 1).astype(int)
+
+    # Create a different matrix
+    diff = present_df.diff(axis=0)
+    diff.iloc[0] = present_df.iloc[0]
+    diff = diff.fillna(0).astype(int)
+
+    # Transpose the matrix
+    out = diff.T.sort_index(axis=1)
+
+    # Sort by the number of 0 (e.g., stability)
+    out["zero_count"] = (out == 0).sum(axis=1)
+    out = out.sort_values("zero_count", ascending=False).drop(columns="zero_count")
+
+    return out
 
 #-----------------------------------------------------------------------------------
 # SLOT FILLER LEVEL
