@@ -4,11 +4,12 @@ import re
 import pandas as pd
 import numpy as np
 from multiprocessing import Pool, cpu_count
+from pathlib import Path
 from typing import List
 from SynFlow.utils import build_graph
 from .const import DEFAULT_PATTERN
 
-
+DEFAULT_COLS = ['id', 'subfolder', 'target']
 # Reformat deprel because build_graph keeps the directions
 def reformat_deprel(label: str) -> str:
     """Strip 'chi_' or 'pa_' prefixes from a dependency label."""
@@ -133,6 +134,10 @@ def process_file(args) -> List[dict]:
 
     return out
 
+# Get all slots from a slot_freq_df to the correct format before building the slot_filler_df
+def get_all_slots(df):
+    all_slots = "".join(f"[{r}]" for r in df.index)
+    return all_slots
 
 def build_sfiller_df(
     corpus_folder: str,
@@ -308,6 +313,20 @@ def replace_in_sfiller_df_column(sfiller_csv_path, column_name, replacements, ou
     sfiller_df.to_csv(output_path, index=False, encoding="utf-8")
 
 def filter_frequency_sfiller(df_path, col_name, min_freq=1):
+    """
+    Filter slot fillers in a DataFrame by their frequency.
+
+    Parameters:
+        df_path (str): Path to the DataFrame CSV file.
+        col_name (str): Name of the column containing the slot fillers.
+        min_freq (int): Minimum frequency of a slot filler to be kept.
+
+    Returns:
+        pd.DataFrame: The filtered DataFrame.
+
+    Notes:
+        The function overwrites the original file.
+    """
     df = pd.read_csv(df_path)
 
     # Convert string representation of list into actual Python list
@@ -328,3 +347,78 @@ def filter_frequency_sfiller(df_path, col_name, min_freq=1):
     df.to_csv(df_path, index=False)
 
     return df
+
+#-----------------------------------------------------------
+# Extract slot column(s)
+def _non_empty(v):
+    if isinstance(v, list): return len(v) > 0
+    if pd.isna(v): return False
+    if isinstance(v, str): return v.strip() not in ("", "[]")
+    return True
+
+def extract_slot_cols(df_path: str, slot_names: list, output_path: str | None = None) -> pd.DataFrame:
+    df = pd.read_csv(df_path)
+    cols = [c for c in DEFAULT_COLS + slot_names if c in df.columns]
+    sub = df[cols].copy()
+    keep = sub[slot_names].map(_non_empty).any(axis=1)
+    sub = sub[keep]
+    if output_path:
+        sub.to_csv(output_path, index=False)
+    return sub
+
+def extract_1_slot_col(df_path: str, slot_name: str, output_path: str | None = None) -> pd.DataFrame:
+    return extract_slot_cols(df_path, [slot_name], output_path)
+#----------------------------------------------------------------------------------------------------
+# Create a pooled slot-filler df based on the pool note
+# Build the year map dict
+def build_year_map(pool_note: dict, slot_name: str) -> dict[int, int]:
+    map = {}
+    for (slot, _block), info in pool_note.items():
+        if slot != slot_name: 
+            continue
+        for group in info["groups"]:
+            tgt = int(group["target"])
+            for src in group["source"]:
+                map[int(src)] = tgt
+    return map
+
+# Re map the subfolder column
+def remap_subfolder(df: pd.DataFrame, year_map: dict[int,int]) -> pd.DataFrame:
+    out = df.copy()
+    out["subfolder"] = out["subfolder"].astype(int).map(lambda y: year_map.get(y, y)).astype(str)
+    return out
+
+
+# THIS FUNCTION HAS NOT BEEN USED YET
+def build_pooled_sfiller_df(all_sfillers_csv_path, pool_notes: dict, output_folder) -> pd.DataFrame:
+    file_name = Path(all_sfillers_csv_path).stem
+
+    df = pd.read_csv(all_sfillers_csv_path)
+    default_cols = DEFAULT_COLS
+    slot_cols = [col for col in df.columns if col not in default_cols]
+
+    col_dfs = []
+    for col in slot_cols:
+        sub = df[default_cols + [col]].copy()
+        sub = sub[sub[col].notna() & sub[col].astype(str).ne("[]")].reset_index(drop=True)
+
+        year_map = build_year_map(pool_note=pool_notes, slot_name=col)
+        sub = remap_subfolder(df=sub, year_map=year_map)  # ok kể cả year_map rỗng
+        col_dfs.append(sub)
+
+    # concat dọc; pandas tự mở rộng cột slot khác nhau
+    pooled_df = pd.concat(col_dfs, ignore_index=True, sort=False)
+
+    # đưa default_cols lên đầu
+    front = [c for c in default_cols if c in pooled_df.columns]
+    pooled_df = pooled_df[front + [c for c in pooled_df.columns if c not in front]]
+
+    # replace NaN with empty list
+    for slot_col in slot_cols:
+        pooled_df[slot_col] = pooled_df[slot_col].apply(lambda value: [] if pd.isna(value) else value)
+
+    # write out
+    output_path = os.path.join(output_folder, file_name + "_pooled.csv")
+    pooled_df.to_csv(output_path, index=False)
+    print(f"Created pooled slot-filler df from {all_sfillers_csv_path} → {output_path}")
+    return pooled_df

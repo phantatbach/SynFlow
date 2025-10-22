@@ -1,10 +1,12 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import os
 import json
 import pandas as pd
 import plotly.express as px
 import random
 import numpy as np
+
+
 
 def count_keyword_tokens_by_period(corpus_path, keyword_string, 
                                    fname_pattern):
@@ -35,20 +37,14 @@ def count_keyword_tokens_by_period(corpus_path, keyword_string,
 # SLOT LEVEL
 # Compute the frequency of ALL slots in each period
 def freq_all_slots_by_period(json_path):
-    """
-    Compute the frequency of all slots.
-
-    Parameters:
-        json_path (str): Path to JSON file (period → slot counts).
-
-    Returns:
-        df (pd.DataFrame): A DataFrame with columns 'Period' and slot types as columns.
-    """
+    # giữ nguyên thứ tự khóa như trong file
     with open(json_path, "r") as f:
-        data = json.load(f)
+        data = json.load(f, object_pairs_hook=OrderedDict)
 
-    df = pd.DataFrame.from_dict(data, orient="index").fillna(0).astype(float)
-    return df
+    keys = [k.strip() for k in data.keys()]          # làm sạch nhưng KHÔNG đổi thứ tự
+    rows = [data[k] for k in keys]                   # lấy theo đúng order
+    df = pd.DataFrame.from_records(rows, index=keys) # index = chuỗi năm theo file
+    return df.fillna(0).astype(float)
 
 # Compute the frequency (normalized by the number of tokens in that period) of ALL slots
 def freq_all_slots_by_period_normalised_token_counts(json_path, normalized = False, 
@@ -208,29 +204,6 @@ def plot_freq_top_union_slots_by_period(json_path, top_n=10, relative=False,
         width=1000
     )
     fig.show()
-
-# Slot exist table to see when a slot appeared and disappeared
-def slot_exist_table(slot_json_path):
-    # Convert frequency json to df
-    df = freq_all_slots_by_period(slot_json_path)
-    df = df.sort_index()
-
-    # Create a binary df
-    present_df = (df >= 1).astype(int)
-
-    # Create a different matrix
-    diff = present_df.diff(axis=0)
-    diff.iloc[0] = present_df.iloc[0]
-    diff = diff.fillna(0).astype(int)
-
-    # Transpose the matrix
-    out = diff.T.sort_index(axis=1)
-
-    # Sort by the number of 0 (e.g., stability)
-    out["zero_count"] = (out == 0).sum(axis=1)
-    out = out.sort_values("zero_count", ascending=False).drop(columns="zero_count")
-
-    return out
 
 #-----------------------------------------------------------------------------------
 # SLOT FILLER LEVEL
