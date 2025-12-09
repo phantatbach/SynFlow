@@ -60,77 +60,90 @@ def process_file(args) -> List[dict]:
     out = []
     path = os.path.join(corpus_folder, fname)
 
+    has_target = False
+    has_target_check_string = f'\t{target_lemma}\t{target_pos}'
+
     with open(path, encoding='utf8') as fh:
         file_line = 0
-        sent_toks, sent_lines = [], []
-        for raw in fh:
+        sent_tokens, sent_lines = [], [] # Init for the whole file. Sent_tokens = lines, sent_forms = word forms only
+
+        for line in fh:
             file_line += 1
-            line = raw.rstrip("\n")
+            line = line.rstrip("\n")
+
+            # Start a new sentence
             if line.startswith("<s id"):
-                sent_toks, sent_lines = [], []
+                sent_tokens, sent_lines = [], [] # Reset for new sentence
+                has_target = False # Reset for new sentence
+
+            # End of a sentence. Build graph and process if target found
             elif line.startswith("</s>"):
-                # Build graph when the whole sentence is appended
-                id2lemma_pos, graph, id2deprel = build_graph(sent_toks, pattern)
-                target_lp = f"{target_lemma}/{target_pos}"
-                for tid, lp in id2lemma_pos.items():
-                    if lp != target_lp: # Only process the matched token
-                        continue
-                    token_line = sent_lines[int(tid)-1]
-                    row = {
-                        "id": f"{target_lemma}/{fname}/{token_line}",
-                        "subfolder": subfolder,
-                        }
+                if sent_tokens and has_target == True:
+                    # Build graph when the whole sentence is appended
+                    id2lemma_pos, graph, id2deprel = build_graph(sent_tokens, pattern)
+                    target_lp = f"{target_lemma}/{target_pos}"
+                    for tid, lp in id2lemma_pos.items():
+                        if lp != target_lp: # Only process the matched token
+                            continue
+                        token_line = sent_lines[int(tid)-1]
+                        row = {
+                            "id": f"{target_lemma}/{fname}/{token_line}",
+                            "subfolder": subfolder,
+                            }
 
-                    for slot in slots:
-                        slot_fillers = []
-                        # split if there are multiple fillers in a slot
-                        for subslot in slot.split("|"):
-                            # split your multi-hop slot
-                            rel_seq = [r.strip() for r in subslot.split(">")]
-                            # get every chain of IDs matching that rel sequence
-                            chains  = follow_path(graph, id2deprel, tid, rel_seq)
-                            # print(f"DEBUG {fname}:{token_line} chains for {slot} =", chains)
+                        for slot in slots:
+                            slot_fillers = []
+                            # split if there are multiple fillers in a slot
+                            for subslot in slot.split("|"):
+                                # split your multi-hop slot
+                                rel_seq = [r.strip() for r in subslot.split(">")]
+                                # get every chain of IDs matching that rel sequence
+                                chains  = follow_path(graph, id2deprel, tid, rel_seq)
+                                # print(f"DEBUG {fname}:{token_line} chains for {slot} =", chains)
 
-                            # flatten **all** nodes in **all** chains to avoid nested list
-                            subslot_fillers = []
-                            for chain in chains:
-                                prev_id = tid
-                                for nid in chain:
-                                    lemma_pos = id2lemma_pos[nid]
-                                    lemma, pos = lemma_pos.rsplit("/", 1)
-                                    if pos in filtered_pos:
-                                        prev_id = nid
-                                        continue
+                                # flatten **all** nodes in **all** chains to avoid nested list
+                                subslot_fillers = []
+                                for chain in chains:
+                                    prev_id = tid
+                                    for nid in chain:
+                                        lemma_pos = id2lemma_pos[nid]
+                                        lemma, pos = lemma_pos.rsplit("/", 1)
+                                        if pos in filtered_pos:
+                                            prev_id = nid
+                                            continue
 
-                                    if filler_format == "lemma/deprel": # This filler is used to get the original deprel of the context words, not the deprel between target and context
-                                        raw_label = (
-                                            id2deprel.get((prev_id, nid))    # child→parent ⇒ pa_…
-                                            or id2deprel.get((nid, prev_id))  # parent→child ⇒ chi_…
-                                            or 'UNK'
-                                        )
-                                        if raw_label.startswith('chi_'):
-                                            deprel = reformat_deprel(raw_label)
+                                        if filler_format == "lemma/deprel": # This filler is used to get the original deprel of the context words, not the deprel between target and context
+                                            raw_label = (
+                                                id2deprel.get((prev_id, nid))    # child→parent ⇒ pa_…
+                                                or id2deprel.get((nid, prev_id))  # parent→child ⇒ chi_…
+                                                or 'UNK'
+                                            )
+                                            if raw_label.startswith('chi_'):
+                                                deprel = reformat_deprel(raw_label)
+                                            else:
+                                                orig_line = sent_tokens[int(nid)-1] # fall back to the original line
+                                                m = pattern.match(orig_line)
+                                                raw_field = m.group(6) if m else 'UNK'
+                                                deprel = reformat_deprel(raw_field)
+
+                                            filler = f"{lemma}/{deprel}"
                                         else:
-                                            orig_line = sent_toks[int(nid)-1] # fall back to the original line
-                                            m = pattern.match(orig_line)
-                                            raw_field = m.group(6) if m else 'UNK'
-                                            deprel = reformat_deprel(raw_field)
+                                            filler = f"{lemma}/{pos}"
 
-                                        filler = f"{lemma}/{deprel}"
-                                    else:
-                                        filler = f"{lemma}/{pos}"
+                                        subslot_fillers.append(filler)
+                                        prev_id = nid
+                                
+                                slot_fillers.extend(subslot_fillers)
 
-                                    subslot_fillers.append(filler)
-                                    prev_id = nid
-                            
-                            slot_fillers.extend(subslot_fillers)
+                            row[slot] = list(set(slot_fillers))
 
-                        row[slot] = list(set(slot_fillers))
-
-                    out.append(row)
+                        out.append(row)
             else:
-                sent_toks.append(line)
+                sent_tokens.append(line)
                 sent_lines.append(file_line)
+                # Check for target lemma/POS in the current line
+                if has_target_check_string in line:
+                    has_target = True
 
     return out
 

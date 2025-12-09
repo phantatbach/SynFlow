@@ -154,17 +154,27 @@ def process_file(
 
     if not required_path_patterns_list:
         return results
+    
+    has_target = False
+    has_target_check_string = f'\t{target_lemma}\t{target_pos}'
 
     filepath = os.path.join(corpus_folder, fname)
     try:
         with open(filepath, encoding='utf8') as fh:
-            sent_tokens, sent_forms = [], []
+            sent_tokens, sent_forms = [], [] # Init for the whole file. Sent_tokens = lines, sent_forms = word forms only
+
             for line in fh:
                 line = line.rstrip("\n")
+
+                # Start a new sentence
                 if line.startswith("<s id"):
-                    sent_tokens, sent_forms = [], []
+                    has_target = False # Reset for new sentence
+                    sent_tokens, sent_forms = [], [] # Reset for new sentence
+                
+                # End of current sentence, build graph
                 elif line.startswith("</s>"):
-                    if sent_tokens:
+                    # Check if the sentence contains the target lemma/POS
+                    if sent_tokens and has_target == True:
                         id2wp, graph, id2d = build_graph(sent_tokens, pattern)
                         sentence_text = " ".join(sent_forms)
                         target_lp = f"{target_lemma}/{target_pos}"
@@ -230,6 +240,10 @@ def process_file(
                     m = pattern.match(line)
                     if m:
                         sent_forms.append(m.group(1))
+                    
+                    # Check for target lemma/POS in the current line
+                    if has_target_check_string in line:
+                        has_target = True
 
     except FileNotFoundError:
         print(f"Error: File not found at {filepath}")

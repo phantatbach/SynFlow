@@ -50,31 +50,41 @@ def process_file(args) -> Counter:
     ctr = Counter()
     path = os.path.join(corpus_folder, fname)
 
+    has_target = False
+    has_target_check_string = f'\t{target_lemma}\t{target_pos}'
+    
     with open(path, encoding="utf8") as fh:
-        sent = []
+        sent_tokens = []
         for line in fh:
             line = line.rstrip("\n")
+
+            # Start a new sentence
             if line.startswith("<s id"):
-                sent = []
+                sent_tokens = []
+                has_target = False  # Reset for new sentence
+
             elif line.startswith("</s>"):
+                if has_target and sent_tokens:
+                    # build graph when the whole sentence is appended
+                    id2lp, graph, id2d = build_graph(sent_tokens, pattern)
+                    target_lp = f"{target_lemma}/{target_pos}"
 
-                # build graph when the whole sentence is appended
-                id2lp, graph, id2d = build_graph(sent, pattern)
-                target_lp = f"{target_lemma}/{target_pos}"
+                    # for each target token in this sentence
+                    for tid, lp in id2lp.items():
+                        if lp != target_lp:
+                            continue
 
-                # for each target token in this sentence
-                for tid, lp in id2lp.items():
-                    if lp != target_lp:
-                        continue
+                        paths  = find_paths_from(graph, id2d, tid, max_length)  # <— dùng tid to get all the path from each target token
+                        unique = sorted(set(paths)) # Take only 1 type of slot for each token. Need to think about cases where there are duplicate slots of the same token (e.g., big bad wolf)
 
-                    paths  = find_paths_from(graph, id2d, tid, max_length)  # <— dùng tid to get all the path from each target token
-                    unique = sorted(set(paths)) # Take only 1 type of slot for each token. Need to think about cases where there are duplicate slots of the same token (e.g., big bad wolf)
-
-                    parts = [target_lemma] + ["> " + p for p in unique]
-                    pattern_str = " & ".join(parts)
-                    ctr[pattern_str] += 1
+                        parts = [target_lemma] + ["> " + p for p in unique]
+                        pattern_str = " & ".join(parts)
+                        ctr[pattern_str] += 1
             else:
-                sent.append(line)
+                sent_tokens.append(line)
+                # Check for target lemma/POS in the current line
+                if has_target_check_string in line:
+                    has_target = True
     return ctr
 
 def save_to_csv_with_subfolder(rows, output_path="output.csv"):

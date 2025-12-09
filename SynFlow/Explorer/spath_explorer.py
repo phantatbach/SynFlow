@@ -49,29 +49,41 @@ def process_file(args):
     fname, corpus_folder, pattern, target_lemma, target_pos, max_length = args
     counter = Counter()
     path = os.path.join(corpus_folder, fname)
+
+    has_target = False
+    has_target_check_string = f'\t{target_lemma}\t{target_pos}'
+
     with open(path, encoding='utf8') as fh:
-        sentence = []
+        sent_tokens = []
         for line in fh:
             line = line.rstrip('\n')
-            if line.startswith('<s id'):
-                sentence = []
-            elif line.startswith('</s>'):
 
-                # Build a dependency graph when the whole sentence is appended
-                id2lp, graph, id2d = build_graph(sentence, pattern)
-                # Find words with the target lemma and POS
-                tgt_ids = [
-                    idx for idx, lp in id2lp.items()
-                    if lp.split('/')[0] == target_lemma
-                       and lp.split('/')[1] == target_pos
-                ]
-                # If match then find contexts
-                if tgt_ids:
-                    for p in get_contexts(graph, id2d, tgt_ids, max_length):
-                        counter[p] += 1
+            # Start a new sentence
+            if line.startswith('<s id'):
+                sent_tokens = []
+                has_target = False # Reset for new sentence
+            
+            # End of a sentence. Build graph and process if target found
+            elif line.startswith('</s>'):
+                if sent_tokens and has_target == True:
+                    # Build a dependency graph when the whole sentence is appended
+                    id2lp, graph, id2d = build_graph(sent_tokens, pattern)
+                    # Find words with the target lemma and POS
+                    tgt_ids = [
+                        idx for idx, lp in id2lp.items()
+                        if lp.split('/')[0] == target_lemma
+                        and lp.split('/')[1] == target_pos
+                    ]
+                    # If match then find contexts
+                    if tgt_ids:
+                        for p in get_contexts(graph, id2d, tgt_ids, max_length):
+                            counter[p] += 1
 
             else:
-                sentence.append(line)
+                sent_tokens.append(line)
+                # Check for target lemma/POS in the current line
+                if has_target_check_string in line:
+                    has_target = True
     return counter
 
 def plot_dist(counter, target_lemma, max_length, top_n):

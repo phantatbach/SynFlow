@@ -61,27 +61,43 @@ def process_file(
     corpus_folder, fname, pattern, target_lemma, target_pos, rel = args
     pattern = pattern or DEFAULT_PATTERN
 
+    has_target = False
+    has_target_check_string = f'\t{target_lemma}\t{target_pos}'
+
     results = []
     filepath = os.path.join(corpus_folder, fname)
     with open(filepath, encoding='utf8') as fh:
-        sent_tokens, sent_forms = [], []
+        sent_tokens, sent_forms = [], [] # Init for the whole file. Sent_tokens = lines, sent_forms = word forms only
+
         for line in fh:
             line = line.rstrip("\n")
+
+            # Start a new sentence
             if line.startswith("<s id"):
-                sent_tokens, sent_forms = [], []
+                has_target = False # Reset for new sentence
+                sent_tokens, sent_forms = [], [] # Reset for new sentence
+
+            # End of a sentence. Build graph and process if target found
             elif line.startswith("</s>"):
-                id2wp, graph, id2d = build_graph(sent_tokens, pattern)
-                sentence_text = " ".join(sent_forms)
-                target_lp = f"{target_lemma}/{target_pos}"
-                tgt_ids = [tid for tid, lp in id2wp.items() if lp == target_lp]
-                for ctx_nodes, path_str in find_by_path(graph, id2wp, id2d, tgt_ids, rel):
-                    # **Gắn thêm fname** vào đầu tuple
-                    results.append((fname, sentence_text, ctx_nodes, path_str))
+                # Process the sentence if it contains the target lemma/POS
+                if sent_tokens and has_target == True:
+                    id2wp, graph, id2d = build_graph(sent_tokens, pattern)
+                    sentence_text = " ".join(sent_forms)
+                    target_lp = f"{target_lemma}/{target_pos}"
+                    tgt_ids = [tid for tid, lp in id2wp.items() if lp == target_lp]
+                    for ctx_nodes, path_str in find_by_path(graph, id2wp, id2d, tgt_ids, rel):
+                        # **Gắn thêm fname** vào đầu tuple
+                        results.append((fname, sentence_text, ctx_nodes, path_str))
+
             else:
                 sent_tokens.append(line)
                 m = pattern.match(line)
                 if m:
                     sent_forms.append(m.group(1))
+                
+                if has_target_check_string in line:
+                    has_target = True
+
     return results
 
 def rel_explorer(corpus_folder: str,
