@@ -312,12 +312,12 @@ def replace_in_sfiller_df_column(sfiller_csv_path, column_name, replacements, ou
 
     sfiller_df.to_csv(output_path, index=False, encoding="utf-8")
 
-def filter_frequency_sfiller(df_path, col_name, min_freq=1):
+def filter_frequency_sfiller(spath_df, col_name, min_freq=1):
     """
     Filter slot fillers in a DataFrame by their frequency.
 
     Parameters:
-        df_path (str): Path to the DataFrame CSV file.
+        spath_df (str): Path to the DataFrame CSV file.
         col_name (str): Name of the column containing the slot fillers.
         min_freq (int): Minimum frequency of a slot filler to be kept.
 
@@ -327,7 +327,7 @@ def filter_frequency_sfiller(df_path, col_name, min_freq=1):
     Notes:
         The function overwrites the original file.
     """
-    df = pd.read_csv(df_path)
+    df = pd.read_csv(spath_df)
 
     # Convert string representation of list into actual Python list
     df[col_name] = df[col_name].apply(literal_eval)
@@ -344,7 +344,7 @@ def filter_frequency_sfiller(df_path, col_name, min_freq=1):
     df = df.sort_values('subfolder', kind='stable').reset_index(drop=True)
 
     # Overwrite file
-    df.to_csv(df_path, index=False)
+    df.to_csv(spath_df, index=False)
 
     return df
 
@@ -356,8 +356,8 @@ def _non_empty(v):
     if isinstance(v, str): return v.strip() not in ("", "[]")
     return True
 
-def extract_slot_cols(df_path: str, slot_names: list, output_path: str | None = None) -> pd.DataFrame:
-    df = pd.read_csv(df_path)
+def extract_slot_cols(spath_df: str, slot_names: list, output_path: str | None = None) -> pd.DataFrame:
+    df = pd.read_csv(spath_df)
     cols = [c for c in DEFAULT_COLS + slot_names if c in df.columns]
     sub = df[cols].copy()
     keep = sub[slot_names].map(_non_empty).any(axis=1)
@@ -366,8 +366,8 @@ def extract_slot_cols(df_path: str, slot_names: list, output_path: str | None = 
         sub.to_csv(output_path, index=False)
     return sub
 
-def extract_1_slot_col(df_path: str, slot_name: str, output_path: str | None = None) -> pd.DataFrame:
-    return extract_slot_cols(df_path, [slot_name], output_path)
+def extract_1_slot_col(spath_df: str, slot_name: str, output_path: str | None = None) -> pd.DataFrame:
+    return extract_slot_cols(spath_df, [slot_name], output_path)
 #----------------------------------------------------------------------------------------------------
 # Create a pooled slot-filler df based on the pool note
 # Build the year map dict

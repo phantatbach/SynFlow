@@ -3,7 +3,7 @@ import numpy as np
 import csv, json, pathlib
 
 NON_SLOT_COLS = {"Subfolder", "Frequency", "Target"}
-def trimming(df_file, trimmed_rels):
+def trimming(spath_df, trimmed_rels):
     """
     Xóa các slot từ trimmed_rels trở đi trong mỗi cell của các slot.
 
@@ -14,7 +14,7 @@ def trimming(df_file, trimmed_rels):
     Returns:
         pd.DataFrame: DataFrame đã trim slot.
     """
-    df = pd.read_csv(df_file, sep='&')
+    df = pd.read_csv(spath_df, sep='&')
 
     # Lấy các cột slot (bỏ Subfolder, Frequency và Target)
     slot_cols = [c for c in df.columns if c not in NON_SLOT_COLS]
@@ -54,17 +54,17 @@ def trimming(df_file, trimmed_rels):
     # Fill cell rỗng với NaN
     df[slot_cols] = df[slot_cols].replace("", np.nan)
 
-    # df_file = df_file.split('.')[0]
-    # df.to_csv(f'{df_file}_trimmed.csv', sep='&')
+    # spath_df = spath_df.split('.')[0]
+    # df.to_csv(f'{spath_df}_trimmed.csv', sep='&')
     return df
 
-def merging(df, df_file):
+def merging(df, spath_df):
     """
     Merge các row có cùng slot list (đã loại duplicate theo chiều ngang) và lưu file.
 
     Args:
         df (pd.DataFrame): DataFrame sau khi trim.
-        df_file (str): Tên file (có hoặc không có đuôi .csv).
+        spath_df (str): Tên file (có hoặc không có đuôi .csv).
 
     Returns:
         pd.DataFrame: DataFrame đã merge.
@@ -96,25 +96,25 @@ def merging(df, df_file):
     merged = merged.sort_values(['Subfolder','Frequency'], ascending=[True, False]).reset_index(drop=True)
 
     # Lưu file
-    df_file = df_file.rsplit('.', 1)[0]
-    merged.to_csv(f'{df_file}_trimmed.csv', sep='&', index=False)
-    print(f'Saved merged file to {df_file}_trimmed.csv')
+    spath_df = spath_df.rsplit('.', 1)[0]
+    merged.to_csv(f'{spath_df}_trimmed.csv', sep='&', index=False)
+    print(f'Saved merged file to {spath_df}_trimmed.csv')
 
     return merged
 
-def trim_and_merge(df_file, trimmed_rels):
-    df = trimming(df_file, trimmed_rels)
-    merged = merging(df, df_file)
+def trim_and_merge(spath_df, trimmed_rels):
+    df = trimming(spath_df, trimmed_rels)
+    merged = merging(df, spath_df)
     return merged
 
-def spe_group(df_path: str, output_folder: str, target_lemma: str):
+def spe_group(spath_df: str, output_folder: str, target_lemma: str):
     """
     Đọc CSV (sep='&') có cột: Subfolder, Frequency, Target, Slot_*...
     Nhóm các row có cùng slot list (đã loại duplicate theo chiều ngang) 
     trong cùng 1 Subfolder và lưu file JSON.
 
     Args:
-        df_path (str): Đường dẫn đến file CSV (sep='&').
+        spath_df (str): Đường dẫn đến file CSV (sep='&').
         output_folder (str): Thư mục để lưu file JSON.
 
     Returns:
@@ -141,7 +141,7 @@ def spe_group(df_path: str, output_folder: str, target_lemma: str):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Đọc CSV và xác định vị trí các cột quan trọng
-    with open(df_path, encoding='utf-8-sig') as f:
+    with open(spath_df, encoding='utf-8-sig') as f:
         reader = csv.reader(f, delimiter='&') # Iterator of rows
 
         header = next(reader, None)
