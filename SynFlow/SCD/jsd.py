@@ -43,13 +43,14 @@ def cal_contrib_jsd(distribution_1, distribution_2, vocab):
     contrib = pd.Series(pointwise_jsd, index=vocab).sort_values(ascending=False)
 
     # Build prefixed names based on direction (increase/decrease/no change)
-    name_map = direction_prefix_map(vocab, distribution_1, distribution_2, prefix_in="in_", prefix_de="de_", neutral="")
+    name_map = direction_prefix_map(vocab, distribution_1, distribution_2, prefix_in="in_", prefix_de="de_", prefix_born = 'bo_', prefix_lost = 'lo_', neutral="")
     contrib.index = [name_map[s] for s in contrib.index]
 
     return contrib
 
 # Add direction prefix for JSD visualisation
-def direction_prefix_map(vocab, distribution_1, distribution_2, prefix_in="in_", prefix_de="de_", neutral=""):
+def direction_prefix_map(vocab, distribution_1, distribution_2, prefix_in="in_", prefix_de="de_",
+                          prefix_born = 'bo_', prefix_lost = 'lo_', neutral=""):
     """
     Maps slot types to prefixed names based on the direction of the change.
 
@@ -66,12 +67,17 @@ def direction_prefix_map(vocab, distribution_1, distribution_2, prefix_in="in_",
     """
     out = {}
     for i, slot in enumerate(vocab):
-        if distribution_2[i] > distribution_1[i]:
-            out[slot] = f"{prefix_in}{slot}"
-        elif distribution_2[i] < distribution_1[i]:
-            out[slot] = f"{prefix_de}{slot}"
-        else:
+        if distribution_1[i] == 0 and distribution_2[i] > 0:
+            out[slot] = f"{prefix_born}{slot}"
+        elif distribution_1[i] > 0 and distribution_2[i] == 0:
+            out[slot] = f"{prefix_lost}{slot}"
+        elif distribution_1[i] == distribution_2[i]:
             out[slot] = f"{neutral}{slot}"
+        elif distribution_1[i] > 0 and distribution_2[i] > 0:
+            if distribution_2[i] > distribution_1[i]:
+                out[slot] = f"{prefix_in}{slot}"
+            elif distribution_2[i] < distribution_1[i]:
+                out[slot] = f"{prefix_de}{slot}"
     return out
 
 #---------------------------------------------------------------
@@ -152,13 +158,15 @@ def plot_items_jsd_by_period(js_results, top_n=10, cols=3):
         colors = [
             "green" if w.startswith("in_") else 
             "red" if w.startswith("de_") else 
-            "gray"
+            "blue" if w.startswith("bo_") else
+            "gray" if w.startswith("lo_") else
+            "purple"
             for w in top_words.index
         ]
 
         sns.barplot(
             x=top_words.values,
-            y=top_words.index.str.replace("in_", "", regex=False).str.replace("de_", "", regex=False),
+            y=top_words.index.str.replace("in_", "", regex=False).str.replace("de_", "", regex=False).str.replace("bo_", "", regex=False).str.replace("lo_", "", regex=False),
             ax=ax,
             legend=False,
             hue=top_words.index,
