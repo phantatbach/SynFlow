@@ -131,6 +131,9 @@ def freq_top_union_slots_by_period(json_path, top_n=10, relative=False,
         top_slots = df.loc[period].sort_values(ascending=False).head(top_n).index
         top_n_union.update(top_slots)
 
+    # Sort the slot types alphabetically for better plotting
+    top_n_union = sorted(top_n_union, key=lambda s: str(s).lower())
+
     df_filtered = df[list(top_n_union)].astype(float)
 
     # Normalised by the number of token counts in that period
@@ -281,6 +284,11 @@ def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
     count_df['time_num'] = count_df[time_col]
     tick_map = count_df.drop_duplicates('time_num')[['time_num', time_col]].sort_values('time_num')
     x_col = 'time_num'
+
+    # Ensure consistent ordering of slot fillers when plotting
+    filler_order = sorted(count_df[slot_type].unique(), key=lambda s: str(s).lower())
+    count_df[slot_type] = pd.Categorical(count_df[slot_type], categories=filler_order, ordered=True)
+    count_df = count_df.sort_values([slot_type, x_col])
 
     # Assign random colors to slot fillers
     unique_slot_fillers = sorted(count_df[slot_type].unique())
