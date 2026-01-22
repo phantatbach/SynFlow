@@ -156,10 +156,10 @@ def plot_items_jsd_by_period(js_results, top_n=10, cols=3):
 
         # Colors by prefix
         colors = [
-            "green" if w.startswith("in_") else 
-            "red" if w.startswith("de_") else 
-            "blue" if w.startswith("bo_") else
-            "gray" if w.startswith("lo_") else
+            "lightgreen" if w.startswith("in_") else 
+            "lightcoral" if w.startswith("de_") else 
+            "darkgreen" if w.startswith("bo_") else
+            "darkred" if w.startswith("lo_") else
             "purple"
             for w in top_words.index
         ]
