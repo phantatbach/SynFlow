@@ -26,15 +26,17 @@ from .trimming import (
 
 from .sfiller_df import (
     build_sfiller_df,
-    filter_frequency_sfiller,
+    filter_frequency_sfiller_df,
+    keep_lemma_only_sfiller_df,
     replace_in_sfiller_df_column,
     sample_sfiller_df,
 )
 __all__ = [
     build_sfiller_df,
-    filter_frequency_sfiller,
+    filter_frequency_sfiller_df,
     full_rel_explorer,
     get_contexts,
+    keep_lemma_only_sfiller_df,
     rel_explorer,
     replace_in_sfiller_df_column,
     sample_sfiller_df,

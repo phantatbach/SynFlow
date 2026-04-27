@@ -1,3 +1,4 @@
+import ast
 from ast import literal_eval
 import os
 import re
@@ -251,8 +252,8 @@ def build_sfiller_df(
     return df
 
 def sample_sfiller_df(
-    input_csv: str,
-    output_csv: str,
+    sfiller_df_path: str,
+    output_path: str,
     n: int,
     seed: int = 42,
     mode: str = None
@@ -263,7 +264,7 @@ def sample_sfiller_df(
     and return the sampled DataFrame.
     """
     # load, treating the first column as the index
-    df = pd.read_csv(input_csv, index_col=0)
+    df = pd.read_csv(sfiller_df_path, index_col=0)
 
     # Convert string to Python list
     for col in df.columns:
@@ -282,7 +283,7 @@ def sample_sfiller_df(
     if 'subfolder' not in df.columns:
         raise ValueError("CSV does not contain 'subfolder'.")
 
-    slot_cols = [c for c in df.columns if c not in {'target', 'subfolder', 'id'}]
+    slot_cols = [c for c in df.columns if c not in DEFAULT_COLS]
 
     if mode == 'filled':
         # Filter for rows where ALL identified slot columns are non-empty lists
@@ -305,12 +306,29 @@ def sample_sfiller_df(
     # Collect all sampled rows
     sampled = pd.concat(parts, axis=0) if parts else df.iloc[0:0]
     # write out
-    sampled.to_csv(output_csv)
-    print(f"Sampled {len(sampled)} rows from {input_csv} → {output_csv}")
+    sampled.to_csv(output_path)
+    print(f"Sampled {len(sampled)} rows from {sfiller_df_path} → {output_path}")
     return sampled
 
-def replace_in_sfiller_df_column(sfiller_csv_path, column_name, replacements, output_path=None):
-    sfiller_df = pd.read_csv(sfiller_csv_path, encoding="utf-8")
+def replace_in_sfiller_df_column(sfiller_df_path, column_name, replacements, output_path):
+    """
+    Replace slot-filler values in one CSV column and write the updated CSV.
+
+    The target column is expected to contain string representations of Python
+    lists, such as ``"['big/A', 'open/A']"``. Each list item is looked up in
+    ``replacements``; matching items are replaced with their mapped value, and
+    unmatched items are kept unchanged. Cells that cannot be parsed as lists are
+    also left unchanged.
+
+    Args:
+        sfiller_df_path (str): Path to the input slot-filler DataFrame.
+        column_name (str): Name of the column whose list values should be
+            rewritten.
+        replacements (dict): Mapping from original filler values to replacement
+            values.
+        output_path (str): Path where the updated CSV should be saved.
+    """
+    sfiller_df = pd.read_csv(sfiller_df_path, encoding="utf-8")
 
     def replace_list_str(cell):
         try:
@@ -325,14 +343,15 @@ def replace_in_sfiller_df_column(sfiller_csv_path, column_name, replacements, ou
 
     sfiller_df.to_csv(output_path, index=False, encoding="utf-8")
 
-def filter_frequency_sfiller(spath_df, col_name, min_freq=1):
+def filter_frequency_sfiller_df(sfiller_df_path, col_name, output_path, min_freq=1):
     """
     Filter slot fillers in a DataFrame by their frequency.
 
     Parameters:
-        spath_df (str): Path to the DataFrame CSV file.
+        sfiller_df_path (str): Path to the DataFrame CSV file.
         col_name (str): Name of the column containing the slot fillers.
         min_freq (int): Minimum frequency of a slot filler to be kept.
+        output_path (str): Path to save the filtered DataFrame.
 
     Returns:
         pd.DataFrame: The filtered DataFrame.
@@ -340,7 +359,7 @@ def filter_frequency_sfiller(spath_df, col_name, min_freq=1):
     Notes:
         The function overwrites the original file.
     """
-    df = pd.read_csv(spath_df)
+    df = pd.read_csv(sfiller_df_path, index_col=0)
 
     # Convert string representation of list into actual Python list
     df[col_name] = df[col_name].apply(literal_eval)
@@ -357,9 +376,58 @@ def filter_frequency_sfiller(spath_df, col_name, min_freq=1):
     df = df.sort_values('subfolder', kind='stable').reset_index(drop=True)
 
     # Overwrite file
-    df.to_csv(spath_df, index=False)
+    df.to_csv(output_path, index=False)
 
     return df
+
+def keep_lemma_only_sfiller_df(sfiller_df_path: str, output_path: str) -> pd.DataFrame:
+    sfiller_df = pd.read_csv(sfiller_df_path, index_col=0)
+
+    def extract_lemma_from_item(item):
+        """
+        Convert one item like 'aboard/A' -> 'aboard'
+        """
+        if isinstance(item, str) and '/' in item:
+            return item.rsplit('/', 1)[0]
+        return item
+
+    def extract_lemma_from_cell(cell):
+        """
+        Convert one cell like "['aboard/A', 'good/A']" -> ['aboard', 'good']
+        """
+
+        # Handle missing values
+        if pd.isna(cell):
+            return cell
+
+        # If the cell is a string representation of a list
+        if isinstance(cell, str):
+            cell_str = cell.strip()
+
+            if cell_str.startswith("[") and cell_str.endswith("]"):
+                try:
+                    cell = ast.literal_eval(cell_str)
+                except Exception:
+                    return cell
+
+        # If the cell is now a real list
+        if isinstance(cell, list):
+            return [extract_lemma_from_item(item) for item in cell]
+
+        # If the cell is a single string like 'force/V'
+        if isinstance(cell, str):
+            return extract_lemma_from_item(cell)
+
+        return cell
+
+    lemma_cols = [c for c in sfiller_df.columns if c not in DEFAULT_COLS]
+
+    sfiller_df[lemma_cols] = sfiller_df[lemma_cols].map(extract_lemma_from_cell)
+
+    if output_path:
+        sfiller_df.to_csv(output_path)
+
+    return sfiller_df
 
 #-----------------------------------------------------------
 # Extract slot column(s)
@@ -382,6 +450,7 @@ def extract_slot_cols(spath_df: str, slot_names: list, output_path: str | None =
 def extract_1_slot_col(spath_df: str, slot_name: str, output_path: str | None = None) -> pd.DataFrame:
     return extract_slot_cols(spath_df, [slot_name], output_path)
 #----------------------------------------------------------------------------------------------------
+# THESE FUNCTIONS HAVE NOT BEEN USED YET
 # Create a pooled slot-filler df based on the pool note
 # Build the year map dict
 def build_year_map(pool_note: dict, slot_name: str) -> dict[int, int]:
@@ -400,9 +469,6 @@ def remap_subfolder(df: pd.DataFrame, year_map: dict[int,int]) -> pd.DataFrame:
     out = df.copy()
     out["subfolder"] = out["subfolder"].astype(int).map(lambda y: year_map.get(y, y)).astype(str)
     return out
-
-
-# THIS FUNCTION HAS NOT BEEN USED YET
 def build_pooled_sfiller_df(all_sfillers_csv_path, pool_notes: dict, output_folder) -> pd.DataFrame:
     file_name = Path(all_sfillers_csv_path).stem
 
