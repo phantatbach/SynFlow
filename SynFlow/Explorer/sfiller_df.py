@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ast
 from ast import literal_eval
 import os
@@ -6,11 +8,11 @@ import pandas as pd
 import numpy as np
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from typing import List
+from typing import List, Mapping, Sequence
 from SynFlow.utils import build_graph
-from .const import DEFAULT_PATTERN
+from typing import Dict
+from .const import DEFAULT_PATTERN, DEFAULT_COLS
 
-DEFAULT_COLS = ['id', 'subfolder', 'target']
 # Reformat deprel because build_graph keeps the directions
 def reformat_deprel(label: str) -> str:
     """Strip 'chi_' or 'pa_' prefixes from a dependency label."""
@@ -136,7 +138,7 @@ def process_file(args) -> List[dict]:
                                 
                                 slot_fillers.extend(subslot_fillers)
 
-                            row[slot] = list(set(slot_fillers))
+                            row[slot] = slot_fillers
 
                         out.append(row)
             else:
@@ -359,7 +361,7 @@ def filter_frequency_sfiller_df(sfiller_df_path, col_name, output_path, min_freq
     Notes:
         The function overwrites the original file.
     """
-    df = pd.read_csv(sfiller_df_path, index_col=0)
+    df = pd.read_csv(sfiller_df_path)
 
     # Convert string representation of list into actual Python list
     df[col_name] = df[col_name].apply(literal_eval)
@@ -429,6 +431,121 @@ def keep_lemma_only_sfiller_df(sfiller_df_path: str, output_path: str) -> pd.Dat
 
     return sfiller_df
 
+def merge_sfiller_df_columns(
+    sfiller_df_path: str,
+    merge_formula: Mapping[str, Sequence[str]] | Sequence[tuple[str, Sequence[str]]] | Sequence[dict],
+    output_path: str | None = None,
+    drop_source_columns: bool = True,
+    deduplicate: bool = False,
+) -> pd.DataFrame:
+    """
+    Merge list-valued slot-filler columns and optionally remove the source columns.
+
+    Args:
+        sfiller_df_path (str): Path to the input slot-filler CSV.
+        merge_formula: Column merge specification. The simplest form is a dict:
+            ``{"new_column": ["old_col_1", "old_col_2"]}``.
+            It also accepts ``[("new_column", ["old_col_1", "old_col_2"])]`` or
+            ``[{"output": "new_column", "columns": ["old_col_1", "old_col_2"]}]``.
+        output_path (str | None): Where to save the merged CSV. If ``None``, the
+            DataFrame is returned without writing a file.
+        drop_source_columns (bool): If True, delete columns used for merging.
+            When the output column is also a source column, it is kept.
+        deduplicate (bool): If True, remove duplicate fillers inside each merged
+            cell while preserving their first-seen order.
+
+    Returns:
+        pd.DataFrame: The merged slot-filler DataFrame.
+    """
+    sfiller_df = pd.read_csv(sfiller_df_path, encoding="utf-8")
+
+    def normalize_formula(formula):
+        if isinstance(formula, Mapping):
+            return list(formula.items())
+
+        normalized = []
+        for spec in formula:
+            if isinstance(spec, Mapping):
+                output_col = spec.get("output") or spec.get("new_column") or spec.get("target")
+                source_cols = spec.get("columns") or spec.get("source_columns") or spec.get("sources")
+                if output_col is None or source_cols is None:
+                    raise ValueError(
+                        "Merge specs given as dicts must contain an output/new_column/target "
+                        "and columns/source_columns/sources."
+                    )
+                normalized.append((output_col, source_cols))
+            else:
+                output_col, source_cols = spec
+                normalized.append((output_col, source_cols))
+        return normalized
+
+    def normalize_source_cols(source_cols):
+        if isinstance(source_cols, str):
+            return [source_cols]
+        return list(source_cols)
+
+    def cell_to_list(cell):
+        if isinstance(cell, list):
+            return cell
+        if isinstance(cell, (tuple, set)):
+            return list(cell)
+        if pd.isna(cell):
+            return []
+        if isinstance(cell, str):
+            stripped = cell.strip()
+            if stripped in ("", "[]"):
+                return []
+            if stripped.startswith("[") and stripped.endswith("]"):
+                try:
+                    parsed = literal_eval(stripped)
+                except (SyntaxError, ValueError):
+                    return [cell]
+                if isinstance(parsed, list):
+                    return parsed
+                if isinstance(parsed, (tuple, set)):
+                    return list(parsed)
+                if parsed is None or pd.isna(parsed):
+                    return []
+                return [parsed]
+            return [cell]
+        return [cell]
+
+    def merge_row(row, source_cols):
+        merged = []
+        seen = set()
+        for source_col in source_cols:
+            for item in cell_to_list(row[source_col]):
+                if deduplicate:
+                    key = repr(item)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                merged.append(item)
+        return merged
+
+    for output_col, source_cols in normalize_formula(merge_formula):
+        source_cols = normalize_source_cols(source_cols)
+        missing_cols = [col for col in source_cols if col not in sfiller_df.columns]
+        if missing_cols:
+            raise ValueError(f"Cannot merge missing column(s): {missing_cols}")
+
+        insert_at = min(sfiller_df.columns.get_loc(col) for col in source_cols)
+        merged_values = sfiller_df.apply(lambda row: merge_row(row, source_cols), axis=1)
+
+        if output_col in sfiller_df.columns:
+            sfiller_df[output_col] = merged_values
+        else:
+            sfiller_df.insert(insert_at, output_col, merged_values)
+
+        if drop_source_columns:
+            cols_to_drop = [col for col in source_cols if col != output_col]
+            sfiller_df = sfiller_df.drop(columns=cols_to_drop)
+
+    if output_path:
+        sfiller_df.to_csv(output_path, index=False, encoding="utf-8")
+
+    return sfiller_df
+
 #-----------------------------------------------------------
 # Extract slot column(s)
 def _non_empty(v):
@@ -449,6 +566,162 @@ def extract_slot_cols(spath_df: str, slot_names: list, output_path: str | None =
 
 def extract_1_slot_col(spath_df: str, slot_name: str, output_path: str | None = None) -> pd.DataFrame:
     return extract_slot_cols(spath_df, [slot_name], output_path)
+
+# Compute support of slots across periods
+def _count_fillers(cell) -> int:
+    """
+    Count how many fillers are present in one CSV cell.
+
+    Examples:
+        "[]" -> 0
+        "['the']" -> 1
+        "['white', 'powerful']" -> 2
+    """
+    if pd.isna(cell):
+        return 0
+
+    if isinstance(cell, list):
+        return len(cell)
+
+    if isinstance(cell, str):
+        cell = cell.strip()
+
+        if cell == "" or cell == "[]":
+            return 0
+
+        try:
+            parsed = ast.literal_eval(cell)
+        except (ValueError, SyntaxError):
+            # Fallback: treat a non-empty malformed cell as one filler
+            return 1
+
+        if isinstance(parsed, list):
+            return len(parsed)
+
+        if parsed is None:
+            return 0
+
+        return 1
+
+    return 0
+
+
+def _sort_period_key(period):
+    """
+    Sort periods numerically when possible.
+    """
+    try:
+        return int(period)
+    except (ValueError, TypeError):
+        return str(period)
+
+
+def compute_support_from_sfiller_df(
+    sfiller_df_path: str,
+    period_col: str = "subfolder",
+    include_zero_slots: bool = False,
+) -> Dict[str, Dict[str, float]]:
+    """
+    Process slot-path CSV to calculate support for each slot in consecutive periods.
+
+    Steps:
+    1. Read CSV where each slot column contains a list-like string of fillers.
+    2. Count fillers per slot per token.
+    3. Aggregate raw slot counts by period.
+    4. Convert raw counts to relative frequencies within each period.
+    5. Calculate support between consecutive periods:
+           support(slot, t-t+1) = min(rel_freq(slot, t), rel_freq(slot, t+1))
+
+    Parameters:
+        sfiller_df_path:
+            Path to the sfiller DataFrame CSV file.
+
+        period_col:
+            Column containing the period/bin information.
+            Default: "subfolder".
+
+        include_zero_slots:
+            If False, only return slots that occur at least once.
+            If True, return all slot columns, including those with only zero counts.
+
+    Returns:
+        Dict[str, Dict[str, float]]:
+            {
+                "chi_det": {
+                    "1850-1860": 0.123,
+                    "1860-1870": 0.115,
+                    ...
+                },
+                ...
+            }
+    """
+
+    df = pd.read_csv(sfiller_df_path)
+
+    if period_col not in df.columns:
+        raise ValueError(f"Period column '{period_col}' not found in CSV.")
+
+    # Slot columns are all columns except metadata columns
+    slot_cols = [col for col in df.columns if col not in DEFAULT_COLS]
+
+    if not slot_cols:
+        raise ValueError("No slot columns found. Check `meta_cols`.")
+
+    # Count fillers in every slot cell
+    count_df = df[[period_col] + slot_cols].copy()
+
+    for slot in slot_cols:
+        count_df[slot] = count_df[slot].apply(_count_fillers)
+
+    # Aggregate raw counts by period
+    period_counts = count_df.groupby(period_col)[slot_cols].sum()
+
+    # Sort periods
+    sorted_periods = sorted(period_counts.index.tolist(), key=_sort_period_key)
+    period_counts = period_counts.loc[sorted_periods]
+
+    # Convert raw counts to relative frequencies within each period
+    period_totals = period_counts.sum(axis=1)
+
+    relative_freq = (
+        period_counts
+        .div(period_totals.where(period_totals != 0), axis=0)
+        .fillna(0.0)
+    )
+
+    # Build period-pair labels
+    period_labels = [str(p) for p in relative_freq.index]
+    period_pairs = [
+        f"{period_labels[i]}-{period_labels[i + 1]}"
+        for i in range(len(period_labels) - 1)
+    ]
+
+    # Decide which slots to return
+    if include_zero_slots:
+        output_slots = slot_cols
+    else:
+        output_slots = [
+            slot for slot in slot_cols
+            if period_counts[slot].sum() > 0
+        ]
+
+    # Initialize output
+    support_dict: Dict[str, Dict[str, float]] = {
+        slot: {pair: 0.0 for pair in period_pairs}
+        for slot in output_slots
+    }
+
+    # Calculate min relative frequency between consecutive periods
+    for i, pair in enumerate(period_pairs):
+        current_period = relative_freq.iloc[i]
+        next_period = relative_freq.iloc[i + 1]
+
+        for slot in output_slots:
+            support_dict[slot][pair] = float(
+                min(current_period[slot], next_period[slot])
+            )
+
+    return support_dict
 #----------------------------------------------------------------------------------------------------
 # THESE FUNCTIONS HAVE NOT BEEN USED YET
 # Create a pooled slot-filler df based on the pool note
@@ -469,6 +742,7 @@ def remap_subfolder(df: pd.DataFrame, year_map: dict[int,int]) -> pd.DataFrame:
     out = df.copy()
     out["subfolder"] = out["subfolder"].astype(int).map(lambda y: year_map.get(y, y)).astype(str)
     return out
+
 def build_pooled_sfiller_df(all_sfillers_csv_path, pool_notes: dict, output_folder) -> pd.DataFrame:
     file_name = Path(all_sfillers_csv_path).stem
 

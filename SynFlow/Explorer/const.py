@@ -8,3 +8,5 @@ DEFAULT_PATTERN = re.compile(
     r'([^\t]+)\t'      # HEAD
     r'([^\t]+)'        # DEPREL
 )
+
+DEFAULT_COLS = ['id', 'subfolder', 'target']
