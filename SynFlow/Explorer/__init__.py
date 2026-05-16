@@ -27,6 +27,7 @@ from .trimming import (
 from .sfiller_df import (
     build_sfiller_df,
     compute_support_from_sfiller_df,
+    compute_saturating_support_from_sfiller_df,
     filter_frequency_sfiller_df,
     keep_lemma_only_sfiller_df,
     merge_sfiller_df_columns,
@@ -36,6 +37,7 @@ from .sfiller_df import (
 __all__ = [
     build_sfiller_df,
     compute_support_from_sfiller_df,
+    compute_saturating_support_from_sfiller_df,
     filter_frequency_sfiller_df,
     full_rel_explorer,
     get_contexts,

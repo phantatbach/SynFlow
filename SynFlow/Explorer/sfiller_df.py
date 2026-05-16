@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import ast
 from ast import literal_eval
 import os
@@ -458,6 +457,7 @@ def merge_sfiller_df_columns(
         pd.DataFrame: The merged slot-filler DataFrame.
     """
     sfiller_df = pd.read_csv(sfiller_df_path, encoding="utf-8")
+    all_missing_cols = []
 
     def normalize_formula(formula):
         if isinstance(formula, Mapping):
@@ -522,15 +522,39 @@ def merge_sfiller_df_columns(
                     seen.add(key)
                 merged.append(item)
         return merged
+    normalized_formula = normalize_formula(merge_formula)
 
-    for output_col, source_cols in normalize_formula(merge_formula):
+    formula_source_cols = set()
+
+    for output_col, source_cols in normalized_formula:
+        source_cols = normalize_source_cols(source_cols)
+        formula_source_cols.update(source_cols)
+
+    df_cols = set(sfiller_df.columns)
+
+    df_cols_not_in_formula = sorted(df_cols - formula_source_cols - set(DEFAULT_COLS))
+
+    if df_cols_not_in_formula:
+        print("Columns in DataFrame but not in merge_formula:")
+        print(df_cols_not_in_formula)
+
+    for output_col, source_cols in normalized_formula:
         source_cols = normalize_source_cols(source_cols)
         missing_cols = [col for col in source_cols if col not in sfiller_df.columns]
-        if missing_cols:
-            raise ValueError(f"Cannot merge missing column(s): {missing_cols}")
+        existing_source_cols = [col for col in source_cols if col in sfiller_df.columns]
 
-        insert_at = min(sfiller_df.columns.get_loc(col) for col in source_cols)
-        merged_values = sfiller_df.apply(lambda row: merge_row(row, source_cols), axis=1)
+        all_missing_cols.extend(missing_cols)
+
+        if not existing_source_cols:
+            sfiller_df[output_col] = [[] for _ in range(len(sfiller_df))]
+            continue
+
+        insert_at = min(sfiller_df.columns.get_loc(col) for col in existing_source_cols)
+
+        merged_values = sfiller_df.apply(
+            lambda row: merge_row(row, existing_source_cols),
+            axis=1
+        )
 
         if output_col in sfiller_df.columns:
             sfiller_df[output_col] = merged_values
@@ -538,8 +562,12 @@ def merge_sfiller_df_columns(
             sfiller_df.insert(insert_at, output_col, merged_values)
 
         if drop_source_columns:
-            cols_to_drop = [col for col in source_cols if col != output_col]
+            cols_to_drop = [col for col in existing_source_cols if col != output_col]
             sfiller_df = sfiller_df.drop(columns=cols_to_drop)
+
+    if all_missing_cols:
+        print("Columns in merge_formula but not in DataFrame:")
+        print(sorted(set(all_missing_cols)))
 
     if output_path:
         sfiller_df.to_csv(output_path, index=False, encoding="utf-8")
@@ -691,8 +719,8 @@ def compute_support_from_sfiller_df(
 
     # Build period-pair labels
     period_labels = [str(p) for p in relative_freq.index]
-    period_pairs = [
-        f"{period_labels[i]}-{period_labels[i + 1]}"
+    post_period = [
+        f"{period_labels[i + 1]}"
         for i in range(len(period_labels) - 1)
     ]
 
@@ -707,12 +735,12 @@ def compute_support_from_sfiller_df(
 
     # Initialize output
     support_dict: Dict[str, Dict[str, float]] = {
-        slot: {pair: 0.0 for pair in period_pairs}
+        slot: {pair: 0.0 for pair in post_period}
         for slot in output_slots
     }
 
     # Calculate min relative frequency between consecutive periods
-    for i, pair in enumerate(period_pairs):
+    for i, pair in enumerate(post_period):
         current_period = relative_freq.iloc[i]
         next_period = relative_freq.iloc[i + 1]
 
@@ -720,6 +748,120 @@ def compute_support_from_sfiller_df(
             support_dict[slot][pair] = float(
                 min(current_period[slot], next_period[slot])
             )
+
+    return support_dict
+
+from typing import Dict
+import pandas as pd
+
+
+def compute_saturating_support_from_sfiller_df(
+    sfiller_df_path: str,
+    period_col: str = "subfolder",
+    k: float = 20.0,
+    include_zero_slots: bool = False,
+) -> Dict[str, Dict[str, float]]:
+    """
+    Process slot-path CSV to calculate saturating-count support for each slot
+    between consecutive periods.
+
+    Steps:
+    1. Read CSV where each slot column contains a list-like string of fillers.
+    2. Count fillers per slot per token.
+    3. Aggregate raw slot counts by period.
+    4. For each consecutive period pair, compute:
+           count_support(slot, t-t+1) = min(raw_count(slot, t), raw_count(slot, t+1))
+    5. Convert count support into a bounded saturating weight:
+           weight = c / (c + k)
+
+    Parameters:
+        sfiller_df_path:
+            Path to the sfiller DataFrame CSV file.
+
+        period_col:
+            Column containing the period/bin information.
+            Default: "subfolder".
+
+        k:
+            Saturation parameter.
+            If c = k, then weight = 0.5.
+            Larger k penalizes low counts more strongly.
+            Default: 20.0
+
+        include_zero_slots:
+            If False, only return slots that occur at least once.
+            If True, return all slot columns, including those with only zero counts.
+
+    Returns:
+        Dict[str, Dict[str, float]]:
+            {
+                "chi_det": {
+                    "1850": 0.23,
+                    "1860": 0.19,
+                    ...
+                },
+                ...
+            }
+    """
+
+    if k <= 0:
+        raise ValueError("`k` must be > 0.")
+
+    df = pd.read_csv(sfiller_df_path)
+
+    if period_col not in df.columns:
+        raise ValueError(f"Period column '{period_col}' not found in CSV.")
+
+    # Slot columns are all columns except metadata columns
+    slot_cols = [col for col in df.columns if col not in DEFAULT_COLS]
+
+    if not slot_cols:
+        raise ValueError("No slot columns found. Check `DEFAULT_COLS`.")
+
+    # Count fillers in every slot cell
+    count_df = df[[period_col] + slot_cols].copy()
+
+    for slot in slot_cols:
+        count_df[slot] = count_df[slot].apply(_count_fillers)
+
+    # Aggregate raw counts by period
+    period_counts = count_df.groupby(period_col)[slot_cols].sum()
+
+    # Sort periods
+    sorted_periods = sorted(period_counts.index.tolist(), key=_sort_period_key)
+    period_counts = period_counts.loc[sorted_periods]
+
+    # Build period-pair labels
+    period_labels = [str(p) for p in period_counts.index]
+    post_period = [
+        f"{period_labels[i + 1]}"
+        for i in range(len(period_labels) - 1)
+    ]
+
+    # Decide which slots to return
+    if include_zero_slots:
+        output_slots = slot_cols
+    else:
+        output_slots = [
+            slot for slot in slot_cols
+            if period_counts[slot].sum() > 0
+        ]
+
+    # Initialize output
+    support_dict: Dict[str, Dict[str, float]] = {
+        slot: {pair: 0.0 for pair in post_period}
+        for slot in output_slots
+    }
+
+    # Calculate saturating weight from min raw count between consecutive periods
+    for i, pair in enumerate(post_period):
+        current_period = period_counts.iloc[i]
+        next_period = period_counts.iloc[i + 1]
+
+        for slot in output_slots:
+            c = float(min(current_period[slot], next_period[slot]))
+            w = c / (c + k)
+            support_dict[slot][pair] = w
 
     return support_dict
 #----------------------------------------------------------------------------------------------------

@@ -5,31 +5,59 @@ import pandas as pd
 import plotly.express as px
 import random
 import numpy as np
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
+def count_keyword_in_file(file_path, keyword_string):
+    try:
+        count = 0
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                count += line.count(keyword_string)
+        return count
+    except Exception as e:
+        print(f"Warning: failed to read {file_path}: {e}")
+        return 0
 
-def count_keyword_tokens_by_period(corpus_path, keyword_string, 
-                                   fname_pattern):
-    # Use custom pattern to extract year from full filename
+
+def count_keyword_tokens_by_period(
+    corpus_path,
+    keyword_string,
+    fname_pattern,
+    max_workers=8
+):
     counts_by_period = defaultdict(int)
+    future_to_subfolder = {}
 
-    # Loop through each subfolder
-    for subfolder in os.listdir(corpus_path):
-        subfolder_path = os.path.join(corpus_path, subfolder)
-        # Loop through each file in the subfolder
-        for filename in os.listdir(subfolder_path):
-            file_path = os.path.join(subfolder_path, filename)
-            match = fname_pattern.search(filename) 
-
-            if not match:
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        for subfolder_entry in os.scandir(corpus_path):
+            if not subfolder_entry.is_dir():
                 continue
 
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        counts_by_period[subfolder] += line.count(keyword_string)
-            except Exception as e:
-                print(f"Warning: failed to read {file_path}: {e}")
+            subfolder = subfolder_entry.name
+            subfolder_path = subfolder_entry.path
+
+            for file_entry in os.scandir(subfolder_path):
+                if not file_entry.is_file():
+                    continue
+
+                filename = file_entry.name
+
+                if not fname_pattern.search(filename):
+                    continue
+
+                future = executor.submit(
+                    count_keyword_in_file,
+                    file_entry.path,
+                    keyword_string
+                )
+
+                future_to_subfolder[future] = subfolder
+
+        for future in as_completed(future_to_subfolder):
+            subfolder = future_to_subfolder[future]
+            counts_by_period[subfolder] += future.result()
 
     return dict(sorted(counts_by_period.items()))
 

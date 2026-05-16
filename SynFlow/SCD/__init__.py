@@ -1,10 +1,11 @@
 # SynFlow/SynFlow/SCD/__init__.py
 from .jsd import (
-    consecutive_JSD_dict,
+    compute_consecutive_JSD_dict,
     print_jsd_by_period,
     plot_jsd_by_period,
     plot_items_jsd_by_period,
     sfillers_jsd_by_period,
+    compute_weighted_consecutive_JSD_dict,
 )
 from .freq import (
     count_keyword_tokens_by_period,
@@ -17,11 +18,12 @@ from .freq import (
     )
 
 __all__ = [
-    'consecutive_JSD_dict',
+    'compute_consecutive_JSD_dict',
     'print_jsd_by_period',
     'plot_jsd_by_period',
     'plot_items_jsd_by_period',
     'sfillers_jsd_by_period',
+    'compute_weighted_consecutive_JSD_dict',
 
     'count_keyword_tokens_by_period',
     'freq_all_slots_by_period',
