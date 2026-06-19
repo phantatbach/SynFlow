@@ -7,7 +7,9 @@ import pandas as pd
 from scipy.spatial.distance import jensenshannon
 import seaborn as sns
 import json
-from typing import Dict, Tuple
+from typing import Dict, List, Optional
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 #---------------------------------------------------------------
 # Helper functions
@@ -199,41 +201,81 @@ def plot_items_jsd_by_period(js_results, top_n=10, cols=3):
     plt.show()
 #----------------------------------------------------------------------------------
 
-# Compute JSD of slot fillers across periods
-def sfillers_jsd_by_period(df, 
-                           word_col='chi_amod',
-                           period_col='subfolder', 
-                           min_count=0, 
-                           top_n=10,
-                           weight_df_path=None):
+def sfillers_jsd_by_period(
+    df,
+    word_col="chi_amod",
+    period_col="subfolder",
+    min_freq=1,
+    top_n=10,
+    weight_df_path=None
+):
     """
     Compute the Jensen-Shannon Divergence (JSD) of slot fillers
-    across periods.
+    across consecutive periods.
 
-    Parameters:
-        df (pd.DataFrame): A DataFrame with period_col and word_col.
-        word_col (str): Name of the column containing the syntactic fillers.
-        period_col (str): Name of the column containing the period information.
-        min_count (int): Minimum combined count across both periods to keep a slot.
-        top_n (int): Number of top shifted items to return for each period pair.
-        weight_df_path (str, optional): Path to a CSV file containing weights for each slot and period.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        A DataFrame with period_col and word_col.
 
-    Returns:
-        dict: {period2: {'JSD': float, 'top_shifted_items': list[dict]}}
+    word_col : str
+        Name of the column containing the syntactic fillers.
+
+    period_col : str
+        Name of the column containing the period information.
+
+    min_freq : int
+        Minimum frequency of a filler within each period.
+        If a filler occurs fewer than min_freq times in a period,
+        it is treated as absent in that period.
+
+    top_n : int
+        Number of top shifted items to return for each period pair.
+
+    weight_df_path : str, optional
+        Path to a CSV file containing weights for each slot and period.
+
+    Returns
+    -------
+    dict
+        {
+            period2: {
+                "JSD": float,
+                "top_shifted_items": list[dict]
+            }
+        }
     """
+
+    if min_freq < 1:
+        raise ValueError("`min_freq` must be >= 1.")
+
     output = {}
+
     periods = sorted(df[period_col].dropna().unique())
 
     for period in range(1, len(periods)):
         period_1, period_2 = periods[period - 1], periods[period]
+
         vocab_1 = df[df[period_col] == period_1][word_col].value_counts()
         vocab_2 = df[df[period_col] == period_2][word_col].value_counts()
 
-        vocab = sorted(set(vocab_1.index) | set(vocab_2.index))
-        vocab = [w for w in vocab if vocab_1.get(w, 0) + vocab_2.get(w, 0) >= min_count]
+        # Apply period-specific min_freq.
+        # Fillers below min_freq are removed only from that period.
+        vocab_1 = vocab_1[vocab_1 >= min_freq]
+        vocab_2 = vocab_2[vocab_2 >= min_freq]
 
-        distribution_1 = np.array([vocab_1.get(w, 0) for w in vocab], dtype=float)
-        distribution_2 = np.array([vocab_2.get(w, 0) for w in vocab], dtype=float)
+        # Vocabulary after period-specific filtering
+        vocab = sorted(set(vocab_1.index) | set(vocab_2.index))
+
+        distribution_1 = np.array(
+            [vocab_1.get(w, 0) for w in vocab],
+            dtype=float
+        )
+
+        distribution_2 = np.array(
+            [vocab_2.get(w, 0) for w in vocab],
+            dtype=float
+        )
 
         if distribution_1.sum() == 0 or distribution_2.sum() == 0:
             continue
@@ -244,12 +286,15 @@ def sfillers_jsd_by_period(df,
         # Compute JSD
         jsd = cal_jsd(distribution_1, distribution_2)
 
-        # Decompose the jsd to individual items
+        # Decompose JSD into individual item contributions
         contrib = cal_contrib_jsd(distribution_1, distribution_2, vocab)
 
         output[period_2] = {
-            'JSD': jsd,
-            'top_shifted_items': [item for item in contrib if item['contribution'] > 0][:top_n]
+            "JSD": jsd,
+            "top_shifted_items": [
+                item for item in contrib
+                if item["contribution"] > 0
+            ][:top_n]
         }
 
     # Apply weight after the raw output has been created
@@ -282,7 +327,265 @@ def sfillers_jsd_by_period(df,
             # Weight individual top filler contributions
             for item in values["top_shifted_items"]:
                 item["contribution"] = item["contribution"] * weight
+
     return output
+
+def _period_sort_key(period):
+    """
+    Sort period labels safely.
+
+    Handles:
+    - 1880
+    - "1880"
+    - "1880-1890"
+    """
+    if isinstance(period, (int, float)):
+        return int(period)
+
+    period = str(period)
+
+    if "-" in period:
+        left, right = period.split("-", 1)
+        try:
+            return int(left), int(right)
+        except ValueError:
+            return period
+
+    try:
+        return int(period)
+    except ValueError:
+        return period
+
+
+def plot_all_jsds_by_period(
+    slot_dict: Dict[str, Dict[str, float]],
+    layout: str = "combined",
+    slots: Optional[List[str]] = None,
+    title: str = "Weighted JSD for all slots",
+    y_label: str = "JSD",
+    x_label: str = "Time Period",
+    height: int = 700,
+    width: int = 1100,
+    save_path: Optional[str] = None,
+):
+    """
+    Interactive time-series plot for slot-level JSD dictionaries.
+
+    Parameters
+    ----------
+    slot_dict : dict
+        Nested dictionary:
+
+        {
+            "chi_amod": {
+                "1880": 0.12,
+                "1890": 0.35
+            },
+            "pa_nsubj": {
+                "1880": 0.42
+            }
+        }
+
+    layout : {"combined", "subplots", "dropdown"}
+        - "combined": all slots on one interactive plot
+        - "subplots": each slot in a separate subplot
+        - "dropdown": one slot shown at a time, selected by dropdown
+
+    slots : list, optional
+        List of slot names to plot. If None, all slots are plotted.
+
+    title : str
+        Figure title.
+
+    y_label : str
+        Y-axis label.
+
+    x_label : str
+        X-axis label.
+
+    height : int
+        Figure height.
+
+    width : int
+        Figure width.
+
+    save_path : str, optional
+        If provided, saves the figure as an interactive HTML file.
+        Example: "slot_jsd_timeseries.html"
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Interactive Plotly figure.
+    """
+
+    # Filter slots if specified
+    if slots is not None:
+        slot_dict = {k: v for k, v in slot_dict.items() if k in slots}
+
+    # Remove empty slot series
+    slot_dict = {k: v for k, v in slot_dict.items() if len(v) > 0}
+
+    if len(slot_dict) == 0:
+        raise ValueError("No non-empty slot time series to plot.")
+
+    layout = layout.lower()
+
+    if layout == "combined":
+        fig = go.Figure()
+
+        for slot_name, time_series in slot_dict.items():
+            periods = sorted(time_series.keys(), key=_period_sort_key)
+            x_values = [int(p) for p in periods]
+            values = [time_series[p] for p in periods]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=x_values,
+                    y=values,
+                    mode="lines+markers",
+                    name=slot_name,
+                    hovertemplate=(
+                        f"<b>{slot_name}</b><br>"
+                        "Period: %{x}<br>"
+                        f"{y_label}: %{{y:.4f}}"
+                        "<extra></extra>"
+                    )
+                )
+            )
+
+        fig.update_layout(
+            title=title,
+            xaxis_title=x_label,
+            yaxis_title=y_label,
+            width=width,
+            height=height,
+            hovermode="closest",
+            template="plotly_white",
+            legend_title="Slot",
+        )
+
+    elif layout == "subplots":
+        n_slots = len(slot_dict)
+        n_cols = 2
+        n_rows = math.ceil(n_slots / n_cols)
+
+        fig = make_subplots(
+            rows=n_rows,
+            cols=n_cols,
+            subplot_titles=list(slot_dict.keys())
+        )
+
+        for idx, (slot_name, time_series) in enumerate(slot_dict.items()):
+            row = idx // n_cols + 1
+            col = idx % n_cols + 1
+
+            periods = sorted(time_series.keys(), key=_period_sort_key)
+            x_values = [int(p) for p in periods]
+            values = [time_series[p] for p in periods]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=x_values,
+                    y=values,
+                    mode="lines+markers",
+                    name=slot_name,
+                    showlegend=False,
+                    hovertemplate=(
+                        f"<b>{slot_name}</b><br>"
+                        "Period: %{x}<br>"
+                        f"{y_label}: %{{y:.4f}}"
+                        "<extra></extra>"
+                    )
+                ),
+                row=row,
+                col=col
+            )
+
+        fig.update_layout(
+            title=title,
+            width=width,
+            height=height,
+            hovermode="closest",
+            template="plotly_white",
+        )
+
+        fig.update_xaxes(title_text=x_label)
+        fig.update_yaxes(title_text=y_label)
+
+    elif layout == "dropdown":
+        fig = go.Figure()
+
+        slot_names = list(slot_dict.keys())
+
+        for idx, (slot_name, time_series) in enumerate(slot_dict.items()):
+            periods = sorted(time_series.keys(), key=_period_sort_key)
+            values = [time_series[p] for p in periods]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=periods,
+                    y=values,
+                    mode="lines+markers",
+                    name=slot_name,
+                    visible=(idx == 0),
+                    hovertemplate=(
+                        f"<b>{slot_name}</b><br>"
+                        "Period: %{x}<br>"
+                        f"{y_label}: %{{y:.4f}}"
+                        "<extra></extra>"
+                    )
+                )
+            )
+
+        buttons = []
+
+        for idx, slot_name in enumerate(slot_names):
+            visible = [False] * len(slot_names)
+            visible[idx] = True
+
+            buttons.append(
+                dict(
+                    label=slot_name,
+                    method="update",
+                    args=[
+                        {"visible": visible},
+                        {"title": f"{title}: {slot_name}"}
+                    ]
+                )
+            )
+
+        fig.update_layout(
+            title=f"{title}: {slot_names[0]}",
+            xaxis_title=x_label,
+            yaxis_title=y_label,
+            width=width,
+            height=height,
+            hovermode="closest",
+            template="plotly_white",
+            updatemenus=[
+                dict(
+                    active=0,
+                    buttons=buttons,
+                    x=1.02,
+                    y=1,
+                    xanchor="left",
+                    yanchor="top"
+                )
+            ]
+        )
+
+    else:
+        raise ValueError(
+            f"layout must be 'combined', 'subplots', or 'dropdown', got '{layout}'"
+        )
+
+    # Save as interactive HTML
+    if save_path is not None:
+        fig.write_html(save_path)
+        print(f"Interactive figure saved to {save_path}")
+
+    return fig
 
 #----------------------------------------------------------------------------------
 def _sort_periods(periods):
@@ -485,7 +788,9 @@ def compute_consecutive_JSD_dict(
         Path to CSV file containing all slot fillers.
 
     min_freq : int
-        Minimum total frequency of a filler across all periods.
+        Minimum frequency of a filler within each period.
+        If a filler has frequency < min_freq in a given period,
+        it is treated as absent in that period.
 
     mode : {"all", "data_only"}
         JSD computation mode.
@@ -517,8 +822,6 @@ def compute_consecutive_JSD_dict(
 
     all_sfillers_df = pd.read_csv(all_sfillers_csv_path, encoding="utf-8")
 
-    # Full corpus period grid.
-    # This is what makes mode="all" truly different from mode="data_only".
     if all_periods is None:
         all_periods = _sort_periods(all_sfillers_df[period_col].dropna().unique())
     else:
@@ -547,10 +850,19 @@ def compute_consecutive_JSD_dict(
         # Remove empty string fillers, if any
         df_temp = df_temp[df_temp[col].astype(str).str.strip() != ""]
 
-        # Apply global filler frequency threshold
-        if not df_temp.empty:
-            filler_freq = df_temp[col].value_counts()
-            df_temp = df_temp[df_temp[col].map(filler_freq).fillna(0) >= min_freq]
+        # Apply period-specific filler frequency threshold
+        # Example:
+        # If min_freq = 2 and filler "b" occurs once in period A,
+        # then "b" is removed from period A only.
+        # If "b" occurs 5 times in period B, it is still kept in period B.
+        if not df_temp.empty and min_freq > 1:
+            period_filler_freq = (
+                df_temp
+                .groupby([period_col, col])[col]
+                .transform("size")
+            )
+
+            df_temp = df_temp[period_filler_freq >= min_freq]
 
         # Compute JSD
         consecutive_jsd_df = consecutive_jsd(

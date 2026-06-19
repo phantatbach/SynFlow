@@ -6,6 +6,7 @@ from .jsd import (
     plot_items_jsd_by_period,
     sfillers_jsd_by_period,
     compute_weighted_consecutive_JSD_dict,
+    plot_all_jsds_by_period,
 )
 from .freq import (
     count_keyword_tokens_by_period,
@@ -24,6 +25,7 @@ __all__ = [
     'plot_items_jsd_by_period',
     'sfillers_jsd_by_period',
     'compute_weighted_consecutive_JSD_dict',
+    'plot_all_jsds_by_period',
 
     'count_keyword_tokens_by_period',
     'freq_all_slots_by_period',
