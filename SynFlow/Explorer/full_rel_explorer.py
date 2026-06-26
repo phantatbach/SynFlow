@@ -3,7 +3,7 @@ import os
 from multiprocessing import Pool, cpu_count
 from typing import List, Tuple, Dict, Set, Optional
 from SynFlow.utils import build_graph
-from .const import DEFAULT_PATTERN
+from SynFlow.const import DEFAULT_PATTERN
 
 # Find a single, sequential path
 # It will be called multiple times by process_file.

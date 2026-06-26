@@ -1,16 +1,18 @@
 from __future__ import annotations
+
 import ast
-from ast import literal_eval
 import os
 import re
-import pandas as pd
-import numpy as np
+from ast import literal_eval
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from typing import List, Mapping, Sequence
+from typing import Dict, List, Mapping, Sequence
+
+import numpy as np
+import pandas as pd
+
+from SynFlow.const import DEFAULT_COLS, DEFAULT_PATTERN
 from SynFlow.utils import build_graph
-from typing import Dict
-from .const import DEFAULT_PATTERN, DEFAULT_COLS
 
 # Reformat deprel because build_graph keeps the directions
 def reformat_deprel(label: str) -> str:
@@ -574,15 +576,15 @@ def extract_1_slot_col(
     output_path: str | None = None,
     explode: bool = False,
 ) -> pd.DataFrame:
-    sub = extract_slot_cols(spath_df, [slot_name])
+    slot_col_df = extract_slot_cols(spath_df, [slot_name])
 
     if explode:
-        sub = explode_slot_col(sub, slot_name)
+        slot_col_df = explode_slot_col(slot_col_df, slot_name)
 
     if output_path:
-        sub.to_csv(output_path, index=False)
+        slot_col_df.to_csv(output_path, index=False)
 
-    return sub
+    return slot_col_df
 
 # Compute support of slots across periods
 def _count_fillers(cell) -> int:
@@ -622,7 +624,6 @@ def _count_fillers(cell) -> int:
 
     return 0
 
-
 def _sort_period_key(period):
     """
     Sort periods numerically when possible.
@@ -632,117 +633,7 @@ def _sort_period_key(period):
     except (ValueError, TypeError):
         return str(period)
 
-
-def compute_support_from_sfiller_df(
-    sfiller_df_path: str,
-    period_col: str = "subfolder",
-    include_zero_slots: bool = False,
-) -> Dict[str, Dict[str, float]]:
-    """
-    Process slot-path CSV to calculate support for each slot in consecutive periods.
-
-    Steps:
-    1. Read CSV where each slot column contains a list-like string of fillers.
-    2. Count fillers per slot per token.
-    3. Aggregate raw slot counts by period.
-    4. Convert raw counts to relative frequencies within each period.
-    5. Calculate support between consecutive periods:
-           support(slot, t-t+1) = min(rel_freq(slot, t), rel_freq(slot, t+1))
-
-    Parameters:
-        sfiller_df_path:
-            Path to the sfiller DataFrame CSV file.
-
-        period_col:
-            Column containing the period/bin information.
-            Default: "subfolder".
-
-        include_zero_slots:
-            If False, only return slots that occur at least once.
-            If True, return all slot columns, including those with only zero counts.
-
-    Returns:
-        Dict[str, Dict[str, float]]:
-            {
-                "chi_det": {
-                    "1850-1860": 0.123,
-                    "1860-1870": 0.115,
-                    ...
-                },
-                ...
-            }
-    """
-
-    df = pd.read_csv(sfiller_df_path)
-
-    if period_col not in df.columns:
-        raise ValueError(f"Period column '{period_col}' not found in CSV.")
-
-    # Slot columns are all columns except metadata columns
-    slot_cols = [col for col in df.columns if col not in DEFAULT_COLS]
-
-    if not slot_cols:
-        raise ValueError("No slot columns found. Check `meta_cols`.")
-
-    # Count fillers in every slot cell
-    count_df = df[[period_col] + slot_cols].copy()
-
-    for slot in slot_cols:
-        count_df[slot] = count_df[slot].apply(_count_fillers)
-
-    # Aggregate raw counts by period
-    period_counts = count_df.groupby(period_col)[slot_cols].sum()
-
-    # Sort periods
-    sorted_periods = sorted(period_counts.index.tolist(), key=_sort_period_key)
-    period_counts = period_counts.loc[sorted_periods]
-
-    # Convert raw counts to relative frequencies within each period
-    period_totals = period_counts.sum(axis=1)
-
-    relative_freq = (
-        period_counts
-        .div(period_totals.where(period_totals != 0), axis=0)
-        .fillna(0.0)
-    )
-
-    # Build period-pair labels
-    period_labels = [str(p) for p in relative_freq.index]
-    post_period = [
-        f"{period_labels[i + 1]}"
-        for i in range(len(period_labels) - 1)
-    ]
-
-    # Decide which slots to return
-    if include_zero_slots:
-        output_slots = slot_cols
-    else:
-        output_slots = [
-            slot for slot in slot_cols
-            if period_counts[slot].sum() > 0
-        ]
-
-    # Initialize output
-    support_dict: Dict[str, Dict[str, float]] = {
-        slot: {pair: 0.0 for pair in post_period}
-        for slot in output_slots
-    }
-
-    # Calculate min relative frequency between consecutive periods
-    for i, pair in enumerate(post_period):
-        current_period = relative_freq.iloc[i]
-        next_period = relative_freq.iloc[i + 1]
-
-        for slot in output_slots:
-            support_dict[slot][pair] = float(
-                min(current_period[slot], next_period[slot])
-            )
-
-    return support_dict
-
-from typing import Dict
-import pandas as pd
-def _parse_filler_cell(x):
+def _parse_filler_cell(cell):
     """
     Convert one dataframe cell into a list of fillers.
 
@@ -752,39 +643,41 @@ def _parse_filler_cell(x):
     - NaN -> []
     - single string -> [string]
     """
-    if isinstance(x, list):
-        return x
+    if isinstance(cell, list):
+        return cell
 
-    if pd.isna(x):
+    if pd.isna(cell):
         return []
 
-    if isinstance(x, str):
-        x = x.strip()
+    if isinstance(cell, str):
+        cell = cell.strip()
 
-        if x in ["", "[]", "nan", "None"]:
+        if cell in ["", "[]", "nan", "None"]:
             return []
 
         try:
-            parsed = ast.literal_eval(x)
+            parsed = ast.literal_eval(cell)
             if isinstance(parsed, list):
                 return parsed
             else:
                 return [parsed]
         except Exception:
-            return [x]
+            return [cell]
 
-    return [x]
+    return [cell]
 
 def compute_saturating_support_from_sfiller_df(
-    sfiller_df_path: str,
+    sfiller_df: pd.DataFrame,
     period_col: str = "subfolder",
-    k: float = 20.0,
     min_freq: int = 1,
+    mode: str = "all",
+    all_periods=None,
+    k: float = 20.0,
     include_zero_slots: bool = False,
-) -> Dict[str, Dict[str, float]]:
+) -> pd.DataFrame:
     """
-    Process slot-filler CSV to calculate saturating-count support for each slot
-    between consecutive periods.
+    Process a slot-filler DataFrame to calculate saturating-count support for
+    each slot between consecutive periods.
 
     The support count is calculated after applying a period-specific
     minimum filler frequency threshold.
@@ -796,7 +689,8 @@ def compute_saturating_support_from_sfiller_df(
         then "b" is kept in period B.
 
     Steps:
-    1. Read CSV where each slot column contains a list-like string of fillers.
+    1. Read a DataFrame where each slot column contains fillers or list-like
+       filler cells.
     2. For each slot and period, count individual filler frequencies.
     3. Remove fillers whose frequency is < min_freq within that period.
     4. Aggregate remaining filler counts into raw slot counts by period.
@@ -807,12 +701,27 @@ def compute_saturating_support_from_sfiller_df(
 
     Parameters
     ----------
-    sfiller_df_path:
-        Path to the sfiller DataFrame CSV file.
+    sfiller_df:
+        Slot-filler DataFrame.
 
     period_col:
         Column containing the period/bin information.
         Default: "subfolder".
+
+    min_freq:
+        Minimum frequency of a filler within each period.
+        Fillers below this frequency are treated as absent in that period.
+        Default: 1.
+
+    mode:
+        Period-comparison mode.
+        ``"all"`` compares adjacent periods in the complete dataset timeline.
+        ``"data_only"`` compares adjacent periods with retained data separately
+        for each slot.
+
+    all_periods:
+        Complete period sequence for ``mode="all"``. If None, periods are
+        inferred from the DataFrame. Ignored when ``mode="data_only"``.
 
     k:
         Saturation parameter.
@@ -820,26 +729,15 @@ def compute_saturating_support_from_sfiller_df(
         Larger k penalizes low counts more strongly.
         Default: 20.0.
 
-    min_freq:
-        Minimum frequency of a filler within each period.
-        Fillers below this frequency are treated as absent in that period.
-        Default: 1.
-
     include_zero_slots:
         If False, only return slots that occur at least once after filtering.
         If True, return all slot columns, including those with only zero counts.
 
     Returns
     -------
-    Dict[str, Dict[str, float]]
-        {
-            "chi_det": {
-                "1850": 0.23,
-                "1860": 0.19,
-                ...
-            },
-            ...
-        }
+    pd.DataFrame
+        DataFrame with columns ``slot``, ``period_1``, ``period_2``,
+        ``support_count``, and ``support_weight``.
     """
 
     if k <= 0:
@@ -848,10 +746,16 @@ def compute_saturating_support_from_sfiller_df(
     if min_freq < 1:
         raise ValueError("`min_freq` must be >= 1.")
 
-    df = pd.read_csv(sfiller_df_path)
+    mode = mode.lower()
+    if mode not in {"all", "data_only"}:
+        raise ValueError(
+            f"`mode` must be either 'all' or 'data_only', but got {mode!r}."
+        )
+
+    df = sfiller_df.copy()
 
     if period_col not in df.columns:
-        raise ValueError(f"Period column '{period_col}' not found in CSV.")
+        raise ValueError(f"Period column '{period_col}' not found in DataFrame.")
 
     # Slot columns are all columns except metadata columns.
     # Also explicitly exclude period_col for safety.
@@ -863,11 +767,13 @@ def compute_saturating_support_from_sfiller_df(
     if not slot_cols:
         raise ValueError("No slot columns found. Check `DEFAULT_COLS`.")
 
-    # Sort periods from the original dataframe
-    sorted_periods = sorted(
-        df[period_col].dropna().unique().tolist(),
-        key=_sort_period_key
-    )
+    if mode == "all" and all_periods is not None:
+        sorted_periods = sorted(all_periods, key=_sort_period_key)
+    else:
+        sorted_periods = sorted(
+            df[period_col].dropna().unique().tolist(),
+            key=_sort_period_key
+        )
 
     # This will contain filtered raw slot counts per period
     period_counts = pd.DataFrame(
@@ -921,17 +827,13 @@ def compute_saturating_support_from_sfiller_df(
             .sum()
         )
 
-        # Fill into period_counts
-        for period, count in slot_period_counts.items():
-            period_counts.loc[period, slot] = float(count)
-
-    # Build output labels.
-    # Your original function uses the second period as the key.
-    period_labels = [str(p) for p in period_counts.index]
-    post_period = [
-        f"{period_labels[i + 1]}"
-        for i in range(len(period_labels) - 1)
-    ]
+        # Align counts to the selected timeline. In mode="all", this also
+        # inserts explicitly requested periods with zero retained data.
+        period_counts[slot] = (
+            slot_period_counts
+            .reindex(sorted_periods, fill_value=0.0)
+            .astype(float)
+        )
 
     # Decide which slots to return
     if include_zero_slots:
@@ -942,112 +844,132 @@ def compute_saturating_support_from_sfiller_df(
             if period_counts[slot].sum() > 0
         ]
 
-    # Initialize output
-    support_dict: Dict[str, Dict[str, float]] = {
-        slot: {pair: 0.0 for pair in post_period}
-        for slot in output_slots
-    }
+    support_rows = []
 
-    # Calculate saturating weight from min raw count between consecutive periods
-    for i, pair in enumerate(post_period):
-        current_period = period_counts.iloc[i]
-        next_period = period_counts.iloc[i + 1]
+    for slot in output_slots:
+        slot_counts = period_counts[slot]
 
-        for slot in output_slots:
-            c = float(min(current_period[slot], next_period[slot]))
+        if mode == "data_only":
+            slot_counts = slot_counts[slot_counts > 0]
+
+        periods = slot_counts.index.tolist()
+
+        for i in range(1, len(periods)):
+            period_1 = periods[i - 1]
+            period_2 = periods[i]
+            c = float(min(
+                slot_counts.loc[period_1],
+                slot_counts.loc[period_2],
+            ))
             w = c / (c + k)
-            support_dict[slot][pair] = w
 
-    return support_dict
+            support_rows.append({
+                "slot": slot,
+                "period_1": period_1,
+                "period_2": period_2,
+                "support_count": c,
+                "support_weight": w,
+            })
+
+    return pd.DataFrame(
+        support_rows,
+        columns=[
+            "slot",
+            "period_1",
+            "period_2",
+            "support_count",
+            "support_weight",
+        ],
+    )
 #----------------------------------------------------------------------------------------------------
-# THESE FUNCTIONS HAVE NOT BEEN USED YET
+# # THESE FUNCTIONS HAVE NOT BEEN USED YET
 
-# Filter the slot fillers by frequency. However, this is the frequency of the whole df and not of individual periods.
-def filter_frequency_sfiller_df(sfiller_df_path, col_name, output_path, min_freq=1):
-    """
-    Filter slot fillers in a DataFrame by their frequency.
+# # Filter the slot fillers by frequency. However, this is the frequency of the whole df and not of individual periods.
+# def filter_frequency_sfiller_df(sfiller_df_path, col_name, output_path, min_freq=1):
+#     """
+#     Filter slot fillers in a DataFrame by their frequency.
 
-    Parameters:
-        sfiller_df_path (str): Path to the DataFrame CSV file.
-        col_name (str): Name of the column containing the slot fillers.
-        min_freq (int): Minimum frequency of a slot filler to be kept.
-        output_path (str): Path to save the filtered DataFrame.
+#     Parameters:
+#         sfiller_df_path (str): Path to the DataFrame CSV file.
+#         col_name (str): Name of the column containing the slot fillers.
+#         min_freq (int): Minimum frequency of a slot filler to be kept.
+#         output_path (str): Path to save the filtered DataFrame.
 
-    Returns:
-        pd.DataFrame: The filtered DataFrame.
+#     Returns:
+#         pd.DataFrame: The filtered DataFrame.
 
-    Notes:
-        The function overwrites the original file.
-    """
-    df = pd.read_csv(sfiller_df_path)
+#     Notes:
+#         The function overwrites the original file.
+#     """
+#     df = pd.read_csv(sfiller_df_path)
 
-    # Convert string representation of list into actual Python list
-    df[col_name] = df[col_name].apply(literal_eval)
+#     # Convert string representation of list into actual Python list
+#     df[col_name] = df[col_name].apply(literal_eval)
 
-    # Explode into separate rows
-    df = df.explode(col_name).reset_index(drop=True)
+#     # Explode into separate rows
+#     df = df.explode(col_name).reset_index(drop=True)
 
-    # Filter by frequency
-    freq = df[col_name].value_counts()
-    df = df[df[col_name].map(freq) >= min_freq]
+#     # Filter by frequency
+#     freq = df[col_name].value_counts()
+#     df = df[df[col_name].map(freq) >= min_freq]
 
-    # Sort by subfolder (numeric if possible)
-    df['subfolder'] = pd.to_numeric(df['subfolder'], errors='coerce')
-    df = df.sort_values('subfolder', kind='stable').reset_index(drop=True)
+#     # Sort by subfolder (numeric if possible)
+#     df['subfolder'] = pd.to_numeric(df['subfolder'], errors='coerce')
+#     df = df.sort_values('subfolder', kind='stable').reset_index(drop=True)
 
-    # Overwrite file
-    df.to_csv(output_path, index=False)
+#     # Overwrite file
+#     df.to_csv(output_path, index=False)
 
-    return df
+#     return df
 
-# Create a pooled slot-filler df based on the pool note
-# Build the year map dict
-def build_year_map(pool_note: dict, slot_name: str) -> dict[int, int]:
-    map = {}
-    for (slot, _block), info in pool_note.items():
-        if slot != slot_name: 
-            continue
-        for group in info["groups"]:
-            tgt = int(group["target"])
-            for src in group["source"]:
-                map[int(src)] = tgt
-    return map
+# # Create a pooled slot-filler df based on the pool note
+# # Build the year map dict
+# def build_year_map(pool_note: dict, slot_name: str) -> dict[int, int]:
+#     map = {}
+#     for (slot, _block), info in pool_note.items():
+#         if slot != slot_name: 
+#             continue
+#         for group in info["groups"]:
+#             tgt = int(group["target"])
+#             for src in group["source"]:
+#                 map[int(src)] = tgt
+#     return map
 
-# Re map the subfolder column
-def remap_subfolder(df: pd.DataFrame, year_map: dict[int,int]) -> pd.DataFrame:
-    out = df.copy()
-    out["subfolder"] = out["subfolder"].astype(int).map(lambda y: year_map.get(y, y)).astype(str)
-    return out
+# # Re map the subfolder column
+# def remap_subfolder(df: pd.DataFrame, year_map: dict[int,int]) -> pd.DataFrame:
+#     out = df.copy()
+#     out["subfolder"] = out["subfolder"].astype(int).map(lambda y: year_map.get(y, y)).astype(str)
+#     return out
 
-def build_pooled_sfiller_df(all_sfillers_csv_path, pool_notes: dict, output_folder) -> pd.DataFrame:
-    file_name = Path(all_sfillers_csv_path).stem
+# def build_pooled_sfiller_df(all_sfillers_csv_path, pool_notes: dict, output_folder) -> pd.DataFrame:
+#     file_name = Path(all_sfillers_csv_path).stem
 
-    df = pd.read_csv(all_sfillers_csv_path)
-    default_cols = DEFAULT_COLS
-    slot_cols = [col for col in df.columns if col not in default_cols]
+#     df = pd.read_csv(all_sfillers_csv_path)
+#     default_cols = DEFAULT_COLS
+#     slot_cols = [col for col in df.columns if col not in default_cols]
 
-    col_dfs = []
-    for col in slot_cols:
-        sub = df[default_cols + [col]].copy()
-        sub = sub[sub[col].notna() & sub[col].astype(str).ne("[]")].reset_index(drop=True)
+#     col_dfs = []
+#     for col in slot_cols:
+#         sub = df[default_cols + [col]].copy()
+#         sub = sub[sub[col].notna() & sub[col].astype(str).ne("[]")].reset_index(drop=True)
 
-        year_map = build_year_map(pool_note=pool_notes, slot_name=col)
-        sub = remap_subfolder(df=sub, year_map=year_map)  # ok kể cả year_map rỗng
-        col_dfs.append(sub)
+#         year_map = build_year_map(pool_note=pool_notes, slot_name=col)
+#         sub = remap_subfolder(df=sub, year_map=year_map)  # ok kể cả year_map rỗng
+#         col_dfs.append(sub)
 
-    # concat dọc; pandas tự mở rộng cột slot khác nhau
-    pooled_df = pd.concat(col_dfs, ignore_index=True, sort=False)
+#     # concat dọc; pandas tự mở rộng cột slot khác nhau
+#     pooled_df = pd.concat(col_dfs, ignore_index=True, sort=False)
 
-    # đưa default_cols lên đầu
-    front = [c for c in default_cols if c in pooled_df.columns]
-    pooled_df = pooled_df[front + [c for c in pooled_df.columns if c not in front]]
+#     # đưa default_cols lên đầu
+#     front = [c for c in default_cols if c in pooled_df.columns]
+#     pooled_df = pooled_df[front + [c for c in pooled_df.columns if c not in front]]
 
-    # replace NaN with empty list
-    for slot_col in slot_cols:
-        pooled_df[slot_col] = pooled_df[slot_col].apply(lambda value: [] if pd.isna(value) else value)
+#     # replace NaN with empty list
+#     for slot_col in slot_cols:
+#         pooled_df[slot_col] = pooled_df[slot_col].apply(lambda value: [] if pd.isna(value) else value)
 
-    # write out
-    output_path = os.path.join(output_folder, file_name + "_pooled.csv")
-    pooled_df.to_csv(output_path, index=False)
-    print(f"Created pooled slot-filler df from {all_sfillers_csv_path} → {output_path}")
-    return pooled_df
+#     # write out
+#     output_path = os.path.join(output_folder, file_name + "_pooled.csv")
+#     pooled_df.to_csv(output_path, index=False)
+#     print(f"Created pooled slot-filler df from {all_sfillers_csv_path} → {output_path}")
+#     return pooled_df
