@@ -258,7 +258,8 @@ def sfillers_jsd_by_period(
         If True, weight JSD scores by saturating support.
 
     k : float
-        Saturation parameter used when ``weighting=True``.
+        Support threshold for saturating weighting. Used only when
+        ``weighting=True``.
 
     include_zero_slots : bool
         If True, include zero-support slots when computing support.
@@ -1057,8 +1058,8 @@ def compute_weighted_consecutive_jsd_df(
         Full period sequence. If None, inferred from ``sfiller_df``.
 
     k : float
-        Saturation parameter for support weights. If support count equals
-        ``k``, the support weight is 0.5.
+        Support threshold. If support count is at least ``k``, the support
+        weight is 1.0.
 
     include_zero_slots : bool
         If True, include slots with zero support in the support dictionary.
@@ -1208,7 +1209,7 @@ def _permutation_consecutive_jsd_worker_chunk(
         Minimum filler frequency within each period.
 
     k : float
-        Saturation parameter for support weighting. Used only when
+        Support threshold for saturating weighting. Used only when
         ``weighting=True``.
 
     weighting : bool
@@ -1299,8 +1300,9 @@ def permutation_test_consecutive_jsd(
         threshold are treated as absent in that period.
 
     k : float
-        Saturation parameter for support weighting. If support count equals
-        ``k``, the support weight is 0.5. Used only when ``weighting=True``.
+        Support threshold for saturating weighting. If support count is at
+        least ``k``, the support weight is 1.0. Used only when
+        ``weighting=True``.
 
     weighting : bool
         If True, run the permutation test on support-weighted JSD. If False,
@@ -1482,6 +1484,7 @@ def permutation_test_consecutive_jsd(
         if valid_mask.sum() == 0:
             continue
 
+        # Benjamini–Yekutieli FDR correction
         reject, qvals, _, _ = multipletests(
             pvals[valid_mask],
             alpha=0.05,

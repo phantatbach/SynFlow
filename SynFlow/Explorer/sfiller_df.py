@@ -676,7 +676,7 @@ def compute_saturating_support_from_sfiller_df(
     include_zero_slots: bool = False,
 ) -> pd.DataFrame:
     """
-    Process a slot-filler DataFrame to calculate saturating-count support for
+    Process a slot-filler DataFrame to calculate saturating support for
     each slot between consecutive periods.
 
     The support count is calculated after applying a period-specific
@@ -697,7 +697,7 @@ def compute_saturating_support_from_sfiller_df(
     5. For each consecutive period pair, compute:
            count_support(slot, t-t+1) = min(raw_count(slot, t), raw_count(slot, t+1))
     6. Convert count support into a bounded saturating weight:
-           weight = c / (c + k)
+           weight = min(1, 2 * c / (c + k))
 
     Parameters
     ----------
@@ -724,8 +724,8 @@ def compute_saturating_support_from_sfiller_df(
         inferred from the DataFrame. Ignored when ``mode="data_only"``.
 
     k:
-        Saturation parameter.
-        If c = k, then weight = 0.5.
+        Support threshold.
+        If c >= k, then weight = 1.0.
         Larger k penalizes low counts more strongly.
         Default: 20.0.
 
@@ -861,7 +861,7 @@ def compute_saturating_support_from_sfiller_df(
                 slot_counts.loc[period_1],
                 slot_counts.loc[period_2],
             ))
-            w = c / (c + k)
+            w = min(1.0, 2 * c / (c + k))
 
             support_rows.append({
                 "slot": slot,
