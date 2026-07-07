@@ -1,15 +1,30 @@
 import re
 import os
 from multiprocessing import Pool, cpu_count
+import pandas as pd
 from typing import List, Tuple, Dict, Set, Optional
-from SynFlow.utils import build_graph
-from SynFlow.const import DEFAULT_PATTERN
+from SynFlow.utils import build_graph, format_filler
+from SynFlow.const import DEFAULT_PATTERN, VALID_FILLER_FORMATS
+
+def build_context_lookup(
+    sent_tokens: List[str],
+    pattern: re.Pattern,
+) -> Dict[str, tuple[str, str, str]]:
+    """Build a token-id to token, lemma, and POS lookup for one sentence."""
+    id2context = {}
+    for line in sent_tokens:
+        m = pattern.match(line)
+        if not m:
+            continue
+        token, lemma, pos, idx, _, _ = m.groups()
+        id2context[idx] = (token, lemma, pos)
+    return id2context
 
 # Find a single, sequential path
 # It will be called multiple times by process_file.
-def find_by_path(graph: Dict[int, List[int]], id2wordpos: Dict[int, str],
+def find_by_path(graph: Dict[int, List[int]], id2context: Dict[int, tuple[str, str, str]],
                  id2deprel: Dict[Tuple[int, int], str], tgt_id: int,
-                 single_path_pattern: str) -> List[Tuple[List[str], str]]:
+                 single_path_pattern: str, filler_format: str) -> List[Tuple[List[str], str]]:
     """
     Finds paths in the dependency graph starting from a single target ID that match
     a specified sequence of relationships.
@@ -17,7 +32,7 @@ def find_by_path(graph: Dict[int, List[int]], id2wordpos: Dict[int, str],
     Args:
         graph (dict): Adjacency list representation of the dependency graph.
                       Keys are parent IDs, values are lists of child IDs.
-        id2wordpos (dict): Maps token ID to its "lemma/POS" string.
+        id2context (dict): Maps token ID to its token, lemma, and POS fields.
         id2deprel (dict): Maps (parent_id, child_id) tuple to dependency relation string.
         tgt_id (int): A single ID of the target token.
         single_path_pattern (str): A single relation path string, e.g., "chi_obl > chi_case".
@@ -25,7 +40,7 @@ def find_by_path(graph: Dict[int, List[int]], id2wordpos: Dict[int, str],
 
     Returns:
         list: A list of tuples, where each tuple contains:
-              - List of "lemma/POS" strings for the context nodes found along the path.
+              - List of formatted context fillers found along the path.
               - The actual path string found (e.g., "chi_obl > chi_case").
               Returns an empty list if no path is found.
     """
@@ -40,13 +55,9 @@ def find_by_path(graph: Dict[int, List[int]], id2wordpos: Dict[int, str],
         """
         # Base case: If we have successfully traversed all required steps.
         if depth == num_steps:
-            # Collect the word/POS forms for the found context nodes.
-            # Exclude the starting target node from context_wordpos if it's not part of the path_nodes.
-            # In this setup, path_nodes already excludes the initial tgt_id.
-            context_wordpos = [id2wordpos[n] for n in path_nodes]
             # Join the actual relations found into a path string.
             actual_path_str = " > ".join(path_rels)
-            results.append((context_wordpos, actual_path_str))
+            results.append((path_nodes, actual_path_str))
             return
 
         # Get the allowed relations for the current step.
@@ -64,12 +75,14 @@ def find_by_path(graph: Dict[int, List[int]], id2wordpos: Dict[int, str],
 
             # Check if the actual label 'lbl' is one of the allowed relations for the current step.
             if lbl in current_step_rels_str:
+                token, lemma, pos = id2context[nb]
+                filler = format_filler(token, lemma, pos, lbl, filler_format)
                 # Recursively call DFS for the neighbor, incrementing depth and updating path.
                 dfs(nb,
                     depth + 1,
                     seen | {nb},             # Add neighbor to seen set for the next call
                     path_rels + [lbl],       # Add the actual label found
-                    path_nodes + [nb])       # Add the neighbor's ID to the path nodes
+                    path_nodes + [filler])   # Add the formatted filler to the path nodes
 
     # Start DFS from the single target ID.
     # Initial call:
@@ -122,11 +135,11 @@ def _find_all_unique_paths(graph: Dict[int, List[int]], id2deprel: Dict[Tuple[in
     return out
 
 def process_file(
-        args: Tuple[str, str, Optional[re.Pattern], str, str, str, str]
+        args: Tuple[str, str, Optional[re.Pattern], str, str, str, str, str]
         ) -> List[Tuple[str, str, List[Tuple[List[str], str]]]]:
     """
     Processes a single file to find sentences matching the given criteria.
-    Now supports multiple independent path patterns and 'open'/'close'/'closeh' mode.
+    Now supports multiple independent path patterns and 'open'/'close'/'closeh' search_mode.
 
     Args:
         args (tuple): A tuple containing:
@@ -136,15 +149,16 @@ def process_file(
             - target_lemma (str)
             - target_pos (str)
             - rel (str): The combined relation path string.
-            - mode (str): 'open' (default) or 'close' or 'closeh'.
+            - search_mode (str): 'open' (default) or 'close' or 'closeh'.
                 'open': Match targets that include at least all required paths; extra slots and deeper specialisations allowed.
                 'close': Match targets whose paths equal the required set exactly; no extra slots and no deeper specialisations.
                 'closeh': Match targets with exactly the required slots; deeper specialisations under those slots allowed.
+            - filler_format (str): Format for context fillers.
 
     Returns:
         List[Tuple[str, str, List[Tuple[List[str], str]]]]: A list of results.
     """
-    corpus_folder, fname, pattern, target_lemma, target_pos, rel_combined, mode = args
+    corpus_folder, fname, pattern, target_lemma, target_pos, rel_combined, search_mode, filler_format = args
     pattern = pattern or DEFAULT_PATTERN
     results: List[Tuple[str, str, List[Tuple[List[str], str]]]] = []
 
@@ -176,6 +190,7 @@ def process_file(
                     # Check if the sentence contains the target lemma/POS
                     if sent_tokens and has_target == True:
                         id2wp, graph, id2d = build_graph(sent_tokens, pattern)
+                        id2context = build_context_lookup(sent_tokens, pattern)
                         sentence_text = " ".join(sent_forms)
                         target_lp = f"{target_lemma}/{target_pos}"
 
@@ -187,15 +202,15 @@ def process_file(
                             found_paths_details: List[Tuple[List[str], str]] = [] # Stores results for each required path
 
                             for single_path_pattern in required_path_patterns_list: # Loop through each path in the list
-                                current_path_results = find_by_path(graph, id2wp, id2d, current_target_id, single_path_pattern) # Find the path that matches the path pattern
+                                current_path_results = find_by_path(graph, id2context, id2d, current_target_id, single_path_pattern, filler_format) # Find the path that matches the path pattern
                                 if not current_path_results: # If the path is not found, stop
                                     all_paths_found_for_this_target = False
                                     break
                                 found_paths_details.extend(current_path_results) # If the path is found, add it to the results
 
                             if all_paths_found_for_this_target: # If at least all required paths are present
-                                if mode == 'close':
-                                    # For 'close' mode, we need to check if ONLY the required PATHS are present.
+                                if search_mode == 'close':
+                                    # For 'close' search_mode, we need to check if ONLY the required PATHS are present.
                                     # No horizontal expansion and no vertical specialisation are allowed
 
                                     # Derive max depth from the rel‐patterns themselves
@@ -209,9 +224,9 @@ def process_file(
                                     # is exactly equal to the set of required paths.
                                     if all_unique_paths_from_target == required_path_patterns_set:
                                         results.append((fname, sentence_text, found_paths_details))
-                                
-                                elif mode == 'closeh': 
-                                    # For 'closeh' mode, we need to check if ONLY the required SLOTS are present.
+
+                                elif search_mode == 'closeh':
+                                    # For 'closeh' search_mode, we need to check if ONLY the required SLOTS are present.
                                     # No horizontal expansion is allowed but the slots can be vertically specialised.
 
                                     # 1) compute required first‐hop labels
@@ -229,8 +244,8 @@ def process_file(
                                     if actual_direct == required_horizontals:
                                         results.append((fname, sentence_text, found_paths_details))
                                     
-                                elif mode == 'open':
-                                    # 'open' mode: if all required paths are found, it's a match.
+                                elif search_mode == 'open':
+                                    # 'open' search_mode: if all required paths are found, it's a match.
                                     results.append((fname, sentence_text, found_paths_details))
 
                     sent_tokens, sent_forms = [], []
@@ -257,13 +272,14 @@ def full_rel_explorer(corpus_folder: str,
                  target_lemma: str = None,
                  target_pos: str   = None,
                  rel: str          = None,
-                 mode: str         = 'open',
+                 search_mode: str         = 'open',
+                 filler_format: str = 'lemma/pos',
                  num_processes: int= max(1, cpu_count() - 1)
                 ) -> List[Tuple[str, str, List[Tuple[List[str], str]]]]:
     """
     Walks corpus_folder in parallel to find sentences matching the given criteria.
     Now supports finding sentences that satisfy ALL independent path patterns
-    defined in 'rel', with 'open' or 'close' matching mode.
+    defined in 'rel', with 'open' or 'close' matching search_mode.
 
     Args:
         corpus_folder (str): The path to the corpus directory.
@@ -273,10 +289,14 @@ def full_rel_explorer(corpus_folder: str,
         target_pos (str, optional): The POS tag of the target word.
         rel (str, optional): The combined relation path string, e.g., "chi_obl > chi_case & chi_nsubj & chi_nobj".
                              ' & ' separates independent required paths. '>' separates sequential steps within a path.
-        mode (str): 'open' (default) or 'close' or 'closeh'.
+        search_mode (str): 'open' (default) or 'close' or 'closeh'.
             'open': Match targets that include at least all required paths; extra slots and deeper specialisations allowed.
             'close': Match targets whose paths equal the required set exactly; no extra slots and no deeper specialisations.
             'closeh': Match targets with exactly the required slots; deeper specialisations under those slots allowed.
+        filler_format: Format for context fillers. Must be one of
+            ``"lemma_only"``, ``"lemma/pos"``, ``"lemma/pos_init"``,
+            ``"lemma/deprel"``, ``"token_only"``, ``"token/pos"``,
+            ``"token/pos_init"``, or ``"token/deprel"``.
         num_processes (int, optional): Number of processes to use for parallel processing.
                                        Defaults to (CPU count - 1) or 1 if CPU count is 1.
 
@@ -291,8 +311,12 @@ def full_rel_explorer(corpus_folder: str,
     if target_lemma is None or target_pos is None or rel is None:
         print("Error: 'target_lemma', 'target_pos', and 'rel' must be provided.")
         return []
-    if mode not in ['open', 'close', 'closeh']:
-        print("Error: 'mode' must be 'open' or 'close' or 'closeh'.")
+    if search_mode not in ['open', 'close', 'closeh']:
+        print("Error: 'search_mode' must be 'open' or 'close' or 'closeh'.")
+        return []
+    if filler_format not in VALID_FILLER_FORMATS:
+        valid_formats = ", ".join(sorted(VALID_FILLER_FORMATS))
+        print(f"Error: 'filler_format' must be one of: {valid_formats}.")
         return []
 
     pattern       = pattern or DEFAULT_PATTERN
@@ -311,7 +335,7 @@ def full_rel_explorer(corpus_folder: str,
             print(f"No .conllu or .txt files found in '{subfolder_path}'.")
             return []
         args = [
-            (subfolder_path, f, pattern, target_lemma, target_pos, rel, mode) # Pass new argument
+            (subfolder_path, f, pattern, target_lemma, target_pos, rel, search_mode, filler_format)
             for f in files
         ]
         # Process the files in parallel
@@ -319,4 +343,15 @@ def full_rel_explorer(corpus_folder: str,
             for file_res in pool.imap_unordered(process_file, args, chunksize=10):
                 all_results.extend(file_res)
 
-    return all_results
+    rows = []
+
+    for filename, sentence, matches in all_results:
+        for sfillers, path in matches:
+            rows.append({
+                "file": filename,
+                "sentence": sentence,
+                "sfillers": sfillers,
+                "path": path
+            })
+
+    return pd.DataFrame(rows, columns=["file", "sentence", "sfillers", "path"])

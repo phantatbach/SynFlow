@@ -11,8 +11,8 @@ from typing import Dict, List, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
-from SynFlow.const import DEFAULT_COLS, DEFAULT_PATTERN
-from SynFlow.utils import build_graph
+from SynFlow.const import DEFAULT_COLS, DEFAULT_PATTERN, VALID_FILLER_FORMATS
+from SynFlow.utils import build_graph, format_filler
 
 # Reformat deprel because build_graph keeps the directions
 def reformat_deprel(label: str) -> str:
@@ -44,13 +44,13 @@ def follow_path(graph, id2deprel, start, rel_seq):
         
         Returns:
             None
-        """       
+        """
         if i == len(rel_seq): # if index = len(rel_seq), we've reached the end
             chains.append(path_nodes) # append all nodes in the path
             return # End the current path
-        want = rel_seq[i]
+        expected_rel = rel_seq[i]
         for nb in graph[node]:
-            if id2deprel.get((node, nb)) == want: # Check if the edge label is the one we want
+            if id2deprel.get((node, nb)) == expected_rel: # Check if the edge label is the expected_rel
                 dfs(nb, i+1, path_nodes + [nb])
     dfs(start, 0, [])
     return chains
@@ -116,23 +116,15 @@ def process_file(args) -> List[dict]:
                                             prev_id = nid
                                             continue
 
-                                        if filler_format == "lemma/deprel": # This filler is used to get the original deprel of the context words, not the deprel between target and context
-                                            raw_label = (
-                                                id2deprel.get((prev_id, nid))    # child→parent ⇒ pa_…
-                                                or id2deprel.get((nid, prev_id))  # parent→child ⇒ chi_…
-                                                or 'UNK'
-                                            )
-                                            if raw_label.startswith('chi_'):
-                                                deprel = reformat_deprel(raw_label)
-                                            else:
-                                                orig_line = sent_tokens[int(nid)-1] # fall back to the original line
-                                                m = pattern.match(orig_line)
-                                                raw_field = m.group(6) if m else 'UNK'
-                                                deprel = reformat_deprel(raw_field)
-
-                                            filler = f"{lemma}/{deprel}"
-                                        else:
-                                            filler = f"{lemma}/{pos}"
+                                        orig_line = sent_tokens[int(nid)-1]
+                                        m = pattern.match(orig_line)
+                                        token = m.group(1) if m else lemma
+                                        deprel = (
+                                            id2deprel.get((prev_id, nid), 'UNK')
+                                            if filler_format.endswith("/deprel")
+                                            else None
+                                        )
+                                        filler = format_filler(token, lemma, pos, deprel, filler_format)
 
                                         subslot_fillers.append(filler)
                                         prev_id = nid
@@ -161,7 +153,7 @@ def build_sfiller_df(
     template: str,
     target_lemma: str,
     target_pos: str,
-    filler_format: str = 'lemma/pos', # either lemma/pos or lemma/deprel
+    filler_format: str = 'lemma/pos',
     num_processes: int = None,
     pattern: re.Pattern = None,
     freq_path: str = None,
@@ -181,6 +173,9 @@ def build_sfiller_df(
     slots     = template.strip("[]").split("][")
     filtered_pos = filtered_pos or [] # Guard if filtered_POS is None
     filler_format = filler_format or 'lemma/pos'
+    if filler_format not in VALID_FILLER_FORMATS:
+        valid_formats = ", ".join(sorted(VALID_FILLER_FORMATS))
+        raise ValueError(f"filler_format must be one of: {valid_formats}")
     
     all_rows = []
 
@@ -220,14 +215,13 @@ def build_sfiller_df(
                 freq[lemma_rel] = int(count)
 
         # 2) filter function using same reformatter
-        def keep(w):
-            # w is e.g. "one/chi_nsubj" or "one/nsubj"
-            lemma, rel = w.split('/',1)
-            # normalize the rel before lookup
-            rel = reformat_deprel(rel)
-            key = f"{lemma}/{rel}"
-            # fallback to lemma-only if full key missing
-            count = freq.get(key, freq.get(lemma, 0))
+        def keep(w: str) -> bool:
+            if "/" in w:
+                base, label = w.split('/', 1)
+                key = f"{base}/{reformat_deprel(label)}"
+                count = freq.get(key, freq.get(base, 0))
+            else:
+                count = freq.get(w, 0)
             return freq_min <= count <= freq_max
 
         # 3) apply to each slot

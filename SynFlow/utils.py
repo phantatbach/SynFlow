@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import Optional
 
 def build_graph(tokens, pattern):
     """
@@ -31,3 +32,29 @@ def build_graph(tokens, pattern):
             id2deprel[(idx, head)] = f'pa_{deprel}'
             id2deprel[(head, idx)] = f'chi_{deprel}'
     return id2lemma_pos, graph, id2deprel
+
+def format_filler(
+    token: str,
+    lemma: str,
+    pos: str,
+    deprel: Optional[str],
+    filler_format: str,
+) -> str:
+    """Format one slot filler using the requested token, lemma, POS, or deprel fields."""
+    if filler_format == "token_only":
+        return token
+    if filler_format == "token/pos":
+        return f"{token}/{pos}"
+    if filler_format == "token/pos_init":
+        return f"{token}/{pos[:1]}"
+    if filler_format == "token/deprel":
+        return f"{token}/{deprel}"
+    if filler_format == "lemma_only":
+        return lemma
+    if filler_format == "lemma/pos":
+        return f"{lemma}/{pos}"
+    if filler_format == "lemma/pos_init":
+        return f"{lemma}/{pos[:1]}"
+    if filler_format == "lemma/deprel":
+        return f"{lemma}/{deprel}"
+    raise ValueError(f"Unsupported filler_format: {filler_format}")

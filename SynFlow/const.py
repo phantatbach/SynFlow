@@ -10,3 +10,15 @@ DEFAULT_PATTERN = re.compile(
 )
 
 DEFAULT_COLS = ['id', 'subfolder', 'target']
+
+VALID_FILLER_FORMATS = {
+    "token_only",
+    "token/pos",
+    "token/pos_init",
+    "token/deprel",
+
+    "lemma_only",
+    "lemma/pos",
+    "lemma/pos_init",
+    "lemma/deprel",
+}
