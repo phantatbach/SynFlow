@@ -156,17 +156,13 @@ def build_sfiller_df(
     filler_format: str = 'lemma/pos',
     num_processes: int = None,
     pattern: re.Pattern = None,
-    freq_path: str = None,
-    freq_min: int  = 1,
-    freq_max: int  = 10**9,
     filtered_pos: list = None,
     output_folder: str = None,
 ) -> pd.DataFrame:
     """
     1) Walk corpus in parallel, build per-token slot lists.
-    2) Apply frequency filter (freq_path, freq_min, freq_max).
-    3) Drop rows where all slots are empty (write {target}_dropped.txt).
-    4) Save the resulting DataFrame to {output_folder}/ and return it.
+    2) Drop rows where all slots are empty (write {target}_dropped.txt).
+    3) Save the resulting DataFrame to {output_folder}/ and return it.
     """
     pattern   = pattern or DEFAULT_PATTERN
     num_procs = num_processes or max(1, cpu_count()-1)
@@ -204,36 +200,10 @@ def build_sfiller_df(
     for slot in slots:
         if slot not in df:
             df[slot] = [[]] * len(df)
-    
-    # Frequency filtering
-    if freq_path:
-        # 1) load your TSV
-        freq = {}
-        with open(freq_path, encoding='utf8') as f:
-            for line in f:
-                lemma_rel, count = line.strip().split('\t')
-                freq[lemma_rel] = int(count)
-
-        # 2) filter function using same reformatter
-        def keep(w: str) -> bool:
-            if "/" in w:
-                base, label = w.split('/', 1)
-                key = f"{base}/{reformat_deprel(label)}"
-                count = freq.get(key, freq.get(base, 0))
-            else:
-                count = freq.get(w, 0)
-            return freq_min <= count <= freq_max
-
-        # 3) apply to each slot
-        for slot in slots:
-            df[slot] = df[slot].apply(lambda L: [w for w in L if keep(w)])
 
     # drop empty‐slot rows
     mask = df[slots].apply(lambda r: all(len(x)==0 for x in r), axis=1)
     dropped = df.index[mask].tolist()
-    with open(f"{output_folder}/{target_lemma}_dropped.txt","w",encoding='utf8') as f:
-        for idx in dropped:
-            f.write(idx+"\n")
     df = df[~mask]
 
     # --- Optional: insert the new "target" slot at column 0 ------------
@@ -241,71 +211,7 @@ def build_sfiller_df(
     # Create a column of single‐item lists [target_slot] for every row:
     df.insert(1, "target", [[target_slot]] * len(df))
 
-    # save
-    output_csv = f"{output_folder}/{target_lemma}_samples_sfillerdf_all.csv"
-    df.to_csv(output_csv)
-    print(f"Wrote slot‐fillers to {output_csv} ({len(df)} rows), "
-        f"dropped {len(dropped)} tokens.")
-    return df
-
-def sample_sfiller_df(
-    sfiller_df_path: str,
-    output_path: str,
-    n: int,
-    seed: int = 42,
-    mode: str = None
-) -> pd.DataFrame:
-    """
-    Read a slot‐filling CSV (with your 'id' as index), sample n rows from 
-    each subfolder using the given random seed, write them to output_csv,
-    and return the sampled DataFrame.
-    """
-    # load, treating the first column as the index
-    df = pd.read_csv(sfiller_df_path, index_col=0)
-
-    # Convert string to Python list
-    for col in df.columns:
-        # Check if the column's values are strings that look like lists
-        if df[col].dtype == 'object' and df[col].astype(str).str.startswith('[').any():
-            try:
-                # Use literal_eval to safely convert string representation of lists
-                # or fillna for NaN values which might occur if a slot was truly empty
-                df[col] = df[col].apply(lambda x: literal_eval(x) if pd.notna(x) and isinstance(x, str) else x)
-            except Exception as e:
-                # Fallback if eval fails (e.g., if it's not a list string)
-                print(f"Warning: Could not convert column {col} to list type. Error: {e}")
-                # If conversion fails, ensure it's still treated appropriately,
-                # e.g., if it's still a string '[]', it will be handled by len(x)==0 check
-    
-    if 'subfolder' not in df.columns:
-        raise ValueError("CSV does not contain 'subfolder'.")
-
-    slot_cols = [c for c in df.columns if c not in DEFAULT_COLS]
-
-    if mode == 'filled':
-        # Filter for rows where ALL identified slot columns are non-empty lists
-        # Apply a lambda function row-wise (axis=1)
-        # It checks if length of each list in the row's slot-columns is > 0
-        # Use boolean masking
-        mask_all_filled = df[slot_cols].apply(lambda r: all(len(x) > 0 for x in r), axis=1)
-        df = df[mask_all_filled]
-    
-    # stratify: tối đa n mỗi subfolder, với seed con ổn định cho từng nhóm
-    random_gen = np.random.RandomState(seed)
-    per_group_seed = {sf: int(random_gen.randint(0, 2**31-1)) for sf in df['subfolder'].unique()}
-
-    parts = []
-    for subf, subf_df in df.groupby('subfolder', group_keys=False):   # ← đúng unpack
-        k_rows = min(n, len(subf_df))
-        if k_rows > 0:
-            parts.append(subf_df.sample(n=k_rows, random_state=per_group_seed[subf]))
-
-    # Collect all sampled rows
-    sampled = pd.concat(parts, axis=0) if parts else df.iloc[0:0]
-    # write out
-    sampled.to_csv(output_path)
-    print(f"Sampled {len(sampled)} rows from {sfiller_df_path} → {output_path}")
-    return sampled
+    return df, dropped
 
 def replace_in_sfiller_df_column(sfiller_df_path, column_name, replacements, output_path):
     """
@@ -339,55 +245,6 @@ def replace_in_sfiller_df_column(sfiller_df_path, column_name, replacements, out
     sfiller_df[column_name] = sfiller_df[column_name].astype(str).map(replace_list_str)
 
     sfiller_df.to_csv(output_path, index=False, encoding="utf-8")
-
-def keep_lemma_only_sfiller_df(sfiller_df_path: str, output_path: str) -> pd.DataFrame:
-    sfiller_df = pd.read_csv(sfiller_df_path, index_col=0)
-
-    def extract_lemma_from_item(item):
-        """
-        Convert one item like 'aboard/A' -> 'aboard'
-        """
-        if isinstance(item, str) and '/' in item:
-            return item.rsplit('/', 1)[0]
-        return item
-
-    def extract_lemma_from_cell(cell):
-        """
-        Convert one cell like "['aboard/A', 'good/A']" -> ['aboard', 'good']
-        """
-
-        # Handle missing values
-        if pd.isna(cell):
-            return cell
-
-        # If the cell is a string representation of a list
-        if isinstance(cell, str):
-            cell_str = cell.strip()
-
-            if cell_str.startswith("[") and cell_str.endswith("]"):
-                try:
-                    cell = ast.literal_eval(cell_str)
-                except Exception:
-                    return cell
-
-        # If the cell is now a real list
-        if isinstance(cell, list):
-            return [extract_lemma_from_item(item) for item in cell]
-
-        # If the cell is a single string like 'force/V'
-        if isinstance(cell, str):
-            return extract_lemma_from_item(cell)
-
-        return cell
-
-    lemma_cols = [c for c in sfiller_df.columns if c not in DEFAULT_COLS]
-
-    sfiller_df[lemma_cols] = sfiller_df[lemma_cols].map(extract_lemma_from_cell)
-
-    if output_path:
-        sfiller_df.to_csv(output_path)
-
-    return sfiller_df
 
 def merge_sfiller_df_columns(
     sfiller_df_path: str,
