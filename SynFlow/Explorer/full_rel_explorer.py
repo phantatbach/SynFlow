@@ -148,7 +148,7 @@ def process_file(
             - pattern (re.Pattern)
             - target_lemma (str)
             - target_pos (str)
-            - rel (str): The combined relation path string.
+            - deprel (str): The combined relation path string.
             - search_mode (str): 'open' (default) or 'close' or 'closeh'.
                 'open': Match targets that include at least all required paths; extra slots and deeper specialisations allowed.
                 'close': Match targets whose paths equal the required set exactly; no extra slots and no deeper specialisations.
@@ -162,7 +162,7 @@ def process_file(
     pattern = pattern or DEFAULT_PATTERN
     results: List[Tuple[str, str, List[Tuple[List[str], str]]]] = []
 
-    # Parse the combined 'rel' string into individual required path patterns
+    # Parse the combined 'deprel' string into individual required path patterns
     required_path_patterns_list = [p.strip() for p in rel_combined.split(' & ') if p.strip()]
     required_path_patterns_set = set(required_path_patterns_list) # For faster lookup and comparison
 
@@ -271,7 +271,7 @@ def full_rel_explorer(corpus_folder: str,
                  pattern: re.Pattern = None,
                  target_lemma: str = None,
                  target_pos: str   = None,
-                 rel: str          = None,
+                 deprel: str          = None,
                  search_mode: str         = 'open',
                  filler_format: str = 'lemma/pos',
                  num_processes: int= max(1, cpu_count() - 1)
@@ -279,7 +279,7 @@ def full_rel_explorer(corpus_folder: str,
     """
     Walks corpus_folder in parallel to find sentences matching the given criteria.
     Now supports finding sentences that satisfy ALL independent path patterns
-    defined in 'rel', with 'open' or 'close' matching search_mode.
+    defined in 'deprel', with 'open' or 'close' matching search_mode.
 
     Args:
         corpus_folder (str): The path to the corpus directory.
@@ -287,7 +287,7 @@ def full_rel_explorer(corpus_folder: str,
                                        Defaults to DEFAULT_PATTERN.
         target_lemma (str, optional): The lemma of the target word to search for.
         target_pos (str, optional): The POS tag of the target word.
-        rel (str, optional): The combined relation path string, e.g., "chi_obl > chi_case & chi_nsubj & chi_nobj".
+        deprel (str, optional): The combined relation path string, e.g., "chi_obl > chi_case & chi_nsubj & chi_nobj".
                              ' & ' separates independent required paths. '>' separates sequential steps within a path.
         search_mode (str): 'open' (default) or 'close' or 'closeh'.
             'open': Match targets that include at least all required paths; extra slots and deeper specialisations allowed.
@@ -307,8 +307,8 @@ def full_rel_explorer(corpus_folder: str,
     if not os.path.isdir(corpus_folder):
         print(f"Error: Corpus folder '{corpus_folder}' does not exist.")
         return []
-    if target_lemma is None or target_pos is None or rel is None:
-        print("Error: 'target_lemma', 'target_pos', and 'rel' must be provided.")
+    if target_lemma is None or target_pos is None or deprel is None:
+        print("Error: 'target_lemma', 'target_pos', and 'deprel' must be provided.")
         return []
     if search_mode not in ['open', 'close', 'closeh']:
         print("Error: 'search_mode' must be 'open' or 'close' or 'closeh'.")
@@ -334,7 +334,7 @@ def full_rel_explorer(corpus_folder: str,
             print(f"No .conllu or .txt files found in '{subfolder_path}'.")
             return []
         args = [
-            (subfolder_path, f, pattern, target_lemma, target_pos, rel, search_mode, filler_format)
+            (subfolder_path, f, pattern, target_lemma, target_pos, deprel, search_mode, filler_format)
             for f in files
         ]
         # Process the files in parallel

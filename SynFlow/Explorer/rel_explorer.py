@@ -22,7 +22,7 @@ def build_context_lookup(
         id2context[idx] = (token, lemma, pos)
     return id2context
 
-def find_by_path(graph, id2context, id2deprel, tgt_ids, rel, filler_format):
+def find_by_path(graph, id2context, id2deprel, tgt_ids, deprel, filler_format):
     """
     Finds all paths in a dependency graph starting from a set of target IDs that match
     a specified sequence of dependency relations.
@@ -33,7 +33,7 @@ def find_by_path(graph, id2context, id2deprel, tgt_ids, rel, filler_format):
         id2context (dict): Maps token ID to its token, lemma, and POS fields.
         id2deprel (dict): Maps (parent_id, child_id) tuple to dependency relation string.
         tgt_ids (list): A list of target token IDs.
-        rel (str): A single relation path string, e.g., "chi_obl > chi_case".
+        deprel (str): A single relation path string, e.g., "chi_obl > chi_case".
                    '>' separates sequential steps.
 
     Returns:
@@ -42,7 +42,7 @@ def find_by_path(graph, id2context, id2deprel, tgt_ids, rel, filler_format):
               - The actual path string found (e.g., "chi_obl > chi_case").
               Returns an empty list if no path is found.
     """
-    seq = [r.strip() for r in rel.split('>')]
+    seq = [r.strip() for r in deprel.split('>')]
     N   = len(seq)
     out = []
 
@@ -74,10 +74,10 @@ def process_file(
         args: Tuple[str, str, Optional[re.Pattern], str, str, str, str]
         ) -> List[dict]:
     """
-    args = (corpus_folder, fname, pattern, target_lemma, target_pos, rel, filler_format)
+    args = (corpus_folder, fname, pattern, target_lemma, target_pos, deprel, filler_format)
     returns one dict per matched path.
     """
-    corpus_folder, fname, pattern, target_lemma, target_pos, rel, filler_format = args
+    corpus_folder, fname, pattern, target_lemma, target_pos, deprel, filler_format = args
     pattern = pattern or DEFAULT_PATTERN
 
     has_target = False
@@ -105,7 +105,7 @@ def process_file(
                     sentence_text = " ".join(sent_forms)
                     target_lp = f"{target_lemma}/{target_pos}"
                     tgt_ids = [tid for tid, lp in id2wp.items() if lp == target_lp]
-                    for sfillers, path_str in find_by_path(graph, id2context, id2d, tgt_ids, rel, filler_format):
+                    for sfillers, path_str in find_by_path(graph, id2context, id2d, tgt_ids, deprel, filler_format):
                         results.append({
                             "file": fname,
                             "sentence": sentence_text,
