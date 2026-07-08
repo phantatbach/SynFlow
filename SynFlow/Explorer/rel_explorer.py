@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from SynFlow.utils import build_graph, format_filler
-from SynFlow.const import DEFAULT_PATTERN, VALID_FILLER_FORMATS
+from SynFlow.const import DEFAULT_PATTERN, VALID_FILLER_FORMATS, SENT_ID_PATTERN
 
 def build_context_lookup(
     sent_tokens: List[str],
@@ -95,6 +95,10 @@ def process_file(
             if line.startswith("<s id"):
                 has_target = False # Reset for new sentence
                 sent_tokens, sent_forms = [], [] # Reset for new sentence
+                
+                # Get sentence ID
+                match = SENT_ID_PATTERN.match(line)
+                sent_id = match.group(1) if match else None
 
             # End of a sentence. Build graph and process if target found
             elif line.startswith("</s>"):
@@ -107,7 +111,7 @@ def process_file(
                     tgt_ids = [tid for tid, lp in id2wp.items() if lp == target_lp]
                     for sfillers, path_str in find_by_path(graph, id2context, id2d, tgt_ids, deprel, filler_format):
                         results.append({
-                            "file": fname,
+                            "sentence_id": sent_id,
                             "sentence": sentence_text,
                             "sfillers": sfillers,
                             "path": path_str,
@@ -165,4 +169,4 @@ def rel_explorer(corpus_folder: str,
             for file_res in pool.imap_unordered(process_file, args, chunksize=10):
                 all_results.extend(file_res)
 
-    return pd.DataFrame(all_results, columns=["file", "sentence", "sfillers", "path"])
+    return pd.DataFrame(all_results, columns=["sentence_id", "sentence", "sfillers", "path"])

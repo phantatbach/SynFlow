@@ -20,3 +20,5 @@ VALID_FILLER_FORMATS = {
     "lemma/pos",
     "lemma/deprel",
 }
+
+SENT_ID_PATTERN = re.compile(r"<s\s+id=([^>]+)>")

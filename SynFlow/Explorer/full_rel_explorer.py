@@ -4,7 +4,7 @@ from multiprocessing import Pool, cpu_count
 import pandas as pd
 from typing import List, Tuple, Dict, Set, Optional
 from SynFlow.utils import build_graph, format_filler
-from SynFlow.const import DEFAULT_PATTERN, VALID_FILLER_FORMATS
+from SynFlow.const import DEFAULT_PATTERN, VALID_FILLER_FORMATS, SENT_ID_PATTERN
 
 def build_context_lookup(
     sent_tokens: List[str],
@@ -184,6 +184,10 @@ def process_file(
                 if line.startswith("<s id"):
                     has_target = False # Reset for new sentence
                     sent_tokens, sent_forms = [], [] # Reset for new sentence
+
+                    # Get sentence ID
+                    match = SENT_ID_PATTERN.match(line)
+                    sent_id = match.group(1) if match else None
                 
                 # End of current sentence, build graph
                 elif line.startswith("</s>"):
@@ -223,7 +227,7 @@ def process_file(
                                     # Check if the set of all found paths (up to max_check_depth)
                                     # is exactly equal to the set of required paths.
                                     if all_unique_paths_from_target == required_path_patterns_set:
-                                        results.append((fname, sentence_text, found_paths_details))
+                                        results.append((sent_id, sentence_text, found_paths_details))
 
                                 elif search_mode == 'closeh':
                                     # For 'closeh' search_mode, we need to check if ONLY the required SLOTS are present.
@@ -242,11 +246,11 @@ def process_file(
                                     }
                                     # 3) only accept if they match exactly
                                     if actual_direct == required_horizontals:
-                                        results.append((fname, sentence_text, found_paths_details))
+                                        results.append((sent_id, sentence_text, found_paths_details))
                                     
                                 elif search_mode == 'open':
                                     # 'open' search_mode: if all required paths are found, it's a match.
-                                    results.append((fname, sentence_text, found_paths_details))
+                                    results.append((sent_id, sentence_text, found_paths_details))
 
                     sent_tokens, sent_forms = [], []
 
@@ -344,13 +348,13 @@ def full_rel_explorer(corpus_folder: str,
 
     rows = []
 
-    for filename, sentence, matches in all_results:
+    for sent_id, sentence, matches in all_results:
         for sfillers, path in matches:
             rows.append({
-                "file": filename,
+                "sentence_id": sent_id,
                 "sentence": sentence,
                 "sfillers": sfillers,
                 "path": path
             })
 
-    return pd.DataFrame(rows, columns=["file", "sentence", "sfillers", "path"])
+    return pd.DataFrame(rows, columns=["sentence_id", "sentence", "sfillers", "path"])
