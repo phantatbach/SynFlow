@@ -138,8 +138,8 @@ def rel_explorer(corpus_folder: str,
     Args:
         filler_format: Format for context words in the ``sfillers`` column.
             Must be one of ``"lemma_only"``, ``"lemma/pos"``,
-            ``"lemma/pos_init"``, ``"lemma/deprel"``, ``"token_only"``,
-            ``"token/pos"``, ``"token/pos_init"``, or ``"token/deprel"``.
+            ``"lemma/deprel"``, ``"token_only"``, ``"token/pos"``,
+            or ``"token/deprel"``.
     """
     pattern       = pattern or DEFAULT_PATTERN
     num_procs     = num_processes or max(1, cpu_count()-1)

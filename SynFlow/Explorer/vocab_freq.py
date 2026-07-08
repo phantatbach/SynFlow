@@ -5,7 +5,6 @@ from multiprocessing import Pool, cpu_count
 def count_lemma_file(path, mode):
     """
     Count frequencies according to `mode`:
-      - 'lemma/pos_init': lemma + "\t" + POS‐initial
       - 'lemma/deprel':     lemma + "\t" + deprel
       - 'lemma/pos':        lemma + "\t" + full POS
     """
@@ -22,16 +21,13 @@ def count_lemma_file(path, mode):
                 continue
             # Default: wordform, lemma, pos, id, head, deprel
             lemma, pos, deprel = parts[1], parts[2], parts[5]
-            pos_initial = pos[0]
 
-            if mode == 'lemma_pos_init':
-                key = f"{lemma}/{pos_initial}"
-            elif mode == 'lemma_deprel':
+            if mode == 'lemma_deprel':
                 key = f"{lemma}/{deprel}"
             elif mode == 'lemma_pos':
                 key = f"{lemma}/{pos}"
             else:
-                raise ValueError(f'Mode must be one of "lemma_pos_init", "lemma_deprel", or "lemma_pos", got {mode}')
+                raise ValueError(f'Mode must be one of "lemma_deprel" or "lemma_pos", got {mode}')
 
             # Count
             local_lemma_counts[key] += 1

@@ -45,16 +45,12 @@ def format_filler(
         return token
     if filler_format == "token/pos":
         return f"{token}/{pos}"
-    if filler_format == "token/pos_init":
-        return f"{token}/{pos[:1]}"
     if filler_format == "token/deprel":
         return f"{token}/{deprel}"
     if filler_format == "lemma_only":
         return lemma
     if filler_format == "lemma/pos":
         return f"{lemma}/{pos}"
-    if filler_format == "lemma/pos_init":
-        return f"{lemma}/{pos[:1]}"
     if filler_format == "lemma/deprel":
         return f"{lemma}/{deprel}"
     raise ValueError(f"Unsupported filler_format: {filler_format}")

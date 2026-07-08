@@ -294,9 +294,8 @@ def full_rel_explorer(corpus_folder: str,
             'close': Match targets whose paths equal the required set exactly; no extra slots and no deeper specialisations.
             'closeh': Match targets with exactly the required slots; deeper specialisations under those slots allowed.
         filler_format: Format for context fillers. Must be one of
-            ``"lemma_only"``, ``"lemma/pos"``, ``"lemma/pos_init"``,
-            ``"lemma/deprel"``, ``"token_only"``, ``"token/pos"``,
-            ``"token/pos_init"``, or ``"token/deprel"``.
+            ``"lemma_only"``, ``"lemma/pos"``, ``"lemma/deprel"``,
+            ``"token_only"``, ``"token/pos"``, or ``"token/deprel"``.
         num_processes (int, optional): Number of processes to use for parallel processing.
                                        Defaults to (CPU count - 1) or 1 if CPU count is 1.
 
