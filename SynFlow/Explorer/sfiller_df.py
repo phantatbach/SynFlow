@@ -523,7 +523,7 @@ def compute_saturating_support_from_sfiller_df(
     min_freq: int = 1,
     mode: str = "all",
     all_periods=None,
-    k: float = 20.0,
+    k: float = 30.0,
     include_zero_slots: bool = False,
 ) -> pd.DataFrame:
     """
@@ -548,7 +548,7 @@ def compute_saturating_support_from_sfiller_df(
     5. For each consecutive period pair, compute:
            count_support(slot, t-t+1) = min(raw_count(slot, t), raw_count(slot, t+1))
     6. Convert count support into a bounded saturating weight:
-           weight = min(1, 2 * c / (c + k))
+           weight = min(1, c / k)
 
     Parameters
     ----------
@@ -578,7 +578,7 @@ def compute_saturating_support_from_sfiller_df(
         Support threshold.
         If c >= k, then weight = 1.0.
         Larger k penalizes low counts more strongly.
-        Default: 20.0.
+        Default: 30.0.
 
     include_zero_slots:
         If False, only return slots that occur at least once after filtering.
@@ -712,7 +712,7 @@ def compute_saturating_support_from_sfiller_df(
                 slot_counts.loc[period_1],
                 slot_counts.loc[period_2],
             ))
-            w = min(1.0, 2 * c / (c + k))
+            w = min(1.0, 2 * c / k)
 
             support_rows.append({
                 "slot": slot,
