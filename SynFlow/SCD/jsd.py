@@ -1653,13 +1653,11 @@ def plot_permutation_test_consecutive_jsd(
     plt.tight_layout(rect=[0, 0.035, 1, top_axes])
     plt.show()
 
-import pandas as pd
-
 
 def summarize_fdr_correction(
     perm_result_df: pd.DataFrame,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Summarize FDR correction and return corrected-away slot-period rows."""
+    """Summarize FDR correction per slot and return fdr-corrected transitions."""
     required_cols = {
         "slot",
         "period_1",
@@ -1669,44 +1667,72 @@ def summarize_fdr_correction(
         "significant_p_value_05",
         "significant_fdr_05",
     }
+
     missing_cols = required_cols - set(perm_result_df.columns)
     if missing_cols:
-        raise ValueError(f"perm_result_df is missing columns: {sorted(missing_cols)}")
+        raise ValueError(
+            f"perm_result_df is missing columns: {sorted(missing_cols)}"
+        )
 
     df = perm_result_df.copy()
 
+    # Rows that were significant before correction
+    # but are no longer significant after FDR correction.
     corrected_slot_period_df = df[
         df["significant_p_value_05"]
         & ~df["significant_fdr_05"]
     ].copy()
 
-    corrected_slot_period_df = corrected_slot_period_df[
-        ["slot", "period_1", "period_2", "p_value", "q_value_fdr"]
-    ].sort_values(["slot", "period_1", "period_2"])
-
-    total_tests = len(df)
-    raw_significant = int(df["significant_p_value_05"].sum())
-    fdr_significant = int(df["significant_fdr_05"].sum())
-    corrected_by_fdr = len(corrected_slot_period_df)
-
-    summary = pd.DataFrame(
-        {
-            "total_slot_period_tests": [total_tests],
-            "raw_p_significant": [raw_significant],
-            "fdr_significant": [fdr_significant],
-            "corrected_by_fdr": [corrected_by_fdr],
-            "raw_significant_percent": [
-                raw_significant / total_tests * 100 if total_tests > 0 else 0
-            ],
-            "fdr_significant_percent": [
-                fdr_significant / total_tests * 100 if total_tests > 0 else 0
-            ],
-            "corrected_away_percent_of_raw_sig": [
-                corrected_by_fdr / raw_significant * 100
-                if raw_significant > 0
-                else 0
-            ],
-        }
+    corrected_slot_period_df = (
+        corrected_slot_period_df[
+            ["slot", "period_1", "period_2", "p_value", "q_value_fdr"]
+        ]
+        .sort_values(["slot", "period_1", "period_2"])
+        .reset_index(drop=True)
     )
+
+    # Summarize separately for each slot because FDR correction
+    # is applied independently within each slot.
+    summary_rows: list[dict[str, object]] = []
+
+    for slot, slot_df in df.groupby("slot", sort=True):
+        total_tests = len(slot_df)
+
+        raw_significant = int(
+            slot_df["significant_p_value_05"].sum()
+        )
+
+        fdr_significant = int(
+            slot_df["significant_fdr_05"].sum()
+        )
+
+        corrected_by_fdr = raw_significant - fdr_significant
+
+        summary_rows.append(
+            {
+                "slot": slot,
+                "total_period_tests": total_tests,
+                "raw_p_significant": raw_significant,
+                "fdr_significant": fdr_significant,
+                "corrected_by_fdr": corrected_by_fdr,
+                "raw_significant_percent": (
+                    raw_significant / total_tests * 100
+                    if total_tests > 0
+                    else 0
+                ),
+                "fdr_significant_percent": (
+                    fdr_significant / total_tests * 100
+                    if total_tests > 0
+                    else 0
+                ),
+                "fdr_corrected_percent_of_raw_sig": (
+                    corrected_by_fdr / raw_significant * 100
+                    if raw_significant > 0
+                    else 0
+                ),
+            }
+        )
+
+    summary = pd.DataFrame(summary_rows)
 
     return summary, corrected_slot_period_df
