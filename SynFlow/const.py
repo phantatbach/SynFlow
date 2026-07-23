@@ -1,15 +1,15 @@
 import re
 
 DEFAULT_PATTERN = re.compile(
-    r'([^\t]+)\t'      # word form
-    r'([^\t]+)\t'      # lemma
-    r'([^\t]+)\t'      # POS
-    r'([^\t]+)\t'      # ID
-    r'([^\t]+)\t'      # HEAD
-    r'([^\t]+)'        # DEPREL
+    r"([^\t]+)\t"      # word form
+    r"([^\t]+)\t"      # lemma
+    r"([^\t]+)\t"      # POS
+    r"([^\t]+)\t"      # ID
+    r"([^\t]+)\t"      # HEAD
+    r"([^\t]+)"        # DEPREL
 )
 
-DEFAULT_COLS = ['id', 'subfolder', 'target']
+DEFAULT_COLS = ["id", "subfolder", "target"]
 
 VALID_FILLER_FORMATS = {
     "token_only",

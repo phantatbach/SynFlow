@@ -2,7 +2,7 @@
 from .freq import (
     count_keyword_tokens_by_period,
     freq_all_slots_by_period,
-    freq_all_slots_by_period_normalised_token_counts,
+    freq_all_slots_by_period_normalized_token_counts,
     freq_all_slots_by_period_relative,
     freq_top_union_slots_by_period,
     plot_freq_top_union_sfillers_by_period,
@@ -17,15 +17,17 @@ from .jsd import (
     plot_all_jsds_by_period,
     plot_items_jsd_by_period,
     plot_jsd_by_period,
+    plot_permutation_test_consecutive_jsd,
     print_jsd_by_period,
     sfillers_jsd_by_period,
+    summarize_fdr_correction,
 )
 
 __all__ = [
     # freq
     "count_keyword_tokens_by_period",
     "freq_all_slots_by_period",
-    "freq_all_slots_by_period_normalised_token_counts",
+    "freq_all_slots_by_period_normalized_token_counts",
     "freq_all_slots_by_period_relative",
     "freq_top_union_slots_by_period",
     "plot_freq_top_union_sfillers_by_period",
@@ -39,6 +41,8 @@ __all__ = [
     "plot_all_jsds_by_period",
     "plot_items_jsd_by_period",
     "plot_jsd_by_period",
+    "plot_permutation_test_consecutive_jsd",
     "print_jsd_by_period",
     "sfillers_jsd_by_period",
+    "summarize_fdr_correction"
 ]

@@ -267,6 +267,6 @@ def coverage_filter_df(df, min_cov_freq=1, coverage_per=.5):
     cov_filtered_df = (
         df.loc[keep].copy()
         .assign(coverage=coverage.loc[keep])
-        .sort_values('coverage', ascending=False)
+        .sort_values("coverage", ascending=False)
     )
     return cov_filtered_df

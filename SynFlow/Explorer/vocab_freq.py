@@ -19,10 +19,10 @@ def count_vocab_file(path: str, filler_format: str) -> Counter:
         raise ValueError(f"filler_format must be one of: {valid_formats}")
 
     local_vocab_counts = Counter()
-    with open(path, encoding='utf-8') as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if not line or line.startswith('<s') or line.startswith('</s>'):
+            if not line or line.startswith("<s") or line.startswith("</s>"):
                 continue
             
             # Split the lines into different parts
@@ -40,7 +40,7 @@ def count_vocab_file(path: str, filler_format: str) -> Counter:
 
 def count_vocab_parallel_subfolder(
     subfolder_path: str,
-    filler_format: str = 'lemma/pos',
+    filler_format: str = "lemma/pos",
 ) -> dict:
     # Get list of file
     all_files = []
@@ -78,7 +78,7 @@ def save_freqs(
     freq_df: pd.DataFrame,
     out_folder: str,
     subfolder: str,
-    filler_format: str = 'lemma/pos',
+    filler_format: str = "lemma/pos",
 ) -> str:
     """
     Write out `<filler_format>_freq.csv` into out_folder.
@@ -92,7 +92,7 @@ def save_freqs(
 def gen_vocab_freq(
     corpus_path: str,
     out_folder: str,
-    filler_format: str = 'lemma/pos',
+    filler_format: str = "lemma/pos",
 ) -> None:
     """
     Count vocabulary frequencies and save one CSV file for each corpus subfolder.

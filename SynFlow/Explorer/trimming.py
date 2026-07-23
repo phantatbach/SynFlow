@@ -14,7 +14,7 @@ def trimming(spath_df, trimmed_rels):
     Returns:
         pd.DataFrame: DataFrame đã trim slot.
     """
-    df = pd.read_csv(spath_df, sep='&')
+    df = pd.read_csv(spath_df, sep="&")
 
     # Lấy các cột slot (bỏ Subfolder, Frequency và Target)
     slot_cols = [c for c in df.columns if c not in NON_SLOT_COLS]
@@ -72,33 +72,33 @@ def merging(df, spath_df):
     slot_cols = [c for c in df.columns if c not in NON_SLOT_COLS]
 
     # Loại duplicate trong từng row (chiều ngang), sort để nhất quán
-    df['slot_key'] = df[slot_cols].apply(
+    df["slot_key"] = df[slot_cols].apply(
         lambda row: tuple(sorted(set(row.dropna()))),
         axis=1
     )
 
     # Loại dòng mà slot_key rỗng
-    df = df[df['slot_key'].apply(lambda x: len(x) > 0)]
+    df = df[df["slot_key"].apply(lambda x: len(x) > 0)]
 
     # Merge theo slot_key và Target
     merged = (
-        df.groupby(['Subfolder', 'Target', 'slot_key'], as_index=False)
-        .agg({'Frequency': 'sum'})
+        df.groupby(["Subfolder", "Target", "slot_key"], as_index=False)
+        .agg({"Frequency": "sum"})
     )
 
     # Tách slot_key ra lại thành cột
-    max_len = max(merged['slot_key'].apply(len))
-    slot_df = pd.DataFrame(merged['slot_key'].apply(lambda x: list(x) + [np.nan]*(max_len - len(x))).tolist(),
+    max_len = max(merged["slot_key"].apply(len))
+    slot_df = pd.DataFrame(merged["slot_key"].apply(lambda x: list(x) + [np.nan]*(max_len - len(x))).tolist(),
                            columns=[f"Slot_{i+1}" for i in range(max_len)])
 
-    merged = pd.concat([merged[['Subfolder', 'Frequency', 'Target']], slot_df], axis=1)
+    merged = pd.concat([merged[["Subfolder", "Frequency", "Target"]], slot_df], axis=1)
 
-    merged = merged.sort_values(['Subfolder','Frequency'], ascending=[True, False]).reset_index(drop=True)
+    merged = merged.sort_values(["Subfolder","Frequency"], ascending=[True, False]).reset_index(drop=True)
 
     # Lưu file
-    spath_df = spath_df.rsplit('.', 1)[0]
-    merged.to_csv(f'{spath_df}_trimmed.csv', sep='&', index=False)
-    print(f'Saved merged file to {spath_df}_trimmed.csv')
+    spath_df = spath_df.rsplit(".", 1)[0]
+    merged.to_csv(f"{spath_df}_trimmed.csv", sep="&", index=False)
+    print(f"Saved merged file to {spath_df}_trimmed.csv")
 
     return merged
 
@@ -135,23 +135,23 @@ def spe_group(spath_df: str, output_folder: str, target_lemma: str):
         Returns:
             str: Phần đầu tiên của slot.
         """
-        return slot.lstrip('>').split('>')[0].strip()
+        return slot.lstrip(">").split(">")[0].strip()
 
     out_dir = pathlib.Path(output_folder) # Chuẩn bị thư mục output
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Đọc CSV và xác định vị trí các cột quan trọng
-    with open(spath_df, encoding='utf-8-sig') as f:
-        reader = csv.reader(f, delimiter='&') # Iterator of rows
+    with open(spath_df, encoding="utf-8-sig") as f:
+        reader = csv.reader(f, delimiter="&") # Iterator of rows
 
         header = next(reader, None)
         if not header:
             raise ValueError("Empty CSV")
 
         try:
-            i_sub  = header.index('Subfolder')
-            i_freq = header.index('Frequency')
-            i_tgt  = header.index('Target')  # 3 cột chính, mọi cột sau Target là slot
+            i_sub  = header.index("Subfolder")
+            i_freq = header.index("Frequency")
+            i_tgt  = header.index("Target")  # 3 cột chính, mọi cột sau Target là slot
         except ValueError as e:
             raise ValueError("CSV must contain columns: Subfolder, Frequency, Target") from e
 
@@ -209,7 +209,7 @@ def spe_group(spath_df: str, output_folder: str, target_lemma: str):
         spe_by_subfolder[subf] = list(nodes.values()) # Add nodes to final dict, grouped by subfolders
 
     out_file = pathlib.Path(output_folder) / f"{target_lemma}_spath_comb_grouped.json"
-    with open(out_file, 'w', encoding='utf-8') as f:
+    with open(out_file, "w", encoding="utf-8") as f:
         json.dump(spe_by_subfolder, f, ensure_ascii=False, indent=2)
     print(f"Saved to {out_file}")
     return spe_by_subfolder

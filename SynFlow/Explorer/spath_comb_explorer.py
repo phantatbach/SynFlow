@@ -51,7 +51,7 @@ def process_file(args) -> Counter:
     path = os.path.join(corpus_folder, fname)
 
     has_target = False
-    has_target_check_string = f'\t{target_lemma}\t{target_pos}'
+    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
     
     with open(path, encoding="utf8") as fh:
         sent_tokens = []
@@ -100,7 +100,7 @@ def save_to_csv_with_subfolder(rows, output_path="output.csv"):
 
     # Ghi file
     with open(output_path, mode="w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f, delimiter='&')
+        writer = csv.writer(f, delimiter="&")
         header = ["Subfolder", "Frequency", "Target"] + [f"Slot{i+1}" for i in range(max_slots)]
         writer.writerow(header)
 

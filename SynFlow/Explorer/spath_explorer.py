@@ -23,10 +23,10 @@ def get_contexts(graph, id2d, tgt_ids, max_length):
             node, depth, path, seen = q.popleft() # seen riêng cho từng path
             if depth == max_length:
                 continue # Skip to the next item in the queue if we've reached the maximum path length
-            for nb in graph.get(node, []): # For each neighbour
+            for nb in graph.get(node, []): # For each neighbor
                 if nb in seen: # Prevent revisiting the same node in the same path
                     continue
-                lbl = id2d.get((node, nb)) # Get the edge label from node to neighbour
+                lbl = id2d.get((node, nb)) # Get the edge label from node to neighbor
                 if not lbl:
                     continue
                 new_path = path + [lbl]
@@ -51,28 +51,28 @@ def process_file(args):
     path = os.path.join(corpus_folder, fname)
 
     has_target = False
-    has_target_check_string = f'\t{target_lemma}\t{target_pos}'
+    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
 
-    with open(path, encoding='utf8') as fh:
+    with open(path, encoding="utf8") as fh:
         sent_tokens = []
         for line in fh:
-            line = line.rstrip('\n')
+            line = line.rstrip("\n")
 
             # Start a new sentence
-            if line.startswith('<s id'):
+            if line.startswith("<s id"):
                 sent_tokens = []
                 has_target = False # Reset for new sentence
             
             # End of a sentence. Build graph and process if target found
-            elif line.startswith('</s>'):
+            elif line.startswith("</s>"):
                 if sent_tokens and has_target == True:
                     # Build a dependency graph when the whole sentence is appended
                     id2lp, graph, id2d = build_graph(sent_tokens, pattern)
                     # Find words with the target lemma and POS
                     tgt_ids = [
                         idx for idx, lp in id2lp.items()
-                        if lp.split('/')[0] == target_lemma
-                        and lp.split('/')[1] == target_pos
+                        if lp.split("/")[0] == target_lemma
+                        and lp.split("/")[1] == target_pos
                     ]
                     # If match then find contexts
                     if tgt_ids:
@@ -94,8 +94,8 @@ def plot_dist(counter, target_lemma, max_length, top_n):
     plt.figure(figsize=(min(12, 0.3 * len(labels)), 6))
     plt.bar(range(len(freqs)), freqs)
     plt.xticks(range(len(labels)), labels, rotation=90)
-    plt.ylabel('Frequency')
-    plt.title(f'Top {top_n} slot-paths of “{target_lemma}” (max_length={max_length})')
+    plt.ylabel("Frequency")
+    plt.title(f"Top {top_n} slot-paths of “{target_lemma}” (max_length={max_length})")
     plt.tight_layout()
     plt.show()
 
@@ -133,7 +133,7 @@ def spath_explorer(
         # Gather filenames within each subfolder in the corpus folder
         files = [
             f for f in os.listdir(subfolder_path)
-            if f.endswith(('.conllu', '.txt'))
+            if f.endswith((".conllu", ".txt"))
         ]
 
         # prepare per‐file slot-paths tuples
@@ -148,8 +148,8 @@ def spath_explorer(
             for ctr in pool.imap_unordered(process_file, slotpaths_list, chunksize=10):
                 global_counter.update(ctr)
 
-        print(f'[{subfolder}] Collected {sum(global_counter.values())} context links, '
-              f'{len(global_counter)} distinct arguments.')
+        print(f"[{subfolder}] Collected {sum(global_counter.values())} context links, "
+              f"{len(global_counter)} distinct arguments.")
 
         plot_dist(global_counter, target_lemma, max_length, top_n)
 
@@ -157,9 +157,9 @@ def spath_explorer(
         sorted_slotpaths = dict(sorted(global_counter.items(), key=lambda x: x[1], reverse=True))
         all_results[subfolder] = sorted_slotpaths  # <-- save by subfolder
 
-    output_path = os.path.join(output_folder, f'{target_lemma}_{target_pos}_spaths.json')
-    with open(output_path, 'w', encoding='utf-8') as f_out:
+    output_path = os.path.join(output_folder, f"{target_lemma}_{target_pos}_spaths.json")
+    with open(output_path, "w", encoding="utf-8") as f_out:
         json.dump(all_results, f_out, ensure_ascii=False, indent=2)
-    print(f'Saved slot-path frequencies to: {output_path}')
+    print(f"Saved slot-path frequencies to: {output_path}")
 
     return global_counter

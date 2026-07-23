@@ -45,7 +45,7 @@ def find_by_path(graph: Dict[int, List[int]], id2context: Dict[int, tuple[str, s
               Returns an empty list if no path is found.
     """
     # Split the single_path_pattern into sequential steps.
-    seq_steps = [r.strip() for r in single_path_pattern.split('>')]
+    seq_steps = [r.strip() for r in single_path_pattern.split(">")]
     num_steps = len(seq_steps)
     results: List[Tuple[List[str], str]] = []
 
@@ -163,18 +163,18 @@ def process_file(
     results: List[Tuple[str, str, List[Tuple[List[str], str]]]] = []
 
     # Parse the combined 'deprel' string into individual required path patterns
-    required_path_patterns_list = [p.strip() for p in rel_combined.split(' & ') if p.strip()]
+    required_path_patterns_list = [p.strip() for p in rel_combined.split(" & ") if p.strip()]
     required_path_patterns_set = set(required_path_patterns_list) # For faster lookup and comparison
 
     if not required_path_patterns_list:
         return results
     
     has_target = False
-    has_target_check_string = f'\t{target_lemma}\t{target_pos}'
+    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
 
     filepath = os.path.join(corpus_folder, fname)
     try:
-        with open(filepath, encoding='utf8') as fh:
+        with open(filepath, encoding="utf8") as fh:
             sent_tokens, sent_forms = [], [] # Init for the whole file. Sent_tokens = lines, sent_forms = word forms only
 
             for line in fh:
@@ -213,12 +213,12 @@ def process_file(
                                 found_paths_details.extend(current_path_results) # If the path is found, add it to the results
 
                             if all_paths_found_for_this_target: # If at least all required paths are present
-                                if search_mode == 'close':
+                                if search_mode == "close":
                                     # For 'close' search_mode, we need to check if ONLY the required PATHS are present.
                                     # No horizontal expansion and no vertical specialisation are allowed
 
                                     # Derive max depth from the rel‐patterns themselves
-                                    depths = [ len(p.split('>')) for p in required_path_patterns_list ]
+                                    depths = [ len(p.split(">")) for p in required_path_patterns_list ]
                                     max_check_depth = max(depths)
                                     all_unique_paths_from_target = _find_all_unique_paths(
                                         graph, id2d, current_target_id, max_check_depth # Use the new argument here
@@ -229,13 +229,13 @@ def process_file(
                                     if all_unique_paths_from_target == required_path_patterns_set:
                                         results.append((sent_id, sentence_text, found_paths_details))
 
-                                elif search_mode == 'closeh':
+                                elif search_mode == "closeh":
                                     # For 'closeh' search_mode, we need to check if ONLY the required SLOTS are present.
                                     # No horizontal expansion is allowed but the slots can be vertically specialised.
 
                                     # 1) compute required first‐hop labels
                                     required_horizontals = {
-                                        p.split('>')[0].strip()
+                                        p.split(">")[0].strip()
                                         for p in required_path_patterns_list
                                     }
                                     # 2) collect the actual first‐hop labels from this target
@@ -248,7 +248,7 @@ def process_file(
                                     if actual_direct == required_horizontals:
                                         results.append((sent_id, sentence_text, found_paths_details))
                                     
-                                elif search_mode == 'open':
+                                elif search_mode == "open":
                                     # 'open' search_mode: if all required paths are found, it's a match.
                                     results.append((sent_id, sentence_text, found_paths_details))
 
@@ -276,8 +276,8 @@ def full_rel_explorer(corpus_folder: str,
                  target_lemma: str = None,
                  target_pos: str   = None,
                  deprel: str          = None,
-                 search_mode: str         = 'open',
-                 filler_format: str = 'lemma/pos',
+                 search_mode: str         = "open",
+                 filler_format: str = "lemma/pos",
                  num_processes: int= max(1, cpu_count() - 1)
                 ) -> List[Tuple[str, str, List[Tuple[List[str], str]]]]:
     """
@@ -314,7 +314,7 @@ def full_rel_explorer(corpus_folder: str,
     if target_lemma is None or target_pos is None or deprel is None:
         print("Error: 'target_lemma', 'target_pos', and 'deprel' must be provided.")
         return []
-    if search_mode not in ['open', 'close', 'closeh']:
+    if search_mode not in ["open", "close", "closeh"]:
         print("Error: 'search_mode' must be 'open' or 'close' or 'closeh'.")
         return []
     if filler_format not in VALID_FILLER_FORMATS:

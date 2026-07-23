@@ -42,7 +42,7 @@ def find_by_path(graph, id2context, id2deprel, tgt_ids, deprel, filler_format):
               - The actual path string found (e.g., "chi_obl > chi_case").
               Returns an empty list if no path is found.
     """
-    seq = [r.strip() for r in deprel.split('>')]
+    seq = [r.strip() for r in deprel.split(">")]
     N   = len(seq)
     out = []
 
@@ -81,11 +81,11 @@ def process_file(
     pattern = pattern or DEFAULT_PATTERN
 
     has_target = False
-    has_target_check_string = f'\t{target_lemma}\t{target_pos}'
+    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
 
     results = []
     filepath = os.path.join(corpus_folder, fname)
-    with open(filepath, encoding='utf8') as fh:
+    with open(filepath, encoding="utf8") as fh:
         sent_tokens, sent_forms = [], [] # Init for the whole file. Sent_tokens = lines, sent_forms = word forms only
 
         for line in fh:

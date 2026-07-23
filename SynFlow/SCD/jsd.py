@@ -1,6 +1,7 @@
 import ast
 import math
-from typing import Dict, List, Optional
+from collections.abc import Iterable, Iterator, Sequence
+from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +18,7 @@ from statsmodels.stats.multitest import multipletests
 
 #---------------------------------------------------------------
 # Helper function to calculate JSD
-def cal_jsd(distribution_a, distribution_b):
+def cal_jsd(distribution_a: np.ndarray, distribution_b: np.ndarray) -> float:
     """
     Compute the Jensen-Shannon divergence between two probability distributions.
 
@@ -31,7 +32,11 @@ def cal_jsd(distribution_a, distribution_b):
     return jensenshannon(distribution_a, distribution_b, base=2)**2  # squared distance = divergence
 
 # Helper function to decompose JSD
-def cal_contrib_jsd(distribution_a, distribution_b, vocab):
+def cal_contrib_jsd(
+    distribution_a: np.ndarray,
+    distribution_b: np.ndarray,
+    vocab: Sequence[Any],
+) -> List[Dict[str, Any]]:
     """
     Decompose a global JSD score into pointwise item contributions.
 
@@ -66,9 +71,17 @@ def cal_contrib_jsd(distribution_a, distribution_b, vocab):
 
     return contrib
 
-# Add direction prefix for JSD visualisation
-def direction_prefix_map(vocab, distribution_a, distribution_b, prefix_increase="in_", prefix_decrease="de_",
-                          prefix_born = 'bo_', prefix_lost = 'lo_', neutral=""):
+# Add direction prefix for JSD visualization
+def direction_prefix_map(
+    vocab: Sequence[Any],
+    distribution_a: np.ndarray,
+    distribution_b: np.ndarray,
+    prefix_increase: str = "in_",
+    prefix_decrease: str = "de_",
+    prefix_born: str = "bo_",
+    prefix_lost: str = "lo_",
+    neutral: str = "",
+) -> Dict[Any, str]:
     """
     Maps slot types to prefixed names based on the direction of the change.
 
@@ -102,7 +115,7 @@ def direction_prefix_map(vocab, distribution_a, distribution_b, prefix_increase=
 
 #---------------------------------------------------------------
 # Print JSD
-def print_jsd_by_period(jsd_results):
+def print_jsd_by_period(jsd_results: Dict[Any, Dict[str, Any]]) -> None:
     """
     Print the Jensen-Shannon Divergence and top shifted items for each period.
 
@@ -117,11 +130,11 @@ def print_jsd_by_period(jsd_results):
         print(f"\n=== Shift to period {period} ===")
         print(f"Jensen-Shannon Divergence: {result['JSD']:.4f}")
         print("Top shifted items:")
-        for item in result['top_shifted_items']:
+        for item in result["top_shifted_items"]:
             print(f"  {item['item']}: {item['contribution']:.4f}")
 
 # Plot JSD
-def plot_jsd_by_period(jsd_results):
+def plot_jsd_by_period(jsd_results: Dict[Any, Dict[str, Any]]) -> None:
     """
     Plot Jensen-Shannon Divergence values across period transitions.
 
@@ -133,10 +146,10 @@ def plot_jsd_by_period(jsd_results):
         None
     """
     periods = list(jsd_results.keys())
-    jsd_scores = [jsd_results[d]['JSD'] for d in periods]
+    jsd_scores = [jsd_results[d]["JSD"] for d in periods]
 
     plt.figure(figsize=(15, 5))
-    plt.plot(periods, jsd_scores, marker='o')
+    plt.plot(periods, jsd_scores, marker="o")
     plt.title("Jensen-Shannon Divergence Between Periods")
     plt.xlabel("Periods")
     plt.ylabel("JSD")
@@ -145,7 +158,11 @@ def plot_jsd_by_period(jsd_results):
     plt.show()
 
 # Plot top-N shifting items
-def plot_items_jsd_by_period(jsd_results, top_n=10, cols=3):
+def plot_items_jsd_by_period(
+    jsd_results: Dict[Any, Dict[str, Any]],
+    top_n: int = 10,
+    cols: int = 3,
+) -> None:
     """
     Plot the top-N shifting items between two periods.
 
@@ -163,7 +180,7 @@ def plot_items_jsd_by_period(jsd_results, top_n=10, cols=3):
 
     # Find global max contribution across all periods
     global_max = max(
-        max((item['contribution'] for item in result['top_shifted_items'][:top_n]), default=0)
+        max((item["contribution"] for item in result["top_shifted_items"][:top_n]), default=0)
         for result in jsd_results.values()
     )
 
@@ -172,18 +189,18 @@ def plot_items_jsd_by_period(jsd_results, top_n=10, cols=3):
 
     for idx, (decade, result) in enumerate(jsd_results.items()):
         ax = axes[idx]
-        top_words = result['top_shifted_items'][:top_n]
+        top_words = result["top_shifted_items"][:top_n]
         labels = [
-            item['item'].replace("in_", "").replace("de_", "").replace("bo_", "").replace("lo_", "")
+            item["item"].replace("in_", "").replace("de_", "").replace("bo_", "").replace("lo_", "")
             for item in top_words
         ]
-        values = [item['contribution'] for item in top_words]
+        values = [item["contribution"] for item in top_words]
 
         colors = [
-            "lightgreen" if item['item'].startswith("in_") else 
-            "lightcoral" if item['item'].startswith("de_") else 
-            "darkgreen" if item['item'].startswith("bo_") else
-            "darkred" if item['item'].startswith("lo_") else
+            "lightgreen" if item["item"].startswith("in_") else 
+            "lightcoral" if item["item"].startswith("de_") else 
+            "darkgreen" if item["item"].startswith("bo_") else
+            "darkred" if item["item"].startswith("lo_") else
             "purple"
             for item in top_words
         ]
@@ -208,17 +225,17 @@ def plot_items_jsd_by_period(jsd_results, top_n=10, cols=3):
 #----------------------------------------------------------------------------------
 
 def sfillers_jsd_by_period(
-    df,
-    period_col="subfolder",
-    slot_col="chi_amod",
-    min_freq=1,
-    mode="all",
-    all_periods=None,
-    top_n=10,
-    weighting=False,
-    k=20.0,
-    include_zero_slots=False,
-):
+    df: pd.DataFrame,
+    period_col: str = "subfolder",
+    slot_col: str = "chi_amod",
+    min_freq: int = 1,
+    mode: str = "all",
+    all_periods: Optional[Sequence[Any]] = None,
+    top_n: int = 10,
+    weighting: bool = False,
+    k: float = 20.0,
+    include_zero_slots: bool = False,
+) -> Dict[Any, Dict[str, Any]]:
     """
     Compute filler-level JSD for one slot across consecutive periods.
 
@@ -391,7 +408,7 @@ def sfillers_jsd_by_period(
 def plot_all_jsds_by_period(
     jsd_df: pd.DataFrame,
     slots: Optional[List[str]] = None,
-    col_to_plot: str = None,
+    col_to_plot: Optional[str] = None,
     layout: str = "combined",
     title: str = "Weighted JSD for all slots",
     y_label: str = "JSD",
@@ -399,7 +416,7 @@ def plot_all_jsds_by_period(
     height: int = 700,
     width: int = 1100,
     save_path: Optional[str] = None,
-):
+) -> go.Figure:
     """
     Interactive time-series plot for slot-level JSD DataFrames.
 
@@ -626,7 +643,7 @@ def plot_all_jsds_by_period(
     return fig
 
 #----------------------------------------------------------------------------------
-def _sort_periods(periods):
+def _sort_periods(periods: Iterable[Any]) -> List[Any]:
     """
     Sort period labels numerically when possible.
 
@@ -645,7 +662,7 @@ def _sort_periods(periods):
     except Exception:
         return sorted(periods)
 
-def _period_sort_value(period):
+def _period_sort_value(period: Any) -> Any:
     """
     Convert a period label to a sorting value when possible.
     """
@@ -654,7 +671,7 @@ def _period_sort_value(period):
     except Exception:
         return period
 
-def _format_period_label(period_1, period_2):
+def _format_period_label(period_1: Any, period_2: Any) -> str:
     """
     Format a period transition label.
 
@@ -678,7 +695,7 @@ def _format_period_label(period_1, period_2):
     except Exception:
         return f"{period_2}"
 
-def _parse_filler_cell(cell):
+def _parse_filler_cell(cell: Any) -> List[Any]:
     """
     Convert one DataFrame cell into a list of fillers.
 
@@ -723,12 +740,12 @@ def _parse_filler_cell(cell):
 
 # Compute the consecutive JSD of the slots
 def consecutive_jsd(
-    temp_slot_df,
-    slot_col=None,
-    period_col="subfolder",
-    mode="all",
-    all_periods=None
-):
+    temp_slot_df: pd.DataFrame,
+    slot_col: Optional[str] = None,
+    period_col: str = "subfolder",
+    mode: str = "all",
+    all_periods: Optional[Sequence[Any]] = None,
+) -> pd.DataFrame:
     """
     Compute consecutive Jensen-Shannon Divergence for one slot.
 
@@ -844,11 +861,11 @@ def consecutive_jsd(
 
 def compute_consecutive_jsd_df(
     sfiller_df: pd.DataFrame,
-    period_col="subfolder",
-    min_freq=1,
-    mode="all",
-    all_periods=None
-):
+    period_col: str = "subfolder",
+    min_freq: int = 1,
+    mode: str = "all",
+    all_periods: Optional[Sequence[Any]] = None,
+) -> pd.DataFrame:
     """
     Compute consecutive JSD for all slot-filler columns in a DataFrame.
 
@@ -1025,8 +1042,8 @@ def compute_weighted_consecutive_jsd_df(
     sfiller_df: pd.DataFrame,
     period_col: str = "subfolder",
     min_freq: int = 1,
-    mode="all",
-    all_periods=None,
+    mode: str = "all",
+    all_periods: Optional[Sequence[Any]] = None,
     k: float = 20.0,
     include_zero_slots: bool = False,
 ) -> pd.DataFrame:
@@ -1097,7 +1114,11 @@ def compute_weighted_consecutive_jsd_df(
 #----------------------------------------------------------------------------------
 # Permutation test
 # Helper functions
-def shuffle_period_labels(df_pair, period_col, rng):
+def shuffle_period_labels(
+    df_pair: pd.DataFrame,
+    period_col: str,
+    rng: np.random.Generator,
+) -> pd.DataFrame:
     """
     Shuffle row-level period labels while preserving period sizes.
 
@@ -1129,7 +1150,7 @@ def shuffle_period_labels(df_pair, period_col, rng):
 
     return out
 
-def chunk_list(x, chunk_size):
+def chunk_list(x: Sequence[Any], chunk_size: int) -> Iterator[Sequence[Any]]:
     """
     Yield consecutive chunks from a sequence.
 
@@ -1149,7 +1170,10 @@ def chunk_list(x, chunk_size):
     for i in range(0, len(x), chunk_size):
         yield x[i:i + chunk_size]
 
-def jsd_stat_df_to_keyed_values(jsd_df, value_col):
+def jsd_stat_df_to_keyed_values(
+    jsd_df: pd.DataFrame,
+    value_col: str,
+) -> Dict[tuple[Any, Any, Any], float]:
     """
     Convert a JSD DataFrame to keyed values for permutation matching.
 
@@ -1179,13 +1203,13 @@ def jsd_stat_df_to_keyed_values(jsd_df, value_col):
     }
 
 def _permutation_consecutive_jsd_worker_chunk(
-    df_pair,
-    period_col,
-    seeds,
-    min_freq,
-    k,
-    weighting,
-):
+    df_pair: pd.DataFrame,
+    period_col: str,
+    seeds: Sequence[int],
+    min_freq: int,
+    k: float,
+    weighting: bool,
+) -> List[Dict[tuple[Any, Any, Any], float]]:
     """
     Run a chunk of consecutive-JSD permutations.
 
@@ -1254,18 +1278,18 @@ def _permutation_consecutive_jsd_worker_chunk(
     return chunk_results
 
 def permutation_test_consecutive_jsd(
-    sfiller_df,
-    period_col="subfolder",
-    all_periods=None,
-    n_permutations=1000,
-    min_freq=1,
-    k=100,
-    weighting=True,
-    seed=42,
-    keep_cols=None,
-    n_jobs=8,
-    chunk_size=50,
-):
+    sfiller_df: pd.DataFrame,
+    period_col: str = "subfolder",
+    all_periods: Optional[Sequence[Any]] = None,
+    n_permutations: int = 1000,
+    min_freq: int = 1,
+    k: float = 100,
+    weighting: bool = True,
+    seed: int = 42,
+    keep_cols: Optional[Sequence[str]] = None,
+    n_jobs: int = 8,
+    chunk_size: int = 50,
+) -> pd.DataFrame:
     """
     Run pairwise permutation tests for consecutive JSD.
 
@@ -1415,7 +1439,7 @@ def permutation_test_consecutive_jsd(
                             null_keyed_values.get(slot_transition_key, np.nan)
                         )
 
-        # 4. Summarise null distribution
+        # 4. Summarize null distribution
         for slot_transition_key, obs_value in obs_values.items():
             slot, period_1, period_2 = slot_transition_key
 
@@ -1428,12 +1452,14 @@ def permutation_test_consecutive_jsd(
                 null_sd = np.nan
                 null_q95 = np.nan
                 null_q99 = np.nan
+                is_significant_pval = False
             else:
                 p_value = (1 + np.sum(arr >= obs_value)) / (len(arr) + 1)
                 null_mean = np.mean(arr)
                 null_sd = np.std(arr, ddof=1)
                 null_q95 = np.quantile(arr, 0.95)
                 null_q99 = np.quantile(arr, 0.99)
+                is_significant_pval = p_value < 0.05 
 
             results.append({
                 "slot": slot,
@@ -1449,6 +1475,7 @@ def permutation_test_consecutive_jsd(
                 "null_q99": null_q99,
                 "p_value": p_value,
                 "n_permutations": len(arr),
+                "significant_p_value_05": is_significant_pval
             })
 
     result_df = pd.DataFrame(results)
@@ -1468,6 +1495,7 @@ def permutation_test_consecutive_jsd(
             "null_q99",
             "p_value",
             "n_permutations",
+            "significant_p_value_05"
             "q_value_fdr",
             "significant_fdr_05",
         ])
@@ -1497,3 +1525,188 @@ def permutation_test_consecutive_jsd(
         result_df.loc[valid_indices, "significant_fdr_05"] = reject
 
     return result_df
+
+def plot_permutation_test_consecutive_jsd(
+    perm_result_df: pd.DataFrame
+    
+) -> None:
+    # Use period_2 as the x variable
+    perm_result_df["period_label"] = perm_result_df["period_1"].astype(str) + " vs " + perm_result_df["period_2"].astype(str)
+
+    slots = sorted(perm_result_df["slot"].unique())
+
+    ncols = 3
+    nrows = int(np.ceil(len(slots) / ncols))
+
+    fig, axes = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=(5 * ncols, 3.5 * nrows),
+        sharex=True
+    )
+
+    axes = axes.flatten()
+
+    # X-axis ticks and labels
+    tick_df = (
+        perm_result_df[["period_2", "period_label"]]
+        .drop_duplicates()
+        .sort_values("period_2")
+    )
+
+    x_ticks = tick_df["period_2"].to_numpy()
+    x_labels = tick_df["period_label"].to_numpy()
+
+    for ax, slot in zip(axes, slots):
+        s = perm_result_df[perm_result_df["slot"] == slot].sort_values("period_2")
+
+        ax.plot(
+            s["period_2"],
+            s["observed_statistic"],
+            marker="o",
+            label="Observed JSD"
+        )
+
+        ax.plot(
+            s["period_2"],
+            s["null_mean"],
+            linestyle="--",
+            label="Null mean"
+        )
+
+        ax.plot(
+            s["period_2"],
+            s["null_q95"],
+            linestyle=":",
+            label="Null q95"
+        )
+
+        ax.plot(
+            s["period_2"],
+            s["null_q99"],
+            linestyle="-.",
+            label="Null q99"
+        )
+
+        # FDR-significant points only
+        sig = s[s["significant_fdr_05"]]
+
+        ax.scatter(
+            sig["period_2"],
+            sig["observed_statistic"],
+            marker="*",
+            s=140,
+            label="FDR Sig, q < .05",
+            zorder=5
+        )
+
+        ax.set_title(slot)
+        ax.set_ylabel("Weighted JSD")
+        ax.axhline(0, linewidth=0.8)
+
+        # Show period labels on x-axis
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels(x_labels, rotation=45, ha="right")
+
+        # Because sharex=True often hides upper subplot labels
+        ax.tick_params(axis="x", labelbottom=True)
+
+    # Remove unused axes
+    for ax in axes[len(slots):]:
+        ax.remove()
+
+    # Collect unique legend entries
+    handles, labels = [], []
+    for ax in axes[:len(slots)]:
+        h, l = ax.get_legend_handles_labels()
+        handles.extend(h)
+        labels.extend(l)
+
+    unique = dict(zip(labels, handles))
+
+    # Compact title + legend spacing
+    fig_h = fig.get_figheight()
+
+    title_y  = 1 - 0.08 / fig_h
+    legend_y = 1 - 0.25 / fig_h
+    top_axes = 1 - 0.38 / fig_h
+
+    fig.suptitle(
+        "Observed weighted JSD against permutation null distribution",
+        y=title_y,
+        fontsize=10
+    )
+
+    fig.legend(
+        unique.values(),
+        unique.keys(),
+        loc="upper center",
+        ncol=5,
+        bbox_to_anchor=(0.5, legend_y),
+        frameon=False,
+        borderaxespad=0,
+        fontsize=8
+    )
+
+    fig.supxlabel("Time period", fontsize=9)
+
+    plt.tight_layout(rect=[0, 0.035, 1, top_axes])
+    plt.show()
+
+import pandas as pd
+
+
+def summarize_fdr_correction(
+    perm_result_df: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Summarize FDR correction and return corrected-away slot-period rows."""
+    required_cols = {
+        "slot",
+        "period_1",
+        "period_2",
+        "p_value",
+        "q_value_fdr",
+        "significant_p_value_05",
+        "significant_fdr_05",
+    }
+    missing_cols = required_cols - set(perm_result_df.columns)
+    if missing_cols:
+        raise ValueError(f"perm_result_df is missing columns: {sorted(missing_cols)}")
+
+    df = perm_result_df.copy()
+
+    corrected_slot_period_df = df[
+        df["significant_p_value_05"]
+        & ~df["significant_fdr_05"]
+    ].copy()
+
+    corrected_slot_period_df = corrected_slot_period_df[
+        ["slot", "period_1", "period_2", "p_value", "q_value_fdr"]
+    ].sort_values(["slot", "period_1", "period_2"])
+
+    total_tests = len(df)
+    raw_significant = int(df["significant_p_value_05"].sum())
+    fdr_significant = int(df["significant_fdr_05"].sum())
+    corrected_by_fdr = len(corrected_slot_period_df)
+
+    summary = pd.DataFrame(
+        {
+            "total_slot_period_tests": [total_tests],
+            "raw_p_significant": [raw_significant],
+            "fdr_significant": [fdr_significant],
+            "corrected_by_fdr": [corrected_by_fdr],
+            "raw_significant_percent": [
+                raw_significant / total_tests * 100 if total_tests > 0 else 0
+            ],
+            "fdr_significant_percent": [
+                fdr_significant / total_tests * 100 if total_tests > 0 else 0
+            ],
+            "corrected_away_percent_of_raw_sig": [
+                corrected_by_fdr / raw_significant * 100
+                if raw_significant > 0
+                else 0
+            ],
+        }
+    )
+
+    return summary, corrected_slot_period_df

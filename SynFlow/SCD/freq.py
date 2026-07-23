@@ -75,7 +75,7 @@ def freq_all_slots_by_period(json_path):
     return df.fillna(0).astype(float)
 
 # Compute the frequency (normalized by the number of tokens in that period) of ALL slots
-def freq_all_slots_by_period_normalised_token_counts(json_path, normalized = False, 
+def freq_all_slots_by_period_normalized_token_counts(json_path, normalized = False, 
                                                      token_counts = None):
     """
     Compute the frequency (normalized by the number of tokens in that period) of all slots
@@ -90,7 +90,7 @@ def freq_all_slots_by_period_normalised_token_counts(json_path, normalized = Fal
     """
     df = freq_all_slots_by_period(json_path)
 
-    # Normalised by the number of token counts in that period
+    # Normalized by the number of token counts in that period
     if normalized:
         if token_counts is None:
             raise ValueError("token_counts must be provided when normalized=True")
@@ -164,7 +164,7 @@ def freq_top_union_slots_by_period(json_path, top_n=10, relative=False,
 
     df_filtered = df[list(top_n_union)].astype(float)
 
-    # Normalised by the number of token counts in that period
+    # Normalized by the number of token counts in that period
     if normalized:
         if token_counts is None:
             raise ValueError("token_counts must be provided when normalized=True")
@@ -272,12 +272,12 @@ def freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
 
     # Compute frequency ---
     if normalized:
-        token_counts = df_top.groupby(time_col)['id'].nunique().reset_index(name='token_count')
-        count_df = df_top.groupby([time_col, slot_type]).size().reset_index(name='count')
+        token_counts = df_top.groupby(time_col)["id"].nunique().reset_index(name="token_count")
+        count_df = df_top.groupby([time_col, slot_type]).size().reset_index(name="count")
         count_df = count_df.merge(token_counts, on=time_col)
-        count_df['norm_count'] = count_df['count'] / count_df['token_count']
+        count_df["norm_count"] = count_df["count"] / count_df["token_count"]
     else:
-        count_df = df_top.groupby([time_col, slot_type]).size().reset_index(name='count')
+        count_df = df_top.groupby([time_col, slot_type]).size().reset_index(name="count")
     
     return count_df
 
@@ -302,16 +302,16 @@ def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
 
     # Assign y_axis
     if normalized:
-        y = 'norm_count'
-        ylabel = 'Frequency per occurrence of target token'
+        y = "norm_count"
+        ylabel = "Frequency per occurrence of target token"
     else: 
-        y = 'count'
-        ylabel = 'Absolute Frequency'
+        y = "count"
+        ylabel = "Absolute Frequency"
 
     # Assign numeric x-axis for correct time ordering
-    count_df['time_num'] = count_df[time_col]
-    tick_map = count_df.drop_duplicates('time_num')[['time_num', time_col]].sort_values('time_num')
-    x_col = 'time_num'
+    count_df["time_num"] = count_df[time_col]
+    tick_map = count_df.drop_duplicates("time_num")[["time_num", time_col]].sort_values("time_num")
+    x_col = "time_num"
 
     # Ensure consistent ordering of slot fillers when plotting
     filler_order = sorted(count_df[slot_type].unique(), key=lambda s: str(s).lower())
@@ -344,12 +344,12 @@ def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
 
     fig.update_layout(
         xaxis=dict(
-            tickmode='array',
-            tickvals=tick_map['time_num'],
+            tickmode="array",
+            tickvals=tick_map["time_num"],
             ticktext=tick_map[time_col]
         ),
         legend_title_text=slot_type,
-        hovermode='x unified',
+        hovermode="x unified",
         height=500,
         width=1000
     )
