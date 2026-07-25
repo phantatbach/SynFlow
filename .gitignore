@@ -1,3 +1,4 @@
 case_studies/
 **/__pycache__/
 **/*.pyc
+SynFlow/__pycache__/
