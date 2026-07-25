@@ -1,5 +1,5 @@
 case_studies/
-**/__pycache
+**/__pycache/
 **/*.pyc
 
 
