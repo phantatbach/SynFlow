@@ -21,6 +21,8 @@ from .jsd import (
     print_jsd_by_period,
     sfillers_jsd_by_period,
     summarize_fdr_correction,
+    summarize_across_k,
+    test_multiple_k,
 )
 
 __all__ = [
@@ -44,5 +46,8 @@ __all__ = [
     "plot_permutation_test_consecutive_jsd",
     "print_jsd_by_period",
     "sfillers_jsd_by_period",
-    "summarize_fdr_correction"
+    "summarize_fdr_correction",
+    "summarize_across_k",
+    "test_multiple_k",
+ 
 ]

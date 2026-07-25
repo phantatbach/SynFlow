@@ -15,6 +15,10 @@ from .full_rel_explorer import (
     full_rel_explorer,
     )
 
+from .construction import (
+    construction_explorer,
+    )
+
 from .get_contexts import (
     get_contexts,
     )
@@ -33,6 +37,7 @@ from .sfiller_df import (
 __all__ = [
     build_sfiller_df,
     compute_saturating_support_from_sfiller_df,
+    construction_explorer,
     full_rel_explorer,
     get_contexts,
     merge_sfiller_df_columns,

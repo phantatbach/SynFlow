@@ -1736,3 +1736,163 @@ def summarize_fdr_correction(
     summary = pd.DataFrame(summary_rows)
 
     return summary, corrected_slot_period_df
+
+#---------------------------------
+# Testing with multiple k
+def test_multiple_k(
+    k_list: List,
+    sfiller_df: pd.DataFrame,
+    period_col: str = "subfolder",
+    all_periods: Optional[Sequence[Any]] = None,
+    n_permutations: int = 1000,
+    min_freq: int = 1,
+    k: float = 100,
+    weighting: bool = True,
+    seed: int = 42,
+    keep_cols: Optional[Sequence[str]] = None,
+    n_jobs: int = 8,
+    chunk_size: int = 50,
+) -> pd.DataFrame:
+
+    results_list = {}
+
+    for k in k_list:
+        print(f"Testing with k = {k}")
+        result = permutation_test_consecutive_jsd(
+            sfiller_df=sfiller_df,
+            period_col="subfolder",
+            n_permutations=1000,
+            min_freq=2,
+            k=k,
+            weighting=True,
+            seed=42,
+            n_jobs=100,
+            chunk_size=10,
+        )
+        results_list[k] = result
+
+    # Combine all k-results into one dataframe
+    results_dict = []
+
+    for k, df in results_list.items():
+        tmp = df.copy()
+        tmp["k"] = k
+        results_dict.append(tmp)
+
+    results_dict = pd.concat(results_dict, ignore_index=True)
+
+    return results_dict
+
+
+def summarize_k(mult_k_df: pd.DataFrame) -> pd.DataFrame:
+    """Summarize the number and proportion of significant tests for each k."""
+
+    output = []
+
+    for k, k_df in mult_k_df.groupby("k"):
+        n_tests = len(k_df)
+
+        row = {
+            "k": k,
+            "n_tests": n_tests,
+        }
+
+        if "p_value" in k_df.columns:
+            n_p_05 = (k_df["p_value"] <= 0.05).sum()
+            row["n_p_05"] = n_p_05
+            row["prop_p_05"] = n_p_05 / n_tests
+
+        if "significant_fdr_05" in k_df.columns:
+            n_sig = k_df["significant_fdr_05"].sum()
+            row["n_sig_fdr_05"] = n_sig
+            row["prop_sig_fdr_05"] = n_sig / n_tests
+
+        output.append(row)
+
+    return pd.DataFrame(output).sort_values("k")
+
+def summarize_k_slot(
+    mult_k_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Count significant transitions for each slot and k.
+    """
+
+    sig_col = "significant_fdr_05"
+
+    index_columns = ["slot"]
+
+    if "target" in mult_k_df.columns:
+        index_columns = ["target", *index_columns]
+
+    slot_counts = (
+        mult_k_df
+        .groupby(index_columns + ["k"])[sig_col]
+        .sum()
+        .reset_index(name="n_significant_transitions")
+    )
+
+    k_slot = (
+        slot_counts
+        .pivot(
+            index=index_columns,
+            columns="k",
+            values="n_significant_transitions",
+        )
+        .fillna(0)
+        .astype(int)
+        .sort_index()
+    )
+
+    return k_slot_summary
+
+def summarize_k_slot_period(
+    mult_k_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Show whether each slot-period transition is significant
+    for each k value.
+    """
+
+    sig_col = "significant_fdr_05"
+
+    index_columns = ["slot", "period_2"]
+
+    if "target" in mult_k_df.columns:
+        index_columns = ["target", *index_columns]
+
+    k_slot_period = mult_k_df.pivot_table(
+        index=index_columns,
+        columns="k",
+        values=sig_col,
+        aggfunc="max",
+        fill_value=False,
+    )
+
+    k_slot_period["n_sig_across_k"] = k_slot_period.sum(axis=1)
+
+    return k_slot_period.sort_index()
+
+
+def summarize_across_k(
+    mult_k_df: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Produce all summaries describing how results change across k.
+
+    Returns
+    -------
+    k_summary
+        Overall statistics for each k.
+
+    k_slot_summary
+        Number of significant transitions for each slot across k.
+    
+    k_slot_period_summary
+        Significance of individual slot-period transitions across k.
+    """
+
+    k_summary = summarize_k(mult_k_df)
+    k_slot_summary = summarize_k_slot(mult_k_df)
+    k_slot_period_summary = summarize_k_slot_period(mult_k_df)
+    return k_summary, k_slot_summary, k_slot_period_summary
