@@ -1,360 +1,549 @@
-import re
+"""Search parsed corpora for target-anchored dependency relation paths."""
+
 import os
+import re
+from dataclasses import dataclass
+from itertools import product
 from multiprocessing import Pool, cpu_count
+from typing import Dict, List, Optional, Set, Tuple
+
 import pandas as pd
-from typing import List, Tuple, Dict, Set, Optional
+
+from SynFlow.const import DEFAULT_PATTERN, SENT_ID_PATTERN, VALID_FILLER_FORMATS
 from SynFlow.utils import build_graph, format_filler
-from SynFlow.const import DEFAULT_PATTERN, VALID_FILLER_FORMATS, SENT_ID_PATTERN
+
+
+@dataclass(frozen=True)
+class RelStep:
+    """
+    One relation step in a target-anchored dependency path.
+
+    Attributes:
+        relation: Directed dependency relation to traverse. This must include
+            the ``chi_`` or ``pa_`` prefix produced by ``build_graph``.
+        allowed_pos: POS tags allowed for the reached node. ``None`` means the
+            step has no POS restriction, represented in the input as ``[]``.
+    """
+
+    relation: str
+    allowed_pos: Optional[Set[str]] = None
+
+
+RelPath = List[RelStep]
+PathMatch = Tuple[List[Tuple[str, str, str, str]], str]
+
+
+@dataclass(frozen=True)
+class RelTemplate:
+    """
+    Parsed relation-search template.
+
+    Attributes:
+        paths: Required dependency paths from the target node. A target matches
+            only when every path can be found from that same target.
+    """
+
+    paths: List[RelPath]
+
 
 def build_context_lookup(
     sent_tokens: List[str],
     pattern: re.Pattern,
-) -> Dict[str, tuple[str, str, str]]:
-    """Build a token-id to token, lemma, and POS lookup for one sentence."""
+) -> Dict[str, Tuple[str, str, str]]:
+    """
+    Build a token-id to token, lemma, and POS lookup for one sentence.
+
+    Args:
+        sent_tokens: Parsed token lines for one sentence. Each line must match
+            ``pattern`` and contain token, lemma, POS, ID, HEAD, and DEPREL.
+        pattern: Regular expression used to parse corpus token lines.
+
+    Returns:
+        Dictionary keyed by token ID. Values are ``(token, lemma, pos)`` tuples.
+    """
     id2context = {}
     for line in sent_tokens:
-        m = pattern.match(line)
-        if not m:
+        match = pattern.match(line)
+        if not match:
             continue
-        token, lemma, pos, idx, _, _ = m.groups()
+        token, lemma, pos, idx, _, _ = match.groups()
         id2context[idx] = (token, lemma, pos)
     return id2context
 
-# Find a single, sequential path
-# It will be called multiple times by process_file.
-def find_by_path(graph: Dict[int, List[int]], id2context: Dict[int, tuple[str, str, str]],
-                 id2deprel: Dict[Tuple[int, int], str], tgt_id: int,
-                 single_path_pattern: str, filler_format: str) -> List[Tuple[List[str], str]]:
+
+def _strip_group(text: str) -> str:
     """
-    Finds paths in the dependency graph starting from a single target ID that match
-    a specified sequence of relationships.
+    Remove one surrounding pair of parentheses from a template component.
 
     Args:
-        graph (dict): Adjacency list representation of the dependency graph.
-                      Keys are parent IDs, values are lists of child IDs.
-        id2context (dict): Maps token ID to its token, lemma, and POS fields.
-        id2deprel (dict): Maps (parent_id, child_id) tuple to dependency relation string.
-        tgt_id (int): A single ID of the target token.
-        single_path_pattern (str): A single relation path string, e.g., "chi_obl > chi_case".
-                                   '>' separates sequential steps.
+        text: Raw template component, such as ``"(chi_obj, [NOUN])"``.
 
     Returns:
-        list: A list of tuples, where each tuple contains:
-              - List of formatted context fillers found along the path.
-              - The actual path string found (e.g., "chi_obl > chi_case").
-              Returns an empty list if no path is found.
+        The component without surrounding parentheses when they are present.
     """
-    # Split the single_path_pattern into sequential steps.
-    seq_steps = [r.strip() for r in single_path_pattern.split(">")]
-    num_steps = len(seq_steps)
-    results: List[Tuple[List[str], str]] = []
+    text = text.strip()
+    if text.startswith("(") and text.endswith(")"):
+        return text[1:-1].strip()
+    return text
 
-    def dfs(node: int, depth: int, seen: Set[int], path_rels: List[str], path_nodes: List[int]):
-        """
-        Depth-first search to find a single path matching the relation sequence.
-        """
-        # Base case: If we have successfully traversed all required steps.
-        if depth == num_steps:
-            # Join the actual relations found into a path string.
-            actual_path_str = " > ".join(path_rels)
-            results.append((path_nodes, actual_path_str))
-            return
 
-        # Get the allowed relations for the current step.
-        current_step_rels_str = seq_steps[depth]
-
-        # Explore neighbors of the current node.
-        # Ensure 'graph[node]' is handled safely if 'node' is not in graph (e.g., leaf node)
-        for nb in graph.get(node, []): # Use .get() to avoid KeyError if node has no children
-            # Skip if the neighbor has already been visited in this path to prevent cycles.
-            if nb in seen:
-                continue
-
-            # Get the dependency label between the current node and its neighbor.
-            lbl = id2deprel.get((node, nb))
-
-            # Check if the actual label 'lbl' is one of the allowed relations for the current step.
-            if lbl in current_step_rels_str:
-                token, lemma, pos = id2context[nb]
-                filler = format_filler(token, lemma, pos, lbl, filler_format)
-                # Recursively call DFS for the neighbor, incrementing depth and updating path.
-                dfs(nb,
-                    depth + 1,
-                    seen | {nb},             # Add neighbor to seen set for the next call
-                    path_rels + [lbl],       # Add the actual label found
-                    path_nodes + [filler])   # Add the formatted filler to the path nodes
-
-    # Start DFS from the single target ID.
-    # Initial call:
-    # - 'tgt_id': starting node.
-    # - 0: starting at depth 0 of the relation sequence.
-    # - {tgt_id}: initially, only the target node is seen for this path.
-    # - []: empty list for path relations (will be filled as relations are found).
-    # - []: empty list for path nodes (will be filled with nodes reached after the target).
-    dfs(tgt_id, 0, {tgt_id}, [], [])
-
-    return results
-
-def _find_all_unique_paths(graph: Dict[int, List[int]], id2deprel: Dict[Tuple[int, int], str],
-                           tgt_id: int, max_path_depth: int) -> Set[str]:
+def _parse_step(step_text: str) -> RelStep:
     """
-    Finds all unique paths in a dependency graph starting from a single target ID
-    up to a given maximum depth.
+    Parse one fixed-format relation step.
 
     Args:
-        graph (dict): Adjacency list representation of the dependency graph.
-                      Keys are parent IDs, values are lists of child IDs.
-        id2deprel (dict): Maps (parent_id, child_id) tuple to dependency relation string.
-        tgt_id (int): A single ID of the target token.
-        max_path_depth (int): Maximum depth of paths to search for.
+        step_text: Step text in the required format
+            ``"(relation, [POS1, POS2])"``. Use ``"(relation, [])"`` when the
+            step has no POS restriction.
 
     Returns:
-        set: A set of strings, each representing a unique path found in the graph.
-             Each string is a sequence of dependency relations joined by ' > '.
+        A ``RelStep`` containing the relation and optional POS restriction.
+
+    Raises:
+        ValueError: If the step does not include both a relation and a POS list.
     """
-    out: Set[str] = set()
-    def dfs(node: int, depth: int, seen: Set[int], rel_path: List[str]):
-        if depth == max_path_depth:
-            out.add(" > ".join(rel_path))
+    raw_step_text = step_text.strip()
+    step_text = _strip_group(raw_step_text)
+    if "," not in step_text:
+        raise ValueError(
+            "Relation steps must use the fixed format '(relation, [POS...])'. "
+            f"Use an empty list for no POS restriction, e.g. '(chi_obj, [])'. Got: {raw_step_text!r}"
+        )
+
+    relation, pos_text = step_text.split(",", 1)
+    relation = relation.strip()
+    pos_text = pos_text.strip()
+    if not relation or not pos_text.startswith("[") or not pos_text.endswith("]"):
+        raise ValueError(
+            "Relation steps must use the fixed format '(relation, [POS...])'. "
+            f"Got: {raw_step_text!r}"
+        )
+    allowed_pos = {
+        pos.strip()
+        for pos in pos_text[1:-1].split(",")
+        if pos.strip()
+    }
+    return RelStep(relation=relation, allowed_pos=allowed_pos or None)
+
+
+def parse_rel_template(rel_template: str) -> RelTemplate:
+    """
+    Parse a relation-search template into required paths.
+
+    Args:
+        rel_template: Template string. ``&`` separates independent required
+            paths, and ``>`` separates sequential steps inside one path. Every
+            step must use ``"(relation, [POS...])"``. Use ``[]`` when there is
+            no POS restriction.
+
+            Examples:
+            ``"> (chi_nsubj, [])"``
+            ``"> (chi_nsubj, [NOUN, PROPN]) & > (chi_obj, [])"``
+
+    Returns:
+        Parsed relation template.
+
+    Raises:
+        ValueError: If the template is empty or contains a malformed step.
+    """
+    path_texts = [path.strip() for path in rel_template.split("&") if path.strip()]
+    if not path_texts:
+        raise ValueError("rel_template must include at least one relation path.")
+
+    paths: List[RelPath] = []
+    for path_text in path_texts:
+        path_text = path_text.strip()
+        if path_text.startswith(">"):
+            path_text = path_text[1:].strip()
+        steps = [_parse_step(step) for step in path_text.split(">") if step.strip()]
+        if not steps:
+            raise ValueError(f"Invalid empty relation path: {path_text!r}")
+        paths.append(steps)
+
+    return RelTemplate(paths=paths)
+
+
+def _actual_next_relations(
+    graph: Dict[str, List[str]],
+    id2deprel: Dict[Tuple[str, str], str],
+    node: str,
+    parent_node: Optional[str],
+) -> Set[str]:
+    """
+    Collect outgoing relation labels from a node, excluding the parent edge.
+
+    Args:
+        graph: Bidirectional dependency graph from ``build_graph``.
+        id2deprel: Mapping from directed edge to dependency relation label.
+        node: Token ID whose outward relations should be collected.
+        parent_node: Previous token ID on the matched path. This reverse edge
+            is ignored because it points back into the matched construction.
+
+    Returns:
+        Set of relation labels available from ``node`` away from ``parent_node``.
+    """
+    return {
+        id2deprel[(node, nb)]
+        for nb in graph.get(node, [])
+        if nb != parent_node and id2deprel.get((node, nb))
+    }
+
+
+def _matches_exact_rel_tree(
+    graph: Dict[str, List[str]],
+    id2deprel: Dict[Tuple[str, str], str],
+    target_id: str,
+    path_match_group: Tuple[PathMatch, ...],
+) -> bool:
+    """
+    Check whether selected path matches exhaust the local relation tree.
+
+    ``close`` mode uses this function to restrict both width and depth. Every
+    matched node may only have the outgoing relation labels explicitly present
+    in the selected template paths. Leaf nodes in the template must be leaves
+    relative to the outward search.
+
+    Args:
+        graph: Bidirectional dependency graph from ``build_graph``.
+        id2deprel: Mapping from directed edge to dependency relation label.
+        target_id: Token ID where relation search starts.
+        path_match_group: One selected match for each required path.
+
+    Returns:
+        ``True`` when the selected matches exactly cover the outward tree under
+        ``target_id``; otherwise ``False``.
+    """
+    allowed_relations_by_node: Dict[str, Set[str]] = {target_id: set()}
+    parent_by_node: Dict[str, str] = {}
+
+    for path_nodes, actual_path in path_match_group:
+        previous_node = target_id
+        path_relations = actual_path.split(" > ") if actual_path else []
+        for relation, (node_id, _, _, _) in zip(path_relations, path_nodes):
+            allowed_relations_by_node.setdefault(previous_node, set()).add(relation)
+            allowed_relations_by_node.setdefault(node_id, set())
+            parent_by_node[node_id] = previous_node
+            previous_node = node_id
+
+    for node, allowed_relations in allowed_relations_by_node.items():
+        actual_relations = _actual_next_relations(
+            graph,
+            id2deprel,
+            node,
+            parent_by_node.get(node),
+        )
+        if actual_relations != allowed_relations:
+            return False
+
+    return True
+
+
+def _dedupe_path_matches(path_matches: List[PathMatch]) -> List[PathMatch]:
+    """
+    Remove duplicate path matches while preserving order.
+
+    Args:
+        path_matches: Path matches selected for output.
+
+    Returns:
+        Path matches with duplicate node/path realizations removed.
+    """
+    seen: Set[Tuple[Tuple[Tuple[str, str], ...], str]] = set()
+    deduped: List[PathMatch] = []
+    for path_nodes, actual_path in path_matches:
+        key = (tuple((node_id, path_to_node) for node_id, _, _, path_to_node in path_nodes), actual_path)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append((path_nodes, actual_path))
+    return deduped
+
+
+def find_by_path(
+    graph: Dict[str, List[str]],
+    id2context: Dict[str, Tuple[str, str, str]],
+    id2deprel: Dict[Tuple[str, str], str],
+    target_id: str,
+    path: RelPath,
+    filler_format: str,
+) -> List[PathMatch]:
+    """
+    Find matching fillers for one parsed path from one target node.
+
+    Args:
+        graph: Bidirectional dependency graph from ``build_graph``.
+        id2context: Mapping from token ID to ``(token, lemma, pos)``.
+        id2deprel: Mapping from directed edge to dependency relation label.
+        target_id: Token ID where this path search starts.
+        path: Parsed relation path to match.
+        filler_format: Requested output format for reached nodes.
+
+    Returns:
+        Matching path realizations. Each result is
+        ``([(node_id, filler, pos, path_to_node), ...], actual_path)``.
+    """
+    results: List[PathMatch] = []
+
+    def dfs(
+        node: str,
+        depth: int,
+        seen: Set[str],
+        path_rels: List[str],
+        path_nodes: List[Tuple[str, str, str, str]],
+    ) -> None:
+        """
+        Recursively match the remaining relation steps.
+
+        Args:
+            node: Current token ID in the traversal.
+            depth: Number of path steps already matched.
+            seen: Token IDs already visited in this path.
+            path_rels: Relation labels already matched.
+            path_nodes: Matched nodes already reached, together with their
+                formatted filler, POS tag, and relation path from the target.
+        """
+        if depth == len(path):
+            results.append((path_nodes, " > ".join(path_rels)))
             return
 
-        has_child = False
+        step = path[depth]
         for nb in graph.get(node, []):
             if nb in seen:
                 continue
             lbl = id2deprel.get((node, nb))
-            if not lbl:
+            if lbl != step.relation:
                 continue
-            has_child = True
-            dfs(nb, depth + 1, seen | {nb}, rel_path + [lbl])
+            token, lemma, pos = id2context[nb]
+            if step.allowed_pos is not None and pos not in step.allowed_pos:
+                continue
+            filler = format_filler(token, lemma, pos, lbl, filler_format)
+            next_path_rels = path_rels + [lbl]
+            dfs(
+                nb,
+                depth + 1,
+                seen | {nb},
+                next_path_rels,
+                path_nodes + [(nb, filler, pos, " > ".join(next_path_rels))],
+            )
 
-        if not has_child and rel_path:
-            out.add(" > ".join(rel_path))
-
-    dfs(tgt_id, 0, {tgt_id}, [])
-    return out
-
-def process_file(
-        args: Tuple[str, str, Optional[re.Pattern], str, str, str, str, str]
-        ) -> List[Tuple[str, str, List[Tuple[List[str], str]]]]:
-    """
-    Processes a single file to find sentences matching the given criteria.
-    Now supports multiple independent path patterns and 'open'/'close'/'closeh' search_mode.
-
-    Args:
-        args (tuple): A tuple containing:
-            - corpus_folder (str)
-            - fname (str)
-            - pattern (re.Pattern)
-            - target_lemma (str)
-            - target_pos (str)
-            - deprel (str): The combined relation path string.
-            - search_mode (str): 'open' (default) or 'close' or 'closeh'.
-                'open': Match targets that include at least all required paths; extra slots and deeper specialisations allowed.
-                'close': Match targets whose paths equal the required set exactly; no extra slots and no deeper specialisations.
-                'closeh': Match targets with exactly the required slots; deeper specialisations under those slots allowed.
-            - filler_format (str): Format for context fillers.
-
-    Returns:
-        List[Tuple[str, str, List[Tuple[List[str], str]]]]: A list of results.
-    """
-    corpus_folder, fname, pattern, target_lemma, target_pos, rel_combined, search_mode, filler_format = args
-    pattern = pattern or DEFAULT_PATTERN
-    results: List[Tuple[str, str, List[Tuple[List[str], str]]]] = []
-
-    # Parse the combined 'deprel' string into individual required path patterns
-    required_path_patterns_list = [p.strip() for p in rel_combined.split(" & ") if p.strip()]
-    required_path_patterns_set = set(required_path_patterns_list) # For faster lookup and comparison
-
-    if not required_path_patterns_list:
-        return results
-    
-    has_target = False
-    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
-
-    filepath = os.path.join(corpus_folder, fname)
-    try:
-        with open(filepath, encoding="utf8") as fh:
-            sent_tokens, sent_forms = [], [] # Init for the whole file. Sent_tokens = lines, sent_forms = word forms only
-
-            for line in fh:
-                line = line.rstrip("\n")
-
-                # Start a new sentence
-                if line.startswith("<s id"):
-                    has_target = False # Reset for new sentence
-                    sent_tokens, sent_forms = [], [] # Reset for new sentence
-
-                    # Get sentence ID
-                    match = SENT_ID_PATTERN.match(line)
-                    sent_id = match.group(1) if match else None
-                
-                # End of current sentence, build graph
-                elif line.startswith("</s>"):
-                    # Check if the sentence contains the target lemma/POS
-                    if sent_tokens and has_target == True:
-                        id2wp, graph, id2d = build_graph(sent_tokens, pattern)
-                        id2context = build_context_lookup(sent_tokens, pattern)
-                        sentence_text = " ".join(sent_forms)
-                        target_lp = f"{target_lemma}/{target_pos}"
-
-                        # Handle multiple target in 1 sentences
-                        tgt_ids = [tid for tid, lp in id2wp.items() if lp == target_lp]
-
-                        for current_target_id in tgt_ids:
-                            all_paths_found_for_this_target: bool = True # Check if all required paths are present
-                            found_paths_details: List[Tuple[List[str], str]] = [] # Stores results for each required path
-
-                            for single_path_pattern in required_path_patterns_list: # Loop through each path in the list
-                                current_path_results = find_by_path(graph, id2context, id2d, current_target_id, single_path_pattern, filler_format) # Find the path that matches the path pattern
-                                if not current_path_results: # If the path is not found, stop
-                                    all_paths_found_for_this_target = False
-                                    break
-                                found_paths_details.extend(current_path_results) # If the path is found, add it to the results
-
-                            if all_paths_found_for_this_target: # If at least all required paths are present
-                                if search_mode == "close":
-                                    # For 'close' search_mode, we need to check if ONLY the required PATHS are present.
-                                    # No horizontal expansion and no vertical specialisation are allowed
-
-                                    # Derive max depth from the rel‐patterns themselves
-                                    depths = [ len(p.split(">")) for p in required_path_patterns_list ]
-                                    max_check_depth = max(depths)
-                                    all_unique_paths_from_target = _find_all_unique_paths(
-                                        graph, id2d, current_target_id, max_check_depth # Use the new argument here
-                                    )
-
-                                    # Check if the set of all found paths (up to max_check_depth)
-                                    # is exactly equal to the set of required paths.
-                                    if all_unique_paths_from_target == required_path_patterns_set:
-                                        results.append((sent_id, sentence_text, found_paths_details))
-
-                                elif search_mode == "closeh":
-                                    # For 'closeh' search_mode, we need to check if ONLY the required SLOTS are present.
-                                    # No horizontal expansion is allowed but the slots can be vertically specialised.
-
-                                    # 1) compute required first‐hop labels
-                                    required_horizontals = {
-                                        p.split(">")[0].strip()
-                                        for p in required_path_patterns_list
-                                    }
-                                    # 2) collect the actual first‐hop labels from this target
-                                    actual_direct = {
-                                        id2d.get((current_target_id, nb))
-                                        for nb in graph.get(current_target_id, [])
-                                        if id2d.get((current_target_id, nb))
-                                    }
-                                    # 3) only accept if they match exactly
-                                    if actual_direct == required_horizontals:
-                                        results.append((sent_id, sentence_text, found_paths_details))
-                                    
-                                elif search_mode == "open":
-                                    # 'open' search_mode: if all required paths are found, it's a match.
-                                    results.append((sent_id, sentence_text, found_paths_details))
-
-                    sent_tokens, sent_forms = [], []
-
-                else:
-                    sent_tokens.append(line)
-                    m = pattern.match(line)
-                    if m:
-                        sent_forms.append(m.group(1))
-                    
-                    # Check for target lemma/POS in the current line
-                    if has_target_check_string in line:
-                        has_target = True
-
-    except FileNotFoundError:
-        print(f"Error: File not found at {filepath}")
-    except Exception as e:
-        print(f"Error processing file {filepath}: {e}")
+    dfs(target_id, 0, {target_id}, [], [])
     return results
 
 
-def full_rel_explorer(corpus_folder: str,
-                 pattern: re.Pattern = None,
-                 target_lemma: str = None,
-                 target_pos: str   = None,
-                 deprel: str          = None,
-                 search_mode: str         = "open",
-                 filler_format: str = "lemma/pos",
-                 num_processes: int= max(1, cpu_count() - 1)
-                ) -> List[Tuple[str, str, List[Tuple[List[str], str]]]]:
+def process_file(
+    args: Tuple[str, str, Optional[re.Pattern], str, str, str, str, str],
+) -> List[Dict[str, object]]:
     """
-    Walks corpus_folder in parallel to find sentences matching the given criteria.
-    Now supports finding sentences that satisfy ALL independent path patterns
-    defined in 'deprel', with 'open' or 'close' matching search_mode.
+    Process one corpus file for target-anchored relation matches.
 
     Args:
-        corpus_folder (str): The path to the corpus directory.
-        pattern (re.Pattern, optional): The regex pattern for parsing lines.
-                                       Defaults to DEFAULT_PATTERN.
-        target_lemma (str, optional): The lemma of the target word to search for.
-        target_pos (str, optional): The POS tag of the target word.
-        deprel (str, optional): The combined relation path string, e.g., "chi_obl > chi_case & chi_nsubj & chi_nobj".
-                             ' & ' separates independent required paths. '>' separates sequential steps within a path.
-        search_mode (str): 'open' (default) or 'close' or 'closeh'.
-            'open': Match targets that include at least all required paths; extra slots and deeper specialisations allowed.
-            'close': Match targets whose paths equal the required set exactly; no extra slots and no deeper specialisations.
-            'closeh': Match targets with exactly the required slots; deeper specialisations under those slots allowed.
-        filler_format: Format for context fillers. Must be one of
-            ``"lemma_only"``, ``"lemma/pos"``, ``"lemma/deprel"``,
-            ``"token_only"``, ``"token/pos"``, or ``"token/deprel"``.
-        num_processes (int, optional): Number of processes to use for parallel processing.
-                                       Defaults to (CPU count - 1) or 1 if CPU count is 1.
+        args: Tuple containing ``(corpus_folder, fname, pattern, target_lemma,
+            target_pos, rel_template, search_mode, filler_format)``.
+            ``corpus_folder`` is the period/subfolder path containing ``fname``.
+            ``pattern`` may be ``None`` to use ``DEFAULT_PATTERN``.
 
     Returns:
-        List[Tuple[str, str, List[Tuple[List[str], str]]]]: A list of all found results across all files.
-                                                Each result is:
-                                                (filename, sentence_text, [ (ctx_nodes_path1, path_str1), ... ])
+        List of output rows. Each row has ``sentence_id``, ``sentence``,
+        ``sfillers``, and ``path`` keys.
+    """
+    corpus_folder, fname, pattern, target_lemma, target_pos, rel_template, search_mode, filler_format = args
+    pattern = pattern or DEFAULT_PATTERN
+    parsed_template = parse_rel_template(rel_template)
+    has_multiple_paths = len(parsed_template.paths) > 1
+    effective_search_mode = search_mode if has_multiple_paths else "open"
+    results: List[Dict[str, object]] = []
+    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
+
+    filepath = os.path.join(corpus_folder, fname)
+    with open(filepath, encoding="utf8") as fh:
+        sent_tokens: List[str] = []
+        sent_forms: List[str] = []
+        sent_id: Optional[str] = None
+        has_target = False
+
+        for line in fh:
+            line = line.rstrip("\n")
+
+            if line.startswith("<s id"):
+                sent_tokens = []
+                sent_forms = []
+                has_target = False
+                match = SENT_ID_PATTERN.match(line)
+                sent_id = match.group(1) if match else None
+
+            elif line.startswith("</s>"):
+                if sent_tokens and has_target:
+                    id2wp, graph, id2deprel = build_graph(sent_tokens, pattern)
+                    id2context = build_context_lookup(sent_tokens, pattern)
+                    sentence_text = " ".join(sent_forms)
+                    target_lp = f"{target_lemma}/{target_pos}"
+                    target_ids = [idx for idx, lemma_pos in id2wp.items() if lemma_pos == target_lp]
+
+                    for target_id in target_ids:
+                        path_matches_by_path: List[List[PathMatch]] = []
+                        found_all = True
+                        for path in parsed_template.paths:
+                            matches = find_by_path(
+                                graph,
+                                id2context,
+                                id2deprel,
+                                target_id,
+                                path,
+                                filler_format,
+                            )
+                            if not matches:
+                                found_all = False
+                                break
+                            path_matches_by_path.append(matches)
+
+                        if not found_all:
+                            continue
+
+                        if effective_search_mode == "close":
+                            valid_match_groups = [
+                                match_group
+                                for match_group in product(*path_matches_by_path)
+                                if _matches_exact_rel_tree(graph, id2deprel, target_id, match_group)
+                            ]
+                            if not valid_match_groups:
+                                continue
+                            path_matches = _dedupe_path_matches([
+                                path_match
+                                for match_group in valid_match_groups
+                                for path_match in match_group
+                            ])
+                        elif effective_search_mode == "closeh":
+                            required_direct = {path[0].relation for path in parsed_template.paths}
+                            actual_direct = {
+                                id2deprel.get((target_id, nb))
+                                for nb in graph.get(target_id, [])
+                                if id2deprel.get((target_id, nb))
+                            }
+                            if actual_direct != required_direct:
+                                continue
+                            path_matches = _dedupe_path_matches([
+                                path_match
+                                for matches in path_matches_by_path
+                                for path_match in matches
+                            ])
+                        else:
+                            path_matches = _dedupe_path_matches([
+                                path_match
+                                for matches in path_matches_by_path
+                                for path_match in matches
+                            ])
+
+                        for path_nodes, _ in path_matches:
+                            for _, filler, _, path_to_node in path_nodes:
+                                results.append(
+                                    {
+                                        "sentence_id": sent_id,
+                                        "sentence": sentence_text,
+                                        "sfillers": [filler],
+                                        "path": path_to_node,
+                                    }
+                                )
+
+                sent_tokens = []
+                sent_forms = []
+
+            else:
+                sent_tokens.append(line)
+                match = pattern.match(line)
+                if match:
+                    sent_forms.append(match.group(1))
+                if has_target_check_string in line:
+                    has_target = True
+
+    return results
+
+
+def full_rel_explorer(
+    corpus_folder: str,
+    pattern: re.Pattern = None,
+    target_lemma: str = None,
+    target_pos: str = None,
+    deprel: str = None,
+    search_mode: str = "open",
+    filler_format: str = "lemma/pos",
+    num_processes: int = max(1, cpu_count() - 1),
+) -> pd.DataFrame:
+    """
+    Search a corpus for relation paths starting from a target lemma/POS.
+
+    Args:
+        corpus_folder: Root corpus folder. The function expects period or
+            subcorpus directories inside this root, and each subdirectory may
+            contain ``.txt`` or ``.conllu`` parsed files.
+        pattern: Regex used to parse token lines. Defaults to
+            ``DEFAULT_PATTERN``.
+        target_lemma: Lemma of the target node where each search starts.
+        target_pos: POS tag of the target node where each search starts.
+        deprel: Relation template such as
+            ``"> (chi_nsubj, [NOUN, PROPN]) & > (chi_obj, [])"``. ``&``
+            separates independent required paths, and ``>`` separates
+            sequential steps inside one path. Every step must include a POS
+            restriction list; use ``[]`` for no restriction.
+        search_mode: ``"open"``, ``"close"``, or ``"closeh"``. When ``deprel``
+            contains only one path, the effective mode is always ``"open"``.
+            With multiple paths, ``open`` accepts targets that include at least
+            the required paths. ``close`` restricts both width and depth: every
+            matched node may only have outgoing relations explicitly listed in
+            the template. ``closeh`` restricts horizontal width only at the
+            target: the target's direct relation set must match exactly, while
+            deeper specialization under those direct slots is allowed.
+        filler_format: Format for context fillers. Must be one of
+            ``VALID_FILLER_FORMATS``.
+        num_processes: Number of worker processes. Use ``1`` for inline,
+            deterministic execution during debugging.
+
+    Returns:
+        DataFrame with columns ``sentence_id``, ``sentence``, ``sfillers``, and
+        ``path``. One row is returned for each matched filler node.
+
+    Raises:
+        ValueError: If required arguments are missing, ``search_mode`` is not
+        supported, ``filler_format`` is invalid, or the relation template is
+        malformed.
     """
     if not os.path.isdir(corpus_folder):
-        print(f"Error: Corpus folder '{corpus_folder}' does not exist.")
-        return []
+        raise ValueError(f"Corpus folder does not exist: {corpus_folder}")
     if target_lemma is None or target_pos is None or deprel is None:
-        print("Error: 'target_lemma', 'target_pos', and 'deprel' must be provided.")
-        return []
-    if search_mode not in ["open", "close", "closeh"]:
-        print("Error: 'search_mode' must be 'open' or 'close' or 'closeh'.")
-        return []
+        raise ValueError("'target_lemma', 'target_pos', and 'deprel' must be provided.")
+    if search_mode not in {"open", "close", "closeh"}:
+        raise ValueError("search_mode must be one of: open, close, closeh")
     if filler_format not in VALID_FILLER_FORMATS:
         valid_formats = ", ".join(sorted(VALID_FILLER_FORMATS))
-        print(f"Error: 'filler_format' must be one of: {valid_formats}.")
-        return []
+        raise ValueError(f"filler_format must be one of: {valid_formats}")
 
-    pattern       = pattern or DEFAULT_PATTERN
-    num_procs     = max(1, num_processes)
-    all_results: List[Tuple[str, str, List[Tuple[List[str], str]]]] = []
-    
-    # Go through each subfolder in the corpus folder
+    pattern = pattern or DEFAULT_PATTERN
+    num_procs = max(1, num_processes)
+    rows: List[Dict[str, object]] = []
+
     for subfolder in os.listdir(corpus_folder):
         subfolder_path = os.path.join(corpus_folder, subfolder)
-        # Go through each file in each subfolder
+        if not os.path.isdir(subfolder_path):
+            continue
         files = [
-            f for f in os.listdir(subfolder_path)
-            if f.endswith((".conllu", ".txt"))
+            fname
+            for fname in os.listdir(subfolder_path)
+            if fname.endswith((".conllu", ".txt"))
         ]
-        if not files:
-            print(f"No .conllu or .txt files found in '{subfolder_path}'.")
-            return []
         args = [
-            (subfolder_path, f, pattern, target_lemma, target_pos, deprel, search_mode, filler_format)
-            for f in files
+            (subfolder_path, fname, pattern, target_lemma, target_pos, deprel, search_mode, filler_format)
+            for fname in files
         ]
-        # Process the files in parallel
-        with Pool(num_procs) as pool:
-            for file_res in pool.imap_unordered(process_file, args, chunksize=10):
-                all_results.extend(file_res)
-
-    rows = []
-
-    for sent_id, sentence, matches in all_results:
-        for sfillers, path in matches:
-            rows.append({
-                "sentence_id": sent_id,
-                "sentence": sentence,
-                "sfillers": sfillers,
-                "path": path
-            })
+        if num_procs == 1:
+            file_results = (process_file(arg) for arg in args)
+        else:
+            pool = Pool(num_procs)
+            file_results = pool.imap_unordered(process_file, args, chunksize=10)
+        try:
+            for file_rows in file_results:
+                rows.extend(file_rows)
+        finally:
+            if num_procs != 1:
+                pool.close()
+                pool.join()
 
     return pd.DataFrame(rows, columns=["sentence_id", "sentence", "sfillers", "path"])

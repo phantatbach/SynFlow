@@ -7,10 +7,6 @@ from .spath_comb_explorer import (
     spath_comb_explorer,
     )
 
-from .rel_explorer import (
-    rel_explorer,
-    )
-
 from .full_rel_explorer import (
     full_rel_explorer,
     )
@@ -41,7 +37,6 @@ __all__ = [
     full_rel_explorer,
     get_contexts,
     merge_sfiller_df_columns,
-    rel_explorer,
     replace_in_sfiller_df_column,
     spath_comb_explorer,
     spath_explorer,
