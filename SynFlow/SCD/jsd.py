@@ -9,6 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.spatial.distance import jensenshannon
+from SynFlow.Explorer.sfiller_df import parse_filler_cell
 
 from SynFlow.Explorer import compute_saturating_support_from_sfiller_df
 from SynFlow.const import DEFAULT_COLS
@@ -175,6 +176,12 @@ def plot_items_jsd_by_period(
     Returns:
         None
     """
+    if not jsd_results:
+        return
+
+    if cols < 1:
+        raise ValueError("cols must be >= 1.")
+
     num_periods = len(jsd_results)
     rows = math.ceil(num_periods / cols)
 
@@ -185,7 +192,7 @@ def plot_items_jsd_by_period(
     )
 
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4))
-    axes = axes.flatten()
+    axes = np.atleast_1d(axes).ravel()
 
     for idx, (decade, result) in enumerate(jsd_results.items()):
         ax = axes[idx]
@@ -214,7 +221,7 @@ def plot_items_jsd_by_period(
         ax.tick_params(labelsize=8)
 
         # Fix x-axis across all subplots
-        ax.set_xlim(0, global_max * 1.05)  # small margin
+        ax.set_xlim(0, global_max * 1.05 if global_max > 0 else 1)
 
     # Remove unused subplots
     for i in range(idx + 1, len(axes)):
@@ -313,7 +320,7 @@ def sfillers_jsd_by_period(
         all_periods = _sort_periods(all_periods)
 
     jsd_df = df[[period_col, slot_col]].copy()
-    jsd_df[slot_col] = jsd_df[slot_col].apply(_parse_filler_cell)
+    jsd_df[slot_col] = jsd_df[slot_col].apply(parse_filler_cell)
     jsd_df = (
         jsd_df
         .explode(slot_col, ignore_index=True)
@@ -324,7 +331,11 @@ def sfillers_jsd_by_period(
 
     output = {}
 
-    periods = all_periods
+    if mode == "all":
+        periods = list(all_periods)
+    else:
+        retained_periods = jsd_df[period_col].dropna().unique()
+        periods = _sort_periods(retained_periods)
 
     for period in range(1, len(periods)):
         period_1, period_2 = periods[period - 1], periods[period]
@@ -373,7 +384,7 @@ def sfillers_jsd_by_period(
     # Apply support weight after the raw output has been created.
     if weighting:
         support_df = df[[period_col, slot_col]].copy()
-        support_df[slot_col] = support_df[slot_col].apply(_parse_filler_cell)
+        support_df[slot_col] = support_df[slot_col].apply(parse_filler_cell)
 
         saturating_support = compute_saturating_support_from_sfiller_df(
             sfiller_df=support_df,
@@ -470,8 +481,19 @@ def plot_all_jsds_by_period(
             f"jsd_df is missing required columns: {sorted(missing_cols)}"
         )
 
-    if col_to_plot not in jsd_df.columns:
-        raise ValueError(f"col_to_plot '{col_to_plot}' not found in jsd_df.")
+    if col_to_plot is None:
+        if "weighted_jsd" in jsd_df.columns:
+            col_to_plot = "weighted_jsd"
+        elif "jsd" in jsd_df.columns:
+            col_to_plot = "jsd"
+        else:
+            raise ValueError(
+                "jsd_df must contain 'weighted_jsd' or 'jsd'."
+            )
+    elif col_to_plot not in jsd_df.columns:
+        raise ValueError(
+            f"col_to_plot {col_to_plot!r} not found."
+            )
 
     plot_df = jsd_df.copy()
 
@@ -695,48 +717,53 @@ def _format_period_label(period_1: Any, period_2: Any) -> str:
     except Exception:
         return f"{period_2}"
 
-def _parse_filler_cell(cell: Any) -> List[Any]:
-    """
-    Convert one DataFrame cell into a list of fillers.
+def _validate_period_column(df: pd.DataFrame, period_col: str) -> None:
+    """Validate that a DataFrame contains the requested period column."""
+    if period_col not in df.columns:
+        raise ValueError(f"Period column '{period_col}' not found in DataFrame.")
 
-    Handles:
-    - "['aboard/A', 'good/A']" -> ['aboard/A', 'good/A']
-    - ['aboard/A', 'good/A'] -> ['aboard/A', 'good/A']
-    - NaN -> []
-    - single string -> [string]
 
-    Parameters
-    ----------
-    cell
-        Cell value from a slot-filler column.
+def _validate_min_freq(min_freq: int) -> None:
+    """Validate a period-specific minimum filler frequency."""
+    if min_freq < 1:
+        raise ValueError("min_freq must be >= 1.")
 
-    Returns
-    -------
-    list
-        Parsed filler values.
-    """
-    if isinstance(cell, list):
-        return cell
 
-    if pd.isna(cell):
-        return []
+def _validate_positive_k(k: float) -> None:
+    """Validate a positive support threshold."""
+    if k <= 0:
+        raise ValueError("k must be > 0.")
 
-    if isinstance(cell, str):
-        cell = cell.strip()
 
-        if cell in ["", "[]", "nan", "None"]:
-            return []
+def _validate_jsd_mode(mode: str) -> str:
+    """Validate and normalize a JSD period-comparison mode."""
+    if not isinstance(mode, str):
+        raise ValueError(
+            f"`mode` must be either 'all' or 'data_only', but got {mode!r}."
+        )
 
-        try:
-            parsed = ast.literal_eval(cell)
-            if isinstance(parsed, list):
-                return parsed
-            else:
-                return [parsed]
-        except Exception:
-            return [cell]
+    normalized_mode = mode.lower()
+    if normalized_mode not in {"all", "data_only"}:
+        raise ValueError(
+            f"`mode` must be either 'all' or 'data_only', but got {mode!r}."
+        )
+    return normalized_mode
 
-    return [cell]
+
+def _validate_permutation_arguments(
+    n_permutations: int,
+    chunk_size: int,
+    n_jobs: int,
+) -> None:
+    """Validate permutation execution arguments."""
+    if n_permutations < 1:
+        raise ValueError("n_permutations must be >= 1.")
+
+    if chunk_size < 1:
+        raise ValueError("chunk_size must be >= 1.")
+
+    if n_jobs < 1:
+        raise ValueError("n_jobs must be >= 1.")
 
 # Compute the consecutive JSD of the slots
 def consecutive_jsd(
@@ -792,9 +819,10 @@ def consecutive_jsd(
         Columns: slot, period_1, period_2, jsd
     """
     mode = mode.lower()
-    assert mode in ["all", "data_only"], (
-        f"mode must be either 'all' or 'data_only', but got {mode}"
-    )
+    if mode not in {"all", "data_only"}:
+        raise ValueError(
+            f"mode must be 'all' or 'data_only', got {mode!r}."
+        )
 
     if slot_col is None:
         raise ValueError("slot_col must be provided.")
@@ -823,6 +851,8 @@ def consecutive_jsd(
         # Only keep periods where this slot has retained filler data
         row_sums = freq.sum(axis=1)
         freq = freq.loc[row_sums > 0]
+        available_periods = _sort_periods(freq.index.tolist())
+        freq = freq.reindex(available_periods)
 
     # If fewer than two periods remain, no JSD can be computed
     if len(freq.index) < 2:
@@ -903,11 +933,10 @@ def compute_consecutive_jsd_df(
     pd.DataFrame
         Columns: slot, period_1, period_2, jsd.
     """
-    mode = mode.lower()
-    if mode not in {"all", "data_only"}:
-        raise ValueError(
-            f"`mode` must be either 'all' or 'data_only', but got {mode!r}."
-        )
+    _validate_period_column(sfiller_df, period_col)
+    _validate_min_freq(min_freq)
+
+    mode = _validate_jsd_mode(mode)
 
     sfiller_data = sfiller_df.copy()
 
@@ -928,7 +957,7 @@ def compute_consecutive_jsd_df(
         slot_df = sfiller_data[[period_col, slot_col]].copy()
 
         # Convert each cell to list
-        slot_df[slot_col] = slot_df[slot_col].apply(_parse_filler_cell)
+        slot_df[slot_col] = slot_df[slot_col].apply(parse_filler_cell)
 
         # Explode list of fillers
         slot_df = (
@@ -1087,6 +1116,10 @@ def compute_weighted_consecutive_jsd_df(
         Columns: slot, period_1, period_2, jsd, support_count,
         support_weight, weighted_jsd.
     """
+    _validate_period_column(sfiller_df, period_col)
+    _validate_min_freq(min_freq)
+    _validate_positive_k(k)
+    mode = _validate_jsd_mode(mode)
 
     consecutive_jsd = compute_consecutive_jsd_df(
         sfiller_df=sfiller_df,
@@ -1114,6 +1147,58 @@ def compute_weighted_consecutive_jsd_df(
 #----------------------------------------------------------------------------------
 # Permutation test
 # Helper functions
+def _explode_slot_filler_rows_for_permutation(
+    sfiller_df: pd.DataFrame,
+    period_col: str,
+) -> pd.DataFrame:
+    """
+    Explode slot-filler cells before period-label permutation.
+
+    The output keeps the wide slot-column interface used by the existing JSD
+    and support helpers, but each retained row contains one filler occurrence
+    for one slot. This lets the permutation shuffle period labels at the
+    filler-occurrence row level.
+    """
+    if period_col not in sfiller_df.columns:
+        raise ValueError(f"Period column '{period_col}' not found in DataFrame.")
+
+    slot_cols = [
+        col for col in sfiller_df.columns
+        if col not in DEFAULT_COLS and col != period_col
+    ]
+
+    if not slot_cols:
+        return sfiller_df[[period_col]].copy()
+
+    output_cols = [period_col, *slot_cols]
+    exploded_frames = []
+
+    for slot_col in slot_cols:
+        slot_df = sfiller_df[[period_col, slot_col]].copy()
+        slot_df[slot_col] = slot_df[slot_col].apply(parse_filler_cell)
+        slot_df = (
+            slot_df
+            .explode(slot_col, ignore_index=True)
+            .dropna(subset=[period_col, slot_col])
+            .reset_index(drop=True)
+        )
+        slot_df = slot_df[slot_df[slot_col].astype(str).str.strip() != ""]
+
+        if slot_df.empty:
+            continue
+
+        for other_slot_col in slot_cols:
+            if other_slot_col != slot_col:
+                slot_df[other_slot_col] = np.nan
+
+        exploded_frames.append(slot_df[output_cols])
+
+    if not exploded_frames:
+        return pd.DataFrame(columns=output_cols)
+
+    return pd.concat(exploded_frames, ignore_index=True)
+
+
 def shuffle_period_labels(
     df_pair: pd.DataFrame,
     period_col: str,
@@ -1149,6 +1234,39 @@ def shuffle_period_labels(
     out[period_col] = labels
 
     return out
+
+
+def _shuffle_period_labels_within_slots(
+    df_pair: pd.DataFrame,
+    period_col: str,
+    rng: np.random.Generator,
+) -> pd.DataFrame:
+    """
+    Shuffle period labels separately for each exploded slot.
+
+    ``df_pair`` is expected to use the sparse wide layout returned by
+    ``_explode_slot_filler_rows_for_permutation``: each row contains one filler
+    occurrence for exactly one slot column. Shuffling within each slot preserves
+    the number of filler occurrences assigned to each period for that slot.
+    """
+    out = df_pair.copy()
+
+    slot_cols = [
+        col for col in out.columns
+        if col not in DEFAULT_COLS and col != period_col
+    ]
+
+    for slot_col in slot_cols:
+        slot_mask = out[slot_col].notna()
+        if not slot_mask.any():
+            continue
+
+        labels = out.loc[slot_mask, period_col].to_numpy(copy=True)
+        rng.shuffle(labels)
+        out.loc[slot_mask, period_col] = labels
+
+    return out
+
 
 def chunk_list(x: Sequence[Any], chunk_size: int) -> Iterator[Sequence[Any]]:
     """
@@ -1213,15 +1331,16 @@ def _permutation_consecutive_jsd_worker_chunk(
     """
     Run a chunk of consecutive-JSD permutations.
 
-    This worker is submitted to a process pool. For each seed, it shuffles
-    period labels within one period-pair DataFrame, recomputes the selected
-    consecutive JSD statistic with ``mode="data_only"``, and converts the
-    output to slot-transition-keyed numeric values.
+    This worker is submitted to a process pool. ``df_pair`` is expected to
+    already be exploded to one filler occurrence per row. For each seed, the
+    worker shuffles period labels separately within each slot, recomputes the
+    selected consecutive JSD statistic with ``mode="data_only"``, and converts
+    the output to slot-transition-keyed numeric values.
 
     Parameters
     ----------
     df_pair : pd.DataFrame
-        Data restricted to one adjacent period pair.
+        Exploded data restricted to one adjacent period pair.
 
     period_col : str
         Column containing period labels.
@@ -1250,7 +1369,7 @@ def _permutation_consecutive_jsd_worker_chunk(
     for seed in seeds:
         rng = np.random.default_rng(int(seed))
 
-        shuffled_df_pair = shuffle_period_labels(
+        shuffled_df_pair = _shuffle_period_labels_within_slots(
             df_pair=df_pair,
             period_col=period_col,
             rng=rng,
@@ -1277,6 +1396,206 @@ def _permutation_consecutive_jsd_worker_chunk(
 
     return chunk_results
 
+
+def _compute_consecutive_jsd_with_support_counts(
+    sfiller_df: pd.DataFrame,
+    period_col: str,
+    min_freq: int,
+) -> pd.DataFrame:
+    """Compute raw consecutive JSD and k-independent support counts."""
+    consecutive_jsd = compute_consecutive_jsd_df(
+        sfiller_df=sfiller_df,
+        period_col=period_col,
+        min_freq=min_freq,
+        mode="data_only",
+    )
+
+    if consecutive_jsd.empty:
+        return pd.DataFrame(
+            columns=[
+                "slot",
+                "period_1",
+                "period_2",
+                "jsd",
+                "support_count",
+            ]
+        )
+
+    support = compute_saturating_support_from_sfiller_df(
+        sfiller_df=sfiller_df,
+        period_col=period_col,
+        min_freq=min_freq,
+        mode="data_only",
+        k=1.0,
+    )
+
+    support_cols = ["slot", "period_1", "period_2", "support_count"]
+    merged = consecutive_jsd.merge(
+        support[support_cols],
+        on=["slot", "period_1", "period_2"],
+        how="left",
+    )
+    merged["support_count"] = merged["support_count"].fillna(0.0)
+
+    return merged[["slot", "period_1", "period_2", "jsd", "support_count"]]
+
+
+def _jsd_support_df_to_keyed_values(
+    jsd_df: pd.DataFrame,
+) -> Dict[tuple[Any, Any, Any], tuple[float, float]]:
+    """Convert JSD/support-count rows to keyed numeric values."""
+    required_cols = {"slot", "period_1", "period_2", "jsd", "support_count"}
+    missing_cols = required_cols - set(jsd_df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"jsd_df is missing required columns: {sorted(missing_cols)}"
+        )
+
+    return {
+        (row["slot"], row["period_1"], row["period_2"]): (
+            float(row["jsd"]),
+            float(row["support_count"]),
+        )
+        for _, row in jsd_df.iterrows()
+    }
+
+
+def _statistic_from_jsd_support(
+    jsd: float,
+    support_count: float,
+    k: float,
+    weighting: bool,
+) -> float:
+    """Apply the requested statistic to raw JSD and support count."""
+    if not weighting:
+        return jsd
+
+    support_weight = min(1.0, 2 * support_count / k)
+    return jsd * support_weight
+
+
+def _permutation_consecutive_jsd_base_worker_chunk(
+    df_pair: pd.DataFrame,
+    period_col: str,
+    seeds: Sequence[int],
+    min_freq: int,
+) -> List[Dict[tuple[Any, Any, Any], tuple[float, float]]]:
+    """Run a chunk of k-independent consecutive-JSD permutations."""
+    chunk_results = []
+
+    for seed in seeds:
+        rng = np.random.default_rng(int(seed))
+
+        shuffled_df_pair = _shuffle_period_labels_within_slots(
+            df_pair=df_pair,
+            period_col=period_col,
+            rng=rng,
+        )
+
+        null_df = _compute_consecutive_jsd_with_support_counts(
+            sfiller_df=shuffled_df_pair,
+            period_col=period_col,
+            min_freq=min_freq,
+        )
+
+        chunk_results.append(_jsd_support_df_to_keyed_values(null_df))
+
+    return chunk_results
+
+
+def _apply_fdr_correction(result_df: pd.DataFrame) -> pd.DataFrame:
+    """Apply Benjamini-Yekutieli FDR correction within each slot."""
+    result_df["q_value_fdr"] = np.nan
+    result_df["significant_fdr_05"] = False
+
+    for slot, idx in result_df.groupby("slot").groups.items():
+        pvals = result_df.loc[idx, "p_value"].to_numpy(dtype=float)
+        valid_mask = ~np.isnan(pvals)
+
+        if valid_mask.sum() == 0:
+            continue
+
+        reject, qvals, _, _ = multipletests(
+            pvals[valid_mask],
+            alpha=0.05,
+            method="fdr_by",
+        )
+
+        valid_indices = result_df.loc[idx].index[valid_mask]
+        result_df.loc[valid_indices, "q_value_fdr"] = qvals
+        result_df.loc[valid_indices, "significant_fdr_05"] = reject
+
+    return result_df
+
+
+def _empty_permutation_result_df() -> pd.DataFrame:
+    """Return the standard empty permutation-test result schema."""
+    return pd.DataFrame(columns=[
+        "slot",
+        "period_1",
+        "period_2",
+        "statistic",
+        "weighting",
+        "observed_statistic",
+        "null_mean",
+        "excess_over_null_mean",
+        "null_sd",
+        "null_q95",
+        "null_q99",
+        "p_value",
+        "n_permutations",
+        "significant_p_value_05",
+        "q_value_fdr",
+        "significant_fdr_05",
+    ])
+
+
+def _summarize_permutation_values(
+    slot_transition_key: tuple[Any, Any, Any],
+    obs_value: float,
+    null_values: Sequence[float],
+    value_col: str,
+    weighting: bool,
+) -> Dict[str, Any]:
+    """Summarize one observed statistic against its permutation values."""
+    slot, period_1, period_2 = slot_transition_key
+
+    arr = np.asarray(null_values, dtype=float)
+    arr = arr[~np.isnan(arr)]
+
+    if len(arr) == 0:
+        p_value = np.nan
+        null_mean = np.nan
+        null_sd = np.nan
+        null_q95 = np.nan
+        null_q99 = np.nan
+        is_significant_pval = False
+    else:
+        p_value = (1 + np.sum(arr >= obs_value)) / (len(arr) + 1)
+        null_mean = np.mean(arr)
+        null_sd = np.std(arr, ddof=1)
+        null_q95 = np.quantile(arr, 0.95)
+        null_q99 = np.quantile(arr, 0.99)
+        is_significant_pval = p_value < 0.05
+
+    return {
+        "slot": slot,
+        "period_1": period_1,
+        "period_2": period_2,
+        "statistic": value_col,
+        "weighting": weighting,
+        "observed_statistic": obs_value,
+        "null_mean": null_mean,
+        "excess_over_null_mean": obs_value - null_mean,
+        "null_sd": null_sd,
+        "null_q95": null_q95,
+        "null_q99": null_q99,
+        "p_value": p_value,
+        "n_permutations": len(arr),
+        "significant_p_value_05": is_significant_pval,
+    }
+
+
 def permutation_test_consecutive_jsd(
     sfiller_df: pd.DataFrame,
     period_col: str = "subfolder",
@@ -1296,12 +1615,13 @@ def permutation_test_consecutive_jsd(
     For each adjacent period pair in ``all_periods``, this function computes
     the observed consecutive JSD statistic for every slot column. If
     ``weighting=True``, the statistic is support-weighted JSD. If
-    ``weighting=False``, the statistic is raw JSD. The null distribution is
-    built by repeatedly shuffling period labels within each period pair and
-    recomputing the same statistic. P-values are calculated as the proportion of
-    null values greater than or equal to the observed value, with a standard
-    plus-one correction. FDR correction is applied within each slot across
-    adjacent period transitions.
+    ``weighting=False``, the statistic is raw JSD. Before permutation, slot
+    filler cells are exploded to one filler occurrence per row. The null
+    distribution is built by repeatedly shuffling period labels separately
+    within each exploded slot and recomputing the same statistic. P-values are
+    calculated as the proportion of null values greater than or equal to the
+    observed value, with a standard plus-one correction. FDR correction is
+    applied within each slot across adjacent period transitions.
 
     Parameters
     ----------
@@ -1355,6 +1675,11 @@ def permutation_test_consecutive_jsd(
         ``n_permutations``, ``q_value_fdr``, and ``significant_fdr_05``.
     """
 
+    _validate_period_column(sfiller_df, period_col)
+    _validate_min_freq(min_freq)
+    _validate_positive_k(k)
+    _validate_permutation_arguments(n_permutations, chunk_size, n_jobs)
+
     master_rng = np.random.default_rng(seed)
     value_col = "weighted_jsd" if weighting else "jsd"
 
@@ -1380,10 +1705,18 @@ def permutation_test_consecutive_jsd(
         if df_pair[period_col].nunique() < 2:
             continue
 
+        permutation_df_pair = _explode_slot_filler_rows_for_permutation(
+            sfiller_df=df_pair,
+            period_col=period_col,
+        )
+
+        if permutation_df_pair.empty:
+            continue
+
         # 1. Observed statistic
         if weighting:
             obs_df = compute_weighted_consecutive_jsd_df(
-                sfiller_df=df_pair,
+                sfiller_df=permutation_df_pair,
                 period_col=period_col,
                 min_freq=min_freq,
                 k=k,
@@ -1391,7 +1724,7 @@ def permutation_test_consecutive_jsd(
             )
         else:
             obs_df = compute_consecutive_jsd_df(
-                sfiller_df=df_pair,
+                sfiller_df=permutation_df_pair,
                 period_col=period_col,
                 min_freq=min_freq,
                 mode="data_only"
@@ -1420,7 +1753,7 @@ def permutation_test_consecutive_jsd(
             futures = [
                 executor.submit(
                     _permutation_consecutive_jsd_worker_chunk,
-                    df_pair,
+                    permutation_df_pair,
                     period_col,
                     seed_chunk,
                     min_freq,
@@ -1495,7 +1828,7 @@ def permutation_test_consecutive_jsd(
             "null_q99",
             "p_value",
             "n_permutations",
-            "significant_p_value_05"
+            "significant_p_value_05",
             "q_value_fdr",
             "significant_fdr_05",
         ])
@@ -1527,13 +1860,34 @@ def permutation_test_consecutive_jsd(
     return result_df
 
 def plot_permutation_test_consecutive_jsd(
-    perm_result_df: pd.DataFrame
-    
+    perm_result_df: pd.DataFrame,
+    y_label: Optional[str] = None,
 ) -> None:
-    # Use period_2 as the x variable
-    perm_result_df["period_label"] = perm_result_df["period_1"].astype(str) + " vs " + perm_result_df["period_2"].astype(str)
+    plot_df = perm_result_df.copy()
 
-    slots = sorted(perm_result_df["slot"].unique())
+    if plot_df.empty:
+        return
+
+    if y_label is None:
+        statistics = plot_df["statistic"].dropna().unique()
+        if len(statistics) == 1 and statistics[0] == "weighted_jsd":
+            y_label = "Weighted JSD"
+        elif len(statistics) == 1 and statistics[0] == "jsd":
+            y_label = "JSD"
+        else:
+            y_label = "Observed statistic"
+
+    # Use period_2 as the x variable
+    plot_df["period_label"] = (
+        plot_df["period_1"].astype(str)
+        + " vs "
+        + plot_df["period_2"].astype(str)
+    )
+
+    slots = sorted(plot_df["slot"].unique())
+
+    if not slots:
+        return
 
     ncols = 3
     nrows = int(np.ceil(len(slots) / ncols))
@@ -1545,11 +1899,11 @@ def plot_permutation_test_consecutive_jsd(
         sharex=True
     )
 
-    axes = axes.flatten()
+    axes = np.atleast_1d(axes).ravel()
 
     # X-axis ticks and labels
     tick_df = (
-        perm_result_df[["period_2", "period_label"]]
+        plot_df[["period_2", "period_label"]]
         .drop_duplicates()
         .sort_values("period_2")
     )
@@ -1558,13 +1912,13 @@ def plot_permutation_test_consecutive_jsd(
     x_labels = tick_df["period_label"].to_numpy()
 
     for ax, slot in zip(axes, slots):
-        s = perm_result_df[perm_result_df["slot"] == slot].sort_values("period_2")
+        s = plot_df[plot_df["slot"] == slot].sort_values("period_2")
 
         ax.plot(
             s["period_2"],
             s["observed_statistic"],
             marker="o",
-            label="Observed JSD"
+            label=f"Observed {y_label}"
         )
 
         ax.plot(
@@ -1601,7 +1955,7 @@ def plot_permutation_test_consecutive_jsd(
         )
 
         ax.set_title(slot)
-        ax.set_ylabel("Weighted JSD")
+        ax.set_ylabel(y_label)
         ax.axhline(0, linewidth=0.8)
 
         # Show period labels on x-axis
@@ -1632,7 +1986,7 @@ def plot_permutation_test_consecutive_jsd(
     top_axes = 1 - 0.38 / fig_h
 
     fig.suptitle(
-        "Observed weighted JSD against permutation null distribution",
+        f"Observed {y_label} against permutation null distribution",
         y=title_y,
         fontsize=10
     )
@@ -1697,13 +2051,16 @@ def summarize_fdr_correction(
 
     for slot, slot_df in df.groupby("slot", sort=True):
         total_tests = len(slot_df)
+        valid_p = slot_df["p_value"].notna()
+        valid_tests = int(valid_p.sum())
+        invalid_tests = total_tests - valid_tests
 
         raw_significant = int(
-            slot_df["significant_p_value_05"].sum()
+            slot_df.loc[valid_p, "significant_p_value_05"].sum()
         )
 
         fdr_significant = int(
-            slot_df["significant_fdr_05"].sum()
+            slot_df.loc[valid_p, "significant_fdr_05"].sum()
         )
 
         corrected_by_fdr = raw_significant - fdr_significant
@@ -1712,18 +2069,20 @@ def summarize_fdr_correction(
             {
                 "slot": slot,
                 "total_period_tests": total_tests,
+                "valid_period_tests": valid_tests,
+                "invalid_period_tests": invalid_tests,
                 "raw_p_significant": raw_significant,
                 "fdr_significant": fdr_significant,
                 "corrected_by_fdr": corrected_by_fdr,
                 "raw_significant_percent": (
-                    raw_significant / total_tests * 100
-                    if total_tests > 0
-                    else 0
+                    raw_significant / valid_tests * 100
+                    if valid_tests > 0
+                    else np.nan
                 ),
                 "fdr_significant_percent": (
-                    fdr_significant / total_tests * 100
-                    if total_tests > 0
-                    else 0
+                    fdr_significant / valid_tests * 100
+                    if valid_tests > 0
+                    else np.nan
                 ),
                 "fdr_corrected_percent_of_raw_sig": (
                     corrected_by_fdr / raw_significant * 100
@@ -1746,42 +2105,156 @@ def test_multiple_k(
     all_periods: Optional[Sequence[Any]] = None,
     n_permutations: int = 1000,
     min_freq: int = 1,
-    k: float = 100,
     weighting: bool = True,
     seed: int = 42,
     keep_cols: Optional[Sequence[str]] = None,
     n_jobs: int = 8,
     chunk_size: int = 50,
 ) -> pd.DataFrame:
+    _validate_period_column(sfiller_df, period_col)
+    _validate_min_freq(min_freq)
+    _validate_permutation_arguments(n_permutations, chunk_size, n_jobs)
 
-    results_list = {}
+    k_values = list(k_list)
 
-    for k in k_list:
-        print(f"Testing with k = {k}")
-        result = permutation_test_consecutive_jsd(
-            sfiller_df=sfiller_df,
-            period_col="subfolder",
-            n_permutations=1000,
-            min_freq=2,
-            k=k,
-            weighting=True,
-            seed=42,
-            n_jobs=100,
-            chunk_size=10,
+    if not k_values:
+        raise ValueError("k_list must contain at least one k value.")
+
+    for current_k in k_values:
+        _validate_positive_k(current_k)
+
+    value_col = "weighted_jsd" if weighting else "jsd"
+
+    if keep_cols is not None:
+        required_cols = {period_col}
+        keep_cols = list(set(keep_cols) | required_cols)
+        sfiller_df = sfiller_df[keep_cols].copy()
+
+    if all_periods is None:
+        all_periods = _sort_periods(sfiller_df[period_col].dropna().unique())
+    else:
+        all_periods = _sort_periods(all_periods)
+
+    master_rng = np.random.default_rng(seed)
+    results_by_k = {current_k: [] for current_k in k_values}
+
+    for pair_id, (p1, p2) in enumerate(zip(all_periods[:-1], all_periods[1:])):
+        print(
+            "Permutation testing for pair "
+            f"{pair_id + 1}/{len(all_periods) - 1}: {p1} -> {p2}"
         )
-        results_list[k] = result
 
-    # Combine all k-results into one dataframe
-    results_dict = []
+        df_pair = sfiller_df[sfiller_df[period_col].isin([p1, p2])].copy()
 
-    for k, df in results_list.items():
-        tmp = df.copy()
-        tmp["k"] = k
-        results_dict.append(tmp)
+        if df_pair[period_col].nunique() < 2:
+            continue
 
-    results_dict = pd.concat(results_dict, ignore_index=True)
+        permutation_df_pair = _explode_slot_filler_rows_for_permutation(
+            sfiller_df=df_pair,
+            period_col=period_col,
+        )
 
-    return results_dict
+        if permutation_df_pair.empty:
+            continue
+
+        obs_df = _compute_consecutive_jsd_with_support_counts(
+            sfiller_df=permutation_df_pair,
+            period_col=period_col,
+            min_freq=min_freq,
+        )
+        obs_base_values = _jsd_support_df_to_keyed_values(obs_df)
+
+        if not obs_base_values:
+            continue
+
+        null_base_values = {
+            slot_transition_key: []
+            for slot_transition_key in obs_base_values.keys()
+        }
+
+        seeds = master_rng.integers(
+            low=0,
+            high=2**32 - 1,
+            size=n_permutations,
+            dtype=np.uint32,
+        )
+
+        seed_chunks = list(chunk_list(seeds, chunk_size))
+
+        with ProcessPoolExecutor(max_workers=n_jobs) as executor:
+            futures = [
+                executor.submit(
+                    _permutation_consecutive_jsd_base_worker_chunk,
+                    permutation_df_pair,
+                    period_col,
+                    seed_chunk,
+                    min_freq,
+                )
+                for seed_chunk in seed_chunks
+            ]
+
+            for future in as_completed(futures):
+                chunk_results = future.result()
+
+                for null_keyed_values in chunk_results:
+                    for slot_transition_key in obs_base_values.keys():
+                        null_base_values[slot_transition_key].append(
+                            null_keyed_values.get(
+                                slot_transition_key,
+                                (np.nan, np.nan),
+                            )
+                        )
+
+        for current_k in k_values:
+            print(f"Summarizing k = {current_k}")
+
+            for (
+                slot_transition_key,
+                (obs_jsd, obs_support_count),
+            ) in obs_base_values.items():
+                obs_value = _statistic_from_jsd_support(
+                    jsd=obs_jsd,
+                    support_count=obs_support_count,
+                    k=current_k,
+                    weighting=weighting,
+                )
+                null_values = [
+                    _statistic_from_jsd_support(
+                        jsd=null_jsd,
+                        support_count=null_support_count,
+                        k=current_k,
+                        weighting=weighting,
+                    )
+                    for null_jsd, null_support_count in null_base_values[
+                        slot_transition_key
+                    ]
+                ]
+
+                results_by_k[current_k].append(
+                    _summarize_permutation_values(
+                        slot_transition_key=slot_transition_key,
+                        obs_value=obs_value,
+                        null_values=null_values,
+                        value_col=value_col,
+                        weighting=weighting,
+                    )
+                )
+
+    result_frames = []
+
+    for current_k in k_values:
+        result_df = pd.DataFrame(results_by_k[current_k])
+
+        if result_df.empty:
+            result_df = _empty_permutation_result_df()
+        else:
+            result_df = _apply_fdr_correction(result_df)
+
+        result_df = result_df.copy()
+        result_df["k"] = current_k
+        result_frames.append(result_df)
+
+    return pd.concat(result_frames, ignore_index=True)
 
 
 def summarize_k(mult_k_df: pd.DataFrame) -> pd.DataFrame:
@@ -1798,14 +2271,34 @@ def summarize_k(mult_k_df: pd.DataFrame) -> pd.DataFrame:
         }
 
         if "p_value" in k_df.columns:
-            n_p_05 = (k_df["p_value"] <= 0.05).sum()
+            valid_p = k_df["p_value"].notna()
+            n_valid_tests = int(valid_p.sum())
+            n_invalid_tests = n_tests - n_valid_tests
+            n_p_05 = int((k_df.loc[valid_p, "p_value"] < 0.05).sum())
+
+            row["n_valid_tests"] = n_valid_tests
+            row["n_invalid_tests"] = n_invalid_tests
             row["n_p_05"] = n_p_05
-            row["prop_p_05"] = n_p_05 / n_tests
+            row["prop_p_05"] = (
+                n_p_05 / n_valid_tests
+                if n_valid_tests > 0
+                else np.nan
+            )
 
         if "significant_fdr_05" in k_df.columns:
-            n_sig = k_df["significant_fdr_05"].sum()
+            if "p_value" in k_df.columns:
+                valid_fdr = k_df["p_value"].notna()
+            else:
+                valid_fdr = pd.Series(True, index=k_df.index)
+
+            n_valid_fdr_tests = int(valid_fdr.sum())
+            n_sig = int(k_df.loc[valid_fdr, "significant_fdr_05"].sum())
             row["n_sig_fdr_05"] = n_sig
-            row["prop_sig_fdr_05"] = n_sig / n_tests
+            row["prop_sig_fdr_05"] = (
+                n_sig / n_valid_fdr_tests
+                if n_valid_fdr_tests > 0
+                else np.nan
+            )
 
         output.append(row)
 
@@ -1832,7 +2325,7 @@ def summarize_k_slot(
         .reset_index(name="n_significant_transitions")
     )
 
-    k_slot = (
+    k_slot_summary = (
         slot_counts
         .pivot(
             index=index_columns,
@@ -1856,7 +2349,11 @@ def summarize_k_slot_period(
 
     sig_col = "significant_fdr_05"
 
-    index_columns = ["slot", "period_2"]
+    index_columns = [
+        "slot",
+        "period_1",
+        "period_2",
+        ]
 
     if "target" in mult_k_df.columns:
         index_columns = ["target", *index_columns]

@@ -416,7 +416,7 @@ def explode_slot_col(df: pd.DataFrame, slot_name: str) -> pd.DataFrame:
         raise KeyError(f"Column not found: {slot_name}")
 
     exploded_df = df.copy()
-    exploded_df[slot_name] = exploded_df[slot_name].apply(_parse_filler_cell)
+    exploded_df[slot_name] = exploded_df[slot_name].apply(parse_filler_cell)
     exploded_df = exploded_df.explode(slot_name, ignore_index=True)
     exploded_df = exploded_df[exploded_df[slot_name].notna()].reset_index(drop=True)
     return exploded_df
@@ -484,38 +484,68 @@ def _sort_period_key(period):
     except (ValueError, TypeError):
         return str(period)
 
-def _parse_filler_cell(cell):
+def parse_filler_cell(cell: Any) -> List[str]:
     """
-    Convert one dataframe cell into a list of fillers.
+    Parse one slot-filler cell and return a list of string labels.
 
-    Handles:
-    - "['aboard/A', 'good/A']" -> ['aboard/A', 'good/A']
-    - ['aboard/A', 'good/A'] -> ['aboard/A', 'good/A']
-    - NaN -> []
-    - single string -> [string]
+    The function is idempotent: applying it multiple times produces the same
+    result. Scalar strings are not interpreted as Python literals.
+
+    Examples
+    --------
+    "['on', 'in']"     -> ["on", "in"]
+    ["on", "in"]       -> ["on", "in"]
+    [200, "three"]     -> ["200", "three"]
+    [(5, 750, 0)]      -> ["(5, 750, 0)"]
+    "200"              -> ["200"]
+    "(5, 750, 0)"      -> ["(5, 750, 0)"]
+    NaN                -> []
     """
     if isinstance(cell, list):
-        return cell
+        values = cell
 
-    if pd.isna(cell):
+    elif cell is None or cell is pd.NA:
         return []
 
-    if isinstance(cell, str):
-        cell = cell.strip()
+    elif isinstance(cell, (float, np.floating)) and np.isnan(cell):
+        return []
 
-        if cell in ["", "[]", "nan", "None"]:
+    elif isinstance(cell, str):
+        text = cell.strip()
+
+        if text in {"", "[]", "nan", "None", "<NA>"}:
             return []
 
-        try:
-            parsed = ast.literal_eval(cell)
-            if isinstance(parsed, list):
-                return parsed
+        # Parse only serialized lists. Do not parse scalar numeric or tuple
+        # strings because that would create mixed int/tuple/string types.
+        if text.startswith("[") and text.endswith("]"):
+            try:
+                parsed = ast.literal_eval(text)
+            except (ValueError, SyntaxError):
+                values = [text]
             else:
-                return [parsed]
-        except Exception:
-            return [cell]
+                values = parsed if isinstance(parsed, list) else [text]
+        else:
+            values = [text]
 
-    return [cell]
+    else:
+        values = [cell]
+
+    output: List[str] = []
+
+    for value in values:
+        if value is None or value is pd.NA:
+            continue
+
+        if isinstance(value, (float, np.floating)) and np.isnan(value):
+            continue
+
+        normalized_value = str(value).strip()
+
+        if normalized_value not in {"", "nan", "None", "<NA>"}:
+            output.append(normalized_value)
+
+    return output
 
 def compute_saturating_support_from_sfiller_df(
     sfiller_df: pd.DataFrame,
@@ -638,7 +668,7 @@ def compute_saturating_support_from_sfiller_df(
         temp = df[[period_col, slot]].copy()
 
         # Convert each cell to list of fillers
-        temp[slot] = temp[slot].apply(_parse_filler_cell)
+        temp[slot] = temp[slot].apply(parse_filler_cell)
 
         # Explode fillers
         temp = (
