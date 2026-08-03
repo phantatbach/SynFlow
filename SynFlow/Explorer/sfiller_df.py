@@ -560,20 +560,21 @@ def compute_saturating_support_from_sfiller_df(
     Process a slot-filler DataFrame to calculate saturating support for
     each slot between consecutive periods.
 
-    The support count is calculated after applying a period-specific
-    minimum filler frequency threshold.
+    The support count is calculated after applying a minimum filler frequency
+    threshold to the mixed distribution of each compared period pair.
 
     Example:
-        If min_freq = 2 and filler "b" occurs once in period A,
-        then "b" is ignored in period A.
-        If "b" occurs five times in period B,
-        then "b" is kept in period B.
+        If min_freq = 2 and filler "b" occurs once in period A and once in
+        period B, then "b" is kept for the A-B comparison.
+        If "b" occurs once in period A and zero times in period B,
+        then "b" is ignored for the A-B comparison.
 
     Steps:
     1. Read a DataFrame where each slot column contains fillers or list-like
        filler cells.
-    2. For each slot and period, count individual filler frequencies.
-    3. Remove fillers whose frequency is < min_freq within that period.
+    2. For each slot and adjacent period pair, count individual filler
+       frequencies across the mixed pair distribution.
+    3. Remove fillers whose mixed frequency is < min_freq for that pair.
     4. Aggregate remaining filler counts into raw slot counts by period.
     5. For each consecutive period pair, compute:
            count_support(slot, t-t+1) = min(raw_count(slot, t), raw_count(slot, t+1))
@@ -590,8 +591,8 @@ def compute_saturating_support_from_sfiller_df(
         Default: "subfolder".
 
     min_freq:
-        Minimum frequency of a filler within each period.
-        Fillers below this frequency are treated as absent in that period.
+        Minimum frequency of a filler across each compared period pair.
+        Fillers below this frequency are treated as absent from that pair.
         Default: 1.
 
     mode:
@@ -656,12 +657,7 @@ def compute_saturating_support_from_sfiller_df(
             key=_sort_period_key
         )
 
-    # This will contain filtered raw slot counts per period
-    period_counts = pd.DataFrame(
-        0.0,
-        index=sorted_periods,
-        columns=slot_cols
-    )
+    support_rows = []
 
     for slot in slot_cols:
         # Keep period + one slot column
@@ -682,67 +678,72 @@ def compute_saturating_support_from_sfiller_df(
         temp = temp[temp[slot].astype(str).str.strip() != ""]
 
         if temp.empty:
+            if include_zero_slots and mode == "all":
+                periods = sorted_periods
+                for i in range(1, len(periods)):
+                    support_rows.append({
+                        "slot": slot,
+                        "period_1": periods[i - 1],
+                        "period_2": periods[i],
+                        "support_count": 0.0,
+                        "support_weight": 0.0,
+                    })
             continue
-
-        # Count each filler within each period
-        period_filler_freq = (
-            temp
-            .groupby([period_col, slot])
-            .size()
-            .rename("freq")
-            .reset_index()
-        )
-
-        # Apply period-specific min_freq
-        period_filler_freq = period_filler_freq[
-            period_filler_freq["freq"] >= min_freq
-        ]
-
-        if period_filler_freq.empty:
-            continue
-
-        # Aggregate remaining filler counts into slot counts per period
-        slot_period_counts = (
-            period_filler_freq
-            .groupby(period_col)["freq"]
-            .sum()
-        )
-
-        # Align counts to the selected timeline. In mode="all", this also
-        # inserts explicitly requested periods with zero retained data.
-        period_counts[slot] = (
-            slot_period_counts
-            .reindex(sorted_periods, fill_value=0.0)
-            .astype(float)
-        )
-
-    # Decide which slots to return
-    if include_zero_slots:
-        output_slots = slot_cols
-    else:
-        output_slots = [
-            slot for slot in slot_cols
-            if period_counts[slot].sum() > 0
-        ]
-
-    support_rows = []
-
-    for slot in output_slots:
-        slot_counts = period_counts[slot]
 
         if mode == "data_only":
-            slot_counts = slot_counts[slot_counts > 0]
-
-        periods = slot_counts.index.tolist()
+            periods = sorted(
+                temp[period_col].dropna().unique().tolist(),
+                key=_sort_period_key,
+            )
+        else:
+            periods = sorted_periods
 
         for i in range(1, len(periods)):
             period_1 = periods[i - 1]
             period_2 = periods[i]
+
+            pair_temp = temp[temp[period_col].isin([period_1, period_2])].copy()
+            if pair_temp.empty:
+                if include_zero_slots:
+                    support_rows.append({
+                        "slot": slot,
+                        "period_1": period_1,
+                        "period_2": period_2,
+                        "support_count": 0.0,
+                        "support_weight": 0.0,
+                    })
+                continue
+
+            if min_freq > 1:
+                mixed_filler_freq = pair_temp.groupby(slot)[slot].transform("size")
+                pair_temp = pair_temp[mixed_filler_freq >= min_freq]
+
+            if pair_temp.empty:
+                if include_zero_slots:
+                    support_rows.append({
+                        "slot": slot,
+                        "period_1": period_1,
+                        "period_2": period_2,
+                        "support_count": 0.0,
+                        "support_weight": 0.0,
+                    })
+                continue
+
+            slot_counts = (
+                pair_temp
+                .groupby(period_col)
+                .size()
+                .reindex([period_1, period_2], fill_value=0.0)
+                .astype(float)
+            )
             c = float(min(
                 slot_counts.loc[period_1],
                 slot_counts.loc[period_2],
             ))
-            w = min(1.0, 2 * c / k)
+            w = min(1.0, c / k)
+
+            if not include_zero_slots and c == 0:
+                continue
 
             support_rows.append({
                 "slot": slot,

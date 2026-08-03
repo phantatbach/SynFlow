@@ -21,8 +21,6 @@ from .jsd import (
     print_jsd_by_period,
     sfillers_jsd_by_period,
     summarize_fdr_correction,
-    summarize_across_k,
-    test_multiple_k,
 )
 
 __all__ = [
@@ -47,7 +45,5 @@ __all__ = [
     "print_jsd_by_period",
     "sfillers_jsd_by_period",
     "summarize_fdr_correction",
-    "summarize_across_k",
-    "test_multiple_k",
  
 ]
