@@ -270,7 +270,7 @@ def sfillers_jsd_by_period(
     mode : {"all", "data_only"}
         Period-comparison mode. ``"all"`` compares adjacent periods in
         ``all_periods``; ``"data_only"`` uses adjacent periods with retained
-        data.
+        data after the frequency threshold.
 
     all_periods : list, optional
         Full period sequence. If None, inferred from ``df``.
@@ -330,12 +330,17 @@ def sfillers_jsd_by_period(
     jsd_df = jsd_df[jsd_df[slot_col].astype(str).str.strip() != ""]
 
     output = {}
+    output_period_pairs = {}
 
     if mode == "all":
         periods = list(all_periods)
     else:
-        retained_periods = jsd_df[period_col].dropna().unique()
-        periods = _sort_periods(retained_periods)
+        periods = _periods_with_retained_filler_data(
+            slot_df=jsd_df,
+            period_col=period_col,
+            filler_col=slot_col,
+            min_freq=min_freq,
+        )
 
     for period in range(1, len(periods)):
         period_1, period_2 = periods[period - 1], periods[period]
@@ -382,6 +387,7 @@ def sfillers_jsd_by_period(
                 if item["contribution"] > 0
             ][:top_n]
         }
+        output_period_pairs[period_2] = period_1
 
     # Apply support weight after the raw output has been created.
     if weighting:
@@ -399,15 +405,27 @@ def sfillers_jsd_by_period(
         )
 
         for year, values in output.items():
+            period_1 = output_period_pairs[year]
             support_match = saturating_support[
                 (saturating_support["slot"] == slot_col)
+                & (saturating_support["period_1"].astype(str) == str(period_1))
                 & (saturating_support["period_2"].astype(str) == str(year))
             ]
-            support_weight = (
-                float(support_match["support_weight"].iloc[0])
-                if not support_match.empty
-                else 0.0
-            )
+
+            if support_match.empty:
+                raise ValueError(
+                    "No support found for "
+                    f"slot={slot_col!r}, period_1={period_1!r}, period_2={year!r}."
+                )
+
+            if len(support_match) != 1:
+                raise ValueError(
+                    "Expected one support row for "
+                    f"slot={slot_col!r}, period_1={period_1!r}, period_2={year!r}; "
+                    f"found {len(support_match)}."
+                )
+
+            support_weight = float(support_match["support_weight"].iloc[0])
 
             # Weight final JSD
             values["JSD"] = values["JSD"] * support_weight
@@ -767,6 +785,41 @@ def _validate_permutation_arguments(
     if n_jobs < 1:
         raise ValueError("n_jobs must be >= 1.")
 
+
+def _periods_with_retained_filler_data(
+    slot_df: pd.DataFrame,
+    period_col: str,
+    filler_col: str,
+    min_freq: int,
+) -> List[Any]:
+    """
+    Return periods that still have filler data after the frequency threshold.
+
+    This is used only to choose the period sequence for ``mode="data_only"``.
+    Pair comparisons still apply ``min_freq`` to the mixed distribution of the
+    two compared periods.
+    """
+    if slot_df.empty:
+        return []
+
+    if min_freq == 1:
+        retained_periods = slot_df[period_col].dropna().unique()
+        return _sort_periods(retained_periods)
+
+    period_filler_freq = (
+        slot_df
+        .groupby([period_col, filler_col])
+        .size()
+        .rename("freq")
+        .reset_index()
+    )
+    period_filler_freq = period_filler_freq[
+        period_filler_freq["freq"] >= min_freq
+    ]
+
+    retained_periods = period_filler_freq[period_col].dropna().unique()
+    return _sort_periods(retained_periods)
+
 # Compute the consecutive JSD of the slots
 def consecutive_jsd(
     temp_slot_df: pd.DataFrame,
@@ -792,8 +845,8 @@ def consecutive_jsd(
             -> no 1880-1900 comparison
 
     mode="data_only":
-        Compute JSD between adjacent available periods for that slot.
-        Missing periods are ignored.
+        Compute JSD between adjacent retained periods for that slot after the
+        frequency threshold. Empty periods are ignored.
 
         Example:
             data in 1880 and 1900, but not 1890
@@ -854,9 +907,12 @@ def consecutive_jsd(
         periods = list(all_periods)
 
     elif mode == "data_only":
-        # Only keep periods where this slot has filler data before pair-level
-        # filtering. Individual pairs may still be skipped after filtering.
-        periods = _sort_periods(work[period_col].dropna().unique())
+        periods = _periods_with_retained_filler_data(
+            slot_df=work,
+            period_col=period_col,
+            filler_col=slot_col,
+            min_freq=min_freq,
+        )
 
     # If fewer than two periods remain, no JSD can be computed
     if len(periods) < 2:
@@ -922,7 +978,7 @@ def compute_consecutive_jsd_df(
         Missing-data pairs are skipped.
 
     mode="data_only":
-        Use only available periods for each slot.
+        Use only retained periods for each slot after the frequency threshold.
         This may produce comparisons such as 1880-1900.
 
     Parameters
@@ -1039,30 +1095,41 @@ def multiply_consecutive_jsd_saturating_support(
     if consecutive_jsd.empty:
         return pd.DataFrame(columns=output_cols)
 
-    support_cols = {
+    support_cols = [
         "slot",
         "period_1",
         "period_2",
         "support_count",
         "support_weight",
-    }
-    missing_cols = support_cols - set(saturating_support.columns)
+    ]
+    support_key_cols = ["slot", "period_1", "period_2"]
+    support_cols_set = set(support_cols)
+    missing_cols = support_cols_set - set(saturating_support.columns)
     if missing_cols:
         raise ValueError(
             f"saturating_support is missing required columns: {sorted(missing_cols)}"
         )
 
     weighted_consecutive_jsd = consecutive_jsd.merge(
-        saturating_support[list(support_cols)],
-        on=["slot", "period_1", "period_2"],
+        saturating_support[support_cols],
+        on=support_key_cols,
         how="left",
+        validate="one_to_one",
+        indicator=True,
     )
-    weighted_consecutive_jsd["support_count"] = (
-        weighted_consecutive_jsd["support_count"].fillna(0.0)
-    )
-    weighted_consecutive_jsd["support_weight"] = (
-        weighted_consecutive_jsd["support_weight"].fillna(0.0)
-    )
+
+    missing_support = weighted_consecutive_jsd["_merge"] != "both"
+    if missing_support.any():
+        missing_keys = weighted_consecutive_jsd.loc[
+            missing_support,
+            support_key_cols,
+        ]
+        raise ValueError(
+            "Missing support for the following JSD rows:\n"
+            f"{missing_keys.to_string(index=False)}"
+        )
+
+    weighted_consecutive_jsd = weighted_consecutive_jsd.drop(columns="_merge")
     weighted_consecutive_jsd["weighted_jsd"] = (
         weighted_consecutive_jsd["jsd"]
         * weighted_consecutive_jsd["support_weight"]
@@ -2044,12 +2111,3 @@ def summarize_fdr_correction(
     summary = pd.DataFrame(summary_rows)
 
     return summary, corrected_slot_period_df
-
-'''
-TODO:
-    1. sfillers_jsd_by_period() vẫn silently dùng weight 0 nếu không match support
-    2. sfillers_jsd_by_period(mode="data_only") vẫn lỗi khi có min_freq > 1
-    3. Missing support vẫn bị đổi thành weight bằng 0
-    4. Invalid null statistics vẫn bị silently loại bỏ
-    5. Fixed support?
-'''

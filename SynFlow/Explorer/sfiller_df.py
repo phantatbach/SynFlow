@@ -547,6 +547,45 @@ def parse_filler_cell(cell: Any) -> List[str]:
 
     return output
 
+
+def _periods_with_retained_filler_data(
+    slot_df: pd.DataFrame,
+    period_col: str,
+    filler_col: str,
+    min_freq: int,
+) -> list:
+    """
+    Return periods that still have filler data after the frequency threshold.
+
+    This selects the period sequence for ``mode="data_only"``. Pair support
+    counts still apply ``min_freq`` to each mixed period-pair distribution.
+    """
+    if slot_df.empty:
+        return []
+
+    if min_freq == 1:
+        return sorted(
+            slot_df[period_col].dropna().unique().tolist(),
+            key=_sort_period_key,
+        )
+
+    period_filler_freq = (
+        slot_df
+        .groupby([period_col, filler_col])
+        .size()
+        .rename("freq")
+        .reset_index()
+    )
+    period_filler_freq = period_filler_freq[
+        period_filler_freq["freq"] >= min_freq
+    ]
+
+    return sorted(
+        period_filler_freq[period_col].dropna().unique().tolist(),
+        key=_sort_period_key,
+    )
+
+
 def compute_saturating_support_from_sfiller_df(
     sfiller_df: pd.DataFrame,
     period_col: str = "subfolder",
@@ -691,9 +730,11 @@ def compute_saturating_support_from_sfiller_df(
             continue
 
         if mode == "data_only":
-            periods = sorted(
-                temp[period_col].dropna().unique().tolist(),
-                key=_sort_period_key,
+            periods = _periods_with_retained_filler_data(
+                slot_df=temp,
+                period_col=period_col,
+                filler_col=slot,
+                min_freq=min_freq,
             )
         else:
             periods = sorted_periods
