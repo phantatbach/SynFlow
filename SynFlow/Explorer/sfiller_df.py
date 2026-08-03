@@ -157,7 +157,6 @@ def build_sfiller_df(
     num_processes: int = None,
     pattern: re.Pattern = None,
     filtered_pos: list = None,
-    output_folder: str = None,
 ) -> pd.DataFrame:
     """
     1) Walk corpus in parallel, build per-token slot lists.
@@ -490,6 +489,24 @@ def _sort_period_key(period):
     except (ValueError, TypeError):
         return str(period)
 
+def _normalize_period_sequence(periods, sort: bool = True) -> list[str]:
+    """Convert period labels to strings, optionally sorting them."""
+    normalized_periods = [
+        str(period)
+        for period in periods
+        if not pd.isna(period)
+    ]
+    if sort:
+        return sorted(normalized_periods, key=_sort_period_key)
+    return normalized_periods
+
+def _normalize_period_column(df: pd.DataFrame, period_col: str) -> pd.DataFrame:
+    """Return a copy with non-missing period labels converted to strings."""
+    out = df.copy()
+    period_mask = out[period_col].notna()
+    out.loc[period_mask, period_col] = out.loc[period_mask, period_col].map(str)
+    return out
+
 def parse_filler_cell(cell: Any) -> List[str]:
     """
     Parse one slot-filler cell and return a list of string labels.
@@ -553,43 +570,6 @@ def parse_filler_cell(cell: Any) -> List[str]:
 
     return output
 
-def _periods_with_retained_filler_data(
-    slot_df: pd.DataFrame,
-    period_col: str,
-    filler_col: str,
-    min_freq: int,
-) -> list:
-    """
-    Return periods that still have filler data after the frequency threshold.
-
-    This selects the period sequence for ``mode="data_only"``. Pair support
-    counts still apply ``min_freq`` to each mixed period-pair distribution.
-    """
-    if slot_df.empty:
-        return []
-
-    if min_freq == 1:
-        return sorted(
-            slot_df[period_col].dropna().unique().tolist(),
-            key=_sort_period_key,
-        )
-
-    period_filler_freq = (
-        slot_df
-        .groupby([period_col, filler_col])
-        .size()
-        .rename("freq")
-        .reset_index()
-    )
-    period_filler_freq = period_filler_freq[
-        period_filler_freq["freq"] >= min_freq
-    ]
-
-    return sorted(
-        period_filler_freq[period_col].dropna().unique().tolist(),
-        key=_sort_period_key,
-    )
-
 #-------------------------------------------------------------------------------
 # Support Weighting
 #-------------------------------------------------------------------------------
@@ -644,8 +624,8 @@ def compute_saturating_support_from_sfiller_df(
     mode:
         Period-comparison mode.
         ``"all"`` compares adjacent periods in the complete dataset timeline.
-        ``"data_only"`` compares adjacent periods with retained data separately
-        for each slot.
+        ``"data_only"`` compares adjacent periods with raw filler data for each
+        slot, then skips pairs without data on both sides after mixed filtering.
 
     all_periods:
         Complete period sequence for ``mode="all"``. If None, periods are
@@ -685,6 +665,8 @@ def compute_saturating_support_from_sfiller_df(
     if period_col not in df.columns:
         raise ValueError(f"Period column '{period_col}' not found in DataFrame.")
 
+    df = _normalize_period_column(df, period_col)
+
     # Slot columns are all columns except metadata columns.
     # Also explicitly exclude period_col for safety.
     slot_cols = [
@@ -696,11 +678,10 @@ def compute_saturating_support_from_sfiller_df(
         raise ValueError("No slot columns found. Check `DEFAULT_COLS`.")
 
     if mode == "all" and all_periods is not None:
-        sorted_periods = sorted(all_periods, key=_sort_period_key)
+        sorted_periods = _normalize_period_sequence(all_periods, sort=False)
     else:
-        sorted_periods = sorted(
-            df[period_col].dropna().unique().tolist(),
-            key=_sort_period_key
+        sorted_periods = _normalize_period_sequence(
+            df[period_col].dropna().unique().tolist()
         )
 
     support_rows = []
@@ -737,11 +718,8 @@ def compute_saturating_support_from_sfiller_df(
             continue
 
         if mode == "data_only":
-            periods = _periods_with_retained_filler_data(
-                slot_df=temp,
-                period_col=period_col,
-                filler_col=slot,
-                min_freq=min_freq,
+            periods = _normalize_period_sequence(
+                temp[period_col].dropna().unique().tolist(),
             )
         else:
             periods = sorted_periods

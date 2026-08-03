@@ -166,6 +166,27 @@ def _format_period_label(period_1: Any, period_2: Any) -> str:
     except Exception:
         return f"{period_2}"
 
+def _normalize_period_sequence(
+    periods: Iterable[Any],
+    sort: bool = True,
+) -> List[str]:
+    """Convert period labels to strings, optionally sorting them."""
+    normalized_periods = [
+        str(period)
+        for period in periods
+        if not pd.isna(period)
+    ]
+    if sort:
+        return _sort_periods(normalized_periods)
+    return normalized_periods
+
+def _normalize_period_column(df: pd.DataFrame, period_col: str) -> pd.DataFrame:
+    """Return a copy with non-missing period labels converted to strings."""
+    out = df.copy()
+    period_mask = out[period_col].notna()
+    out.loc[period_mask, period_col] = out.loc[period_mask, period_col].map(str)
+    return out
+
 def _validate_period_column(df: pd.DataFrame, period_col: str) -> None:
     """Validate that a DataFrame contains the requested period column."""
     if period_col not in df.columns:
@@ -210,40 +231,6 @@ def _validate_permutation_arguments(
     if n_jobs < 1:
         raise ValueError("n_jobs must be >= 1.")
 
-def _periods_with_retained_filler_data(
-    slot_df: pd.DataFrame,
-    period_col: str,
-    filler_col: str,
-    min_freq: int,
-) -> List[Any]:
-    """
-    Return periods that still have filler data after the frequency threshold.
-
-    This is used only to choose the period sequence for ``mode="data_only"``.
-    Pair comparisons still apply ``min_freq`` to the mixed distribution of the
-    two compared periods.
-    """
-    if slot_df.empty:
-        return []
-
-    if min_freq == 1:
-        retained_periods = slot_df[period_col].dropna().unique()
-        return _sort_periods(retained_periods)
-
-    period_filler_freq = (
-        slot_df
-        .groupby([period_col, filler_col])
-        .size()
-        .rename("freq")
-        .reset_index()
-    )
-    period_filler_freq = period_filler_freq[
-        period_filler_freq["freq"] >= min_freq
-    ]
-
-    retained_periods = period_filler_freq[period_col].dropna().unique()
-    return _sort_periods(retained_periods)
-
 #-------------------------------------------------------------------------------
 # Consecutive JSD
 #-------------------------------------------------------------------------------
@@ -262,7 +249,7 @@ def consecutive_jsd(
     -----
     mode="all":
         Compute JSD only between adjacent periods in the full period sequence.
-        If either period has no retained data, skip that pair.
+        If either period has no data after pair-level filtering, skip that pair.
 
         Example:
             data in 1880 and 1900, but not 1890
@@ -271,8 +258,9 @@ def consecutive_jsd(
             -> no 1880-1900 comparison
 
     mode="data_only":
-        Compute JSD between adjacent retained periods for that slot after the
-        frequency threshold. Empty periods are ignored.
+        Compute JSD between adjacent periods with raw filler data for that slot.
+        Each pair is then filtered by mixed pair frequency; pairs without data
+        on both sides after filtering are skipped.
 
         Example:
             data in 1880 and 1900, but not 1890
@@ -317,6 +305,7 @@ def consecutive_jsd(
 
     # Keep only valid period + filler rows
     work = temp_slot_df[[period_col, slot_col]].dropna(subset=[period_col, slot_col]).copy()
+    work = _normalize_period_column(work, period_col)
 
     # If no data survives filtering, return empty result
     if work.empty:
@@ -329,16 +318,11 @@ def consecutive_jsd(
                 "e.g. list(range(1810, 2010, 10))."
             )
 
-        all_periods = _sort_periods(all_periods)
+        all_periods = _normalize_period_sequence(all_periods, sort=False)
         periods = list(all_periods)
 
     elif mode == "data_only":
-        periods = _periods_with_retained_filler_data(
-            slot_df=work,
-            period_col=period_col,
-            filler_col=slot_col,
-            min_freq=min_freq,
-        )
+        periods = _normalize_period_sequence(work[period_col].dropna().unique())
 
     # If fewer than two periods remain, no JSD can be computed
     if len(periods) < 2:
@@ -404,7 +388,8 @@ def compute_consecutive_jsd_df(
         Missing-data pairs are skipped.
 
     mode="data_only":
-        Use only retained periods for each slot after the frequency threshold.
+        Use only periods with raw filler data for each slot. Pair-level filtering
+        may still skip comparisons after mixed frequency filtering.
         This may produce comparisons such as 1880-1900.
 
     Parameters
@@ -436,12 +421,12 @@ def compute_consecutive_jsd_df(
 
     mode = _validate_jsd_mode(mode)
 
-    sfiller_data = sfiller_df.copy()
+    sfiller_data = _normalize_period_column(sfiller_df, period_col)
 
     if all_periods is None:
-        all_periods = _sort_periods(sfiller_data[period_col].dropna().unique())
+        all_periods = _normalize_period_sequence(sfiller_data[period_col].dropna().unique())
     else:
-        all_periods = _sort_periods(all_periods)
+        all_periods = _normalize_period_sequence(all_periods, sort=False)
 
     # Slot columns
     slot_cols = [
@@ -678,8 +663,8 @@ def sfillers_jsd_by_period(
 
     mode : {"all", "data_only"}
         Period-comparison mode. ``"all"`` compares adjacent periods in
-        ``all_periods``; ``"data_only"`` uses adjacent periods with retained
-        data after the frequency threshold.
+        ``all_periods``; ``"data_only"`` uses adjacent periods with raw filler
+        data before pair-level filtering.
 
     all_periods : list, optional
         Full period sequence. If None, inferred from ``df``.
@@ -723,10 +708,12 @@ def sfillers_jsd_by_period(
     if slot_col not in df.columns:
         raise ValueError(f"slot_col '{slot_col}' not found in DataFrame.")
 
+    df = _normalize_period_column(df, period_col)
+
     if all_periods is None:
-        all_periods = _sort_periods(df[period_col].dropna().unique())
+        all_periods = _normalize_period_sequence(df[period_col].dropna().unique())
     else:
-        all_periods = _sort_periods(all_periods)
+        all_periods = _normalize_period_sequence(all_periods, sort=False)
 
     jsd_df = df[[period_col, slot_col]].copy()
     jsd_df[slot_col] = jsd_df[slot_col].apply(parse_filler_cell)
@@ -744,12 +731,7 @@ def sfillers_jsd_by_period(
     if mode == "all":
         periods = list(all_periods)
     else:
-        periods = _periods_with_retained_filler_data(
-            slot_df=jsd_df,
-            period_col=period_col,
-            filler_col=slot_col,
-            min_freq=min_freq,
-        )
+        periods = _normalize_period_sequence(jsd_df[period_col].dropna().unique())
 
     for period in range(1, len(periods)):
         period_1, period_2 = periods[period - 1], periods[period]
@@ -1326,10 +1308,12 @@ def permutation_test_consecutive_jsd(
         keep_cols = list(set(keep_cols) | required_cols)
         sfiller_df = sfiller_df[keep_cols].copy()
 
+    sfiller_df = _normalize_period_column(sfiller_df, period_col)
+
     if all_periods is None:
-        all_periods = _sort_periods(sfiller_df[period_col].dropna().unique())
+        all_periods = _normalize_period_sequence(sfiller_df[period_col].dropna().unique())
     else:
-        all_periods = _sort_periods(all_periods)
+        all_periods = _normalize_period_sequence(all_periods, sort=False)
 
     results = []
 
