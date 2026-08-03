@@ -480,29 +480,19 @@ def _count_fillers(cell) -> int:
 
     return 0
 
-def _sort_period_key(period):
-    """
-    Sort periods numerically when possible.
-    """
-    try:
-        return int(period)
-    except (ValueError, TypeError):
-        return str(period)
-
-def _normalize_period_sequence(periods, sort: bool = True) -> list[str]:
-    """Convert period labels to strings, optionally sorting them."""
+def _normalize_period_sequence(periods) -> list[str]:
+    """Convert period labels to strings while preserving input order."""
     normalized_periods = [
         str(period)
         for period in periods
         if not pd.isna(period)
     ]
-    if sort:
-        return sorted(normalized_periods, key=_sort_period_key)
     return normalized_periods
 
 def _normalize_period_column(df: pd.DataFrame, period_col: str) -> pd.DataFrame:
     """Return a copy with non-missing period labels converted to strings."""
     out = df.copy()
+    out[period_col] = out[period_col].astype("object")
     period_mask = out[period_col].notna()
     out.loc[period_mask, period_col] = out.loc[period_mask, period_col].map(str)
     return out
@@ -678,9 +668,9 @@ def compute_saturating_support_from_sfiller_df(
         raise ValueError("No slot columns found. Check `DEFAULT_COLS`.")
 
     if mode == "all" and all_periods is not None:
-        sorted_periods = _normalize_period_sequence(all_periods, sort=False)
+        period_sequence = _normalize_period_sequence(all_periods)
     else:
-        sorted_periods = _normalize_period_sequence(
+        period_sequence = _normalize_period_sequence(
             df[period_col].dropna().unique().tolist()
         )
 
@@ -706,7 +696,7 @@ def compute_saturating_support_from_sfiller_df(
 
         if temp.empty:
             if include_zero_slots and mode == "all":
-                periods = sorted_periods
+                periods = period_sequence
                 for i in range(1, len(periods)):
                     support_rows.append({
                         "slot": slot,
@@ -722,7 +712,7 @@ def compute_saturating_support_from_sfiller_df(
                 temp[period_col].dropna().unique().tolist(),
             )
         else:
-            periods = sorted_periods
+            periods = period_sequence
 
         for i in range(1, len(periods)):
             period_1 = periods[i - 1]

@@ -114,34 +114,6 @@ def cal_contrib_jsd(
 #-------------------------------------------------------------------------------
 # Period And Validation Helpers
 #-------------------------------------------------------------------------------
-def _sort_periods(periods: Iterable[Any]) -> List[Any]:
-    """
-    Sort period labels numerically when possible.
-
-    Parameters
-    ----------
-    periods : iterable
-        Period labels such as ``1880`` or ``"1880"``.
-
-    Returns
-    -------
-    list
-        Sorted period labels in their original value types.
-    """
-    try:
-        return sorted(periods, key=lambda x: int(x))
-    except Exception:
-        return sorted(periods)
-
-def _period_sort_value(period: Any) -> Any:
-    """
-    Convert a period label to a sorting value when possible.
-    """
-    try:
-        return int(period)
-    except Exception:
-        return period
-
 def _format_period_label(period_1: Any, period_2: Any) -> str:
     """
     Format a period transition label.
@@ -166,23 +138,19 @@ def _format_period_label(period_1: Any, period_2: Any) -> str:
     except Exception:
         return f"{period_2}"
 
-def _normalize_period_sequence(
-    periods: Iterable[Any],
-    sort: bool = True,
-) -> List[str]:
-    """Convert period labels to strings, optionally sorting them."""
+def _normalize_period_sequence(periods: Iterable[Any]) -> List[str]:
+    """Convert period labels to strings while preserving input order."""
     normalized_periods = [
         str(period)
         for period in periods
         if not pd.isna(period)
     ]
-    if sort:
-        return _sort_periods(normalized_periods)
     return normalized_periods
 
 def _normalize_period_column(df: pd.DataFrame, period_col: str) -> pd.DataFrame:
     """Return a copy with non-missing period labels converted to strings."""
     out = df.copy()
+    out[period_col] = out[period_col].astype("object")
     period_mask = out[period_col].notna()
     out.loc[period_mask, period_col] = out.loc[period_mask, period_col].map(str)
     return out
@@ -285,7 +253,8 @@ def consecutive_jsd(
         JSD computation mode.
 
     all_periods : list, optional
-        Full chronological period sequence. Required for true mode="all".
+        Full period sequence in the desired comparison order. Required for
+        true mode="all".
 
     Returns
     -------
@@ -318,7 +287,7 @@ def consecutive_jsd(
                 "e.g. list(range(1810, 2010, 10))."
             )
 
-        all_periods = _normalize_period_sequence(all_periods, sort=False)
+        all_periods = _normalize_period_sequence(all_periods)
         periods = list(all_periods)
 
     elif mode == "data_only":
@@ -384,7 +353,7 @@ def compute_consecutive_jsd_df(
     Modes
     -----
     mode="all":
-        Use the full chronological period sequence.
+        Use the full period sequence in its provided or data order.
         Missing-data pairs are skipped.
 
     mode="data_only":
@@ -426,7 +395,7 @@ def compute_consecutive_jsd_df(
     if all_periods is None:
         all_periods = _normalize_period_sequence(sfiller_data[period_col].dropna().unique())
     else:
-        all_periods = _normalize_period_sequence(all_periods, sort=False)
+        all_periods = _normalize_period_sequence(all_periods)
 
     # Slot columns
     slot_cols = [
@@ -713,7 +682,7 @@ def sfillers_jsd_by_period(
     if all_periods is None:
         all_periods = _normalize_period_sequence(df[period_col].dropna().unique())
     else:
-        all_periods = _normalize_period_sequence(all_periods, sort=False)
+        all_periods = _normalize_period_sequence(all_periods)
 
     jsd_df = df[[period_col, slot_col]].copy()
     jsd_df[slot_col] = jsd_df[slot_col].apply(parse_filler_cell)
@@ -1252,7 +1221,7 @@ def permutation_test_consecutive_jsd(
 
     all_periods : list, optional
         Complete ordered period sequence. If None, periods are inferred from
-        ``sfiller_df[period_col]`` and sorted with ``_sort_periods``.
+        ``sfiller_df[period_col]`` in its existing row order.
 
     n_permutations : int
         Number of label-shuffle permutations per adjacent period pair.
@@ -1313,7 +1282,7 @@ def permutation_test_consecutive_jsd(
     if all_periods is None:
         all_periods = _normalize_period_sequence(sfiller_df[period_col].dropna().unique())
     else:
-        all_periods = _normalize_period_sequence(all_periods, sort=False)
+        all_periods = _normalize_period_sequence(all_periods)
 
     results = []
 
@@ -1521,7 +1490,6 @@ def summarize_fdr_correction(
         corrected_slot_period_df[
             ["slot", "period_1", "period_2", "p_value", "q_value_fdr"]
         ]
-        .sort_values(["slot", "period_1", "period_2"])
         .reset_index(drop=True)
     )
 
@@ -1781,6 +1749,24 @@ def plot_all_jsds_by_period(
     if plot_df.empty:
         raise ValueError("No non-empty slot time series to plot.")
 
+    transition_order = (
+        plot_df[["period_1", "period_2"]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+    transition_order["_x_pos"] = np.arange(len(transition_order))
+    transition_order["_period_label"] = (
+        transition_order["period_1"].astype(str)
+        + " vs "
+        + transition_order["period_2"].astype(str)
+    )
+    plot_df = plot_df.merge(
+        transition_order,
+        on=["period_1", "period_2"],
+        how="left",
+        validate="many_to_one",
+    )
+
     slot_names = list(plot_df["slot"].drop_duplicates())
     layout = layout.lower()
 
@@ -1789,18 +1775,17 @@ def plot_all_jsds_by_period(
 
         for slot_name in slot_names:
             slot_df = plot_df[plot_df["slot"] == slot_name].copy()
-            slot_df["_period_sort"] = slot_df["period_2"].map(_period_sort_value)
-            slot_df = slot_df.sort_values("_period_sort")
 
             fig.add_trace(
                 go.Scatter(
-                    x=slot_df["period_2"],
+                    x=slot_df["_x_pos"],
                     y=slot_df[col_to_plot],
+                    customdata=slot_df["_period_label"],
                     mode="lines+markers",
                     name=slot_name,
                     hovertemplate=(
                         f"<b>{slot_name}</b><br>"
-                        "Period: %{x}<br>"
+                        "Period: %{customdata}<br>"
                         f"{y_label}: %{{y:.4f}}"
                         "<extra></extra>"
                     )
@@ -1811,6 +1796,11 @@ def plot_all_jsds_by_period(
             title=title,
             xaxis_title=x_label,
             yaxis_title=y_label,
+            xaxis=dict(
+                tickmode="array",
+                tickvals=transition_order["_x_pos"],
+                ticktext=transition_order["_period_label"],
+            ),
             width=width,
             height=height,
             hovermode="closest",
@@ -1834,19 +1824,18 @@ def plot_all_jsds_by_period(
             subplot_col = idx % n_cols + 1
 
             slot_df = plot_df[plot_df["slot"] == slot_name].copy()
-            slot_df["_period_sort"] = slot_df["period_2"].map(_period_sort_value)
-            slot_df = slot_df.sort_values("_period_sort")
 
             fig.add_trace(
                 go.Scatter(
-                    x=slot_df["period_2"],
+                    x=slot_df["_x_pos"],
                     y=slot_df[col_to_plot],
+                    customdata=slot_df["_period_label"],
                     mode="lines+markers",
                     name=slot_name,
                     showlegend=False,
                     hovertemplate=(
                         f"<b>{slot_name}</b><br>"
-                        "Period: %{x}<br>"
+                        "Period: %{customdata}<br>"
                         f"{y_label}: %{{y:.4f}}"
                         "<extra></extra>"
                     )
@@ -1864,6 +1853,11 @@ def plot_all_jsds_by_period(
         )
 
         fig.update_xaxes(title_text=x_label)
+        fig.update_xaxes(
+            tickmode="array",
+            tickvals=transition_order["_x_pos"],
+            ticktext=transition_order["_period_label"],
+        )
         fig.update_yaxes(title_text=y_label)
 
     elif layout == "dropdown":
@@ -1871,19 +1865,18 @@ def plot_all_jsds_by_period(
 
         for idx, slot_name in enumerate(slot_names):
             slot_df = plot_df[plot_df["slot"] == slot_name].copy()
-            slot_df["_period_sort"] = slot_df["period_2"].map(_period_sort_value)
-            slot_df = slot_df.sort_values("_period_sort")
 
             fig.add_trace(
                 go.Scatter(
-                    x=slot_df["period_2"],
+                    x=slot_df["_x_pos"],
                     y=slot_df[col_to_plot],
+                    customdata=slot_df["_period_label"],
                     mode="lines+markers",
                     name=slot_name,
                     visible=(idx == 0),
                     hovertemplate=(
                         f"<b>{slot_name}</b><br>"
-                        "Period: %{x}<br>"
+                        "Period: %{customdata}<br>"
                         f"{y_label}: %{{y:.4f}}"
                         "<extra></extra>"
                     )
@@ -1911,6 +1904,11 @@ def plot_all_jsds_by_period(
             title=f"{title}: {slot_names[0]}",
             xaxis_title=x_label,
             yaxis_title=y_label,
+            xaxis=dict(
+                tickmode="array",
+                tickvals=transition_order["_x_pos"],
+                ticktext=transition_order["_period_label"],
+            ),
             width=width,
             height=height,
             hovermode="closest",
@@ -1963,6 +1961,18 @@ def plot_permutation_test_consecutive_jsd(
         + " vs "
         + plot_df["period_2"].astype(str)
     )
+    transition_order = (
+        plot_df[["period_1", "period_2", "period_label"]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+    transition_order["_x_pos"] = np.arange(len(transition_order))
+    plot_df = plot_df.merge(
+        transition_order[["period_1", "period_2", "_x_pos"]],
+        on=["period_1", "period_2"],
+        how="left",
+        validate="many_to_one",
+    )
 
     slots = sorted(plot_df["slot"].unique())
 
@@ -1982,41 +1992,35 @@ def plot_permutation_test_consecutive_jsd(
     axes = np.atleast_1d(axes).ravel()
 
     # X-axis ticks and labels
-    tick_df = (
-        plot_df[["period_2", "period_label"]]
-        .drop_duplicates()
-        .sort_values("period_2")
-    )
-
-    x_ticks = tick_df["period_2"].to_numpy()
-    x_labels = tick_df["period_label"].to_numpy()
+    x_ticks = transition_order["_x_pos"].to_numpy()
+    x_labels = transition_order["period_label"].to_numpy()
 
     for ax, slot in zip(axes, slots):
-        s = plot_df[plot_df["slot"] == slot].sort_values("period_2")
+        s = plot_df[plot_df["slot"] == slot]
 
         ax.plot(
-            s["period_2"],
+            s["_x_pos"],
             s["observed_statistic"],
             marker="o",
             label=f"Observed {y_label}"
         )
 
         ax.plot(
-            s["period_2"],
+            s["_x_pos"],
             s["null_mean"],
             linestyle="--",
             label="Null mean"
         )
 
         ax.plot(
-            s["period_2"],
+            s["_x_pos"],
             s["null_q95"],
             linestyle=":",
             label="Null q95"
         )
 
         ax.plot(
-            s["period_2"],
+            s["_x_pos"],
             s["null_q99"],
             linestyle="-.",
             label="Null q99"
@@ -2026,7 +2030,7 @@ def plot_permutation_test_consecutive_jsd(
         sig = s[s["significant_fdr_05"]]
 
         ax.scatter(
-            sig["period_2"],
+            sig["_x_pos"],
             sig["observed_statistic"],
             marker="*",
             s=140,
