@@ -7,6 +7,9 @@ from SynFlow.const import DEFAULT_PATTERN
 def corpus_handler(file: str, pattern: Optional[re.Pattern] = None) -> List[List[Dict]]:
     """
     Read one CoNLL‐style file and split into sentences.
+    Token lines are expected to contain token, lemma, POS, ID, HEAD, DEPREL,
+    and FEATS; FEATS is currently parsed but not returned.
+
     Each sentence is a list of token‐dicts, where each dict has:
       {
         "line_num": int,    # 1-based line in the file
@@ -40,7 +43,7 @@ def corpus_handler(file: str, pattern: Optional[re.Pattern] = None) -> List[List
                 m = pattern.match(line)
                 if not m:
                     continue
-                form, lemma, pos, tid, head, deprel = m.groups()
+                form, lemma, pos, tid, head, deprel, _ = m.groups()
                 current.append({
                     "line_num": line_no,
                     "form": form,

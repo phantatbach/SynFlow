@@ -6,7 +6,8 @@ DEFAULT_PATTERN = re.compile(
     r"([^\t]+)\t"      # POS
     r"([^\t]+)\t"      # ID
     r"([^\t]+)\t"      # HEAD
-    r"([^\t]+)"        # DEPREL
+    r"([^\t]+)\t"      # DEPREL
+    r"([^\t]+)"        # FEATS
 )
 
 DEFAULT_COLS = ["id", "subfolder", "target"]

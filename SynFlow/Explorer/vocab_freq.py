@@ -29,7 +29,7 @@ def count_vocab_file(path: str, filler_format: str) -> Counter:
             parts = line.split()
             if len(parts) < 6:
                 continue
-            # Default: wordform, lemma, pos, id, head, deprel
+            # Default: wordform, lemma, pos, id, head, deprel, feats
             token, lemma, pos, deprel = parts[0], parts[1], parts[2], parts[5]
             key = format_filler(token, lemma, pos, deprel, filler_format)
 

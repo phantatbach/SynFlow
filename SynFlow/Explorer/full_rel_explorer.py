@@ -55,7 +55,8 @@ def build_context_lookup(
 
     Args:
         sent_tokens: Parsed token lines for one sentence. Each line must match
-            ``pattern`` and contain token, lemma, POS, ID, HEAD, and DEPREL.
+            ``pattern`` and contain token, lemma, POS, ID, HEAD, DEPREL, and
+            FEATS fields.
         pattern: Regular expression used to parse corpus token lines.
 
     Returns:
@@ -66,7 +67,7 @@ def build_context_lookup(
         match = pattern.match(line)
         if not match:
             continue
-        token, lemma, pos, idx, _, _ = match.groups()
+        token, lemma, pos, idx, _, _, _ = match.groups()
         id2context[idx] = (token, lemma, pos)
     return id2context
 

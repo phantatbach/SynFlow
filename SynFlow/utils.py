@@ -3,8 +3,10 @@ from typing import Optional
 
 def build_graph(tokens, pattern):
     """
-    Given a list of conllu tokens and a regex pattern, build a dependency graph,
+    Given a list of parsed token lines and a regex pattern, build a dependency graph,
     a mapping of id to lemma/pos, and a mapping of edge to deprel.
+    Token lines are expected to contain token, lemma, POS, ID, HEAD, DEPREL,
+    and FEATS. FEATS is currently parsed but not used for graph construction.
 
     Returns a tuple of (id2lemma_pos, graph, id2deprel).
     """
@@ -18,7 +20,7 @@ def build_graph(tokens, pattern):
         if not m:
             continue
         # You don't need the wordform to create a dependency graph
-        _, lemma, pos, idx, head, deprel = m.groups()
+        _, lemma, pos, idx, head, deprel, _ = m.groups()
         # Create a dictionary of {id: lemma/pos}
         id2lemma_pos[idx] = f"{lemma}/{pos}"
         # If the current word is not the root
