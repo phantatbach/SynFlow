@@ -12,20 +12,43 @@ from .histwords import HistWordsSlice
 
 
 def parse_slot_values(value: object) -> list[str]:
-    """Parse one slot-filler cell into filler strings."""
-    if pd.isna(value):
+    """
+    Parse one slot-filler cell into single-node filler strings.
+
+    Embedding plots only support atomic tuple fillers with exactly one element.
+    Multi-depth tuple fillers raise ValueError instead of being flattened or
+    parsed as tuple strings.
+    """
+    if value is None or value is pd.NA:
         return []
 
     if isinstance(value, list):
         raw_values = value
+    elif isinstance(value, tuple):
+        raw_values = [value]
     else:
+        if isinstance(value, float) and math.isnan(value):
+            return []
         try:
             raw_values = ast.literal_eval(str(value))
         except (SyntaxError, ValueError):
             return []
+        if isinstance(raw_values, tuple):
+            raw_values = [raw_values]
+        elif not isinstance(raw_values, list):
+            raw_values = [raw_values]
 
     fillers = []
     for raw_filler in raw_values:
+        if isinstance(raw_filler, list):
+            raw_filler = tuple(raw_filler)
+        if isinstance(raw_filler, tuple):
+            if len(raw_filler) != 1:
+                raise ValueError(
+                    "Embedding workflow only supports tuple fillers with exactly one element."
+                )
+            raw_filler = raw_filler[0]
+
         filler = str(raw_filler).strip()
         if not filler:
             continue

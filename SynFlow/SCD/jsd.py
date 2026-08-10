@@ -237,7 +237,7 @@ def consecutive_jsd(
     Parameters
     ----------
     temp_slot_df : pd.DataFrame
-        Exploded dataframe with one row per slot filler occurrence.
+        Exploded dataframe with one row per atomic slot-filler occurrence.
 
     slot_col : str
         Column containing slot fillers.
@@ -314,7 +314,13 @@ def consecutive_jsd(
         if pair_work.empty:
             continue
 
-        freq = pd.crosstab(pair_work[period_col], pair_work[slot_col]).astype(float)
+        freq = (
+            pair_work
+            .groupby([period_col, slot_col])
+            .size()
+            .unstack(fill_value=0)
+            .astype(float)
+        )
         freq = freq.reindex([period_1, period_2], fill_value=0.0)
         row_sums = freq.sum(axis=1)
 
@@ -607,12 +613,13 @@ def sfillers_jsd_by_period(
     include_zero_slots: bool = False,
 ) -> Dict[Any, Dict[str, Any]]:
     """
-    Compute filler-level JSD for one slot across consecutive periods.
+    Compute atomic filler-level JSD for one slot across consecutive periods.
 
-    The input may contain either one filler per row or list-valued filler cells.
-    List-valued cells are exploded internally before computing JSD. If
-    ``weighting=True``, the raw JSD and item contributions are multiplied by
-    saturating support computed from the same input column.
+    The input may contain either one atomic filler tuple per row or cells that
+    parse to lists of atomic filler tuples. List-valued cells are exploded
+    internally before computing JSD. If ``weighting=True``, the raw JSD and item
+    contributions are multiplied by saturating support computed from the same
+    input column.
 
     Parameters
     ----------

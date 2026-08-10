@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-import ast
 import os
 import re
 from ast import literal_eval
 from multiprocessing import Pool, cpu_count
-from typing import Any, List, Mapping, Sequence
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
 
 from SynFlow.const import DEFAULT_COLS, DEFAULT_PATTERN, VALID_FILLER_FORMATS
 from SynFlow.utils import build_graph, format_filler
+
+FillerItem = tuple[str, ...]
 
 #-------------------------------------------------------------------------------
 # Construction Helpers
@@ -56,7 +57,7 @@ def follow_path(graph, id2deprel, start, rel_seq):
     dfs(start, 0, [])
     return chains
 
-def process_file(args) -> List[dict]:
+def process_file(args) -> list[dict[str, Any]]:
     corpus_folder, fname, pattern, target_lemma, target_pos, slots, filtered_pos, filler_format = args # Use this for multiprocess.Pool
     pattern = pattern or DEFAULT_PATTERN
     
@@ -97,7 +98,7 @@ def process_file(args) -> List[dict]:
                             }
 
                         for slot in slots:
-                            slot_fillers = []
+                            slot_fillers: list[FillerItem] = []
                             # split if there are multiple fillers in a slot
                             for subslot in slot.split("|"):
                                 # split your multi-hop slot
@@ -106,10 +107,9 @@ def process_file(args) -> List[dict]:
                                 chains  = follow_path(graph, id2deprel, tid, rel_seq)
                                 # print(f"DEBUG {fname}:{token_line} chains for {slot} =", chains)
 
-                                # flatten **all** nodes in **all** chains to avoid nested list
-                                subslot_fillers = []
                                 for chain in chains:
                                     prev_id = tid
+                                    chain_fillers = []
                                     for nid in chain:
                                         lemma_pos = id2lemma_pos[nid]
                                         lemma, pos = lemma_pos.rsplit("/", 1)
@@ -127,10 +127,11 @@ def process_file(args) -> List[dict]:
                                         )
                                         filler = format_filler(token, lemma, pos, deprel, filler_format)
 
-                                        subslot_fillers.append(filler)
+                                        chain_fillers.append(filler)
                                         prev_id = nid
-                                
-                                slot_fillers.extend(subslot_fillers)
+
+                                    if chain_fillers:
+                                        slot_fillers.append(tuple(chain_fillers))
 
                             row[slot] = slot_fillers
 
@@ -144,7 +145,7 @@ def process_file(args) -> List[dict]:
 
     return out
 
-def get_all_slots(df):
+def get_all_slots(df: pd.DataFrame) -> str:
     all_slots = "".join(f"[{r}]" for r in df.index)
     return all_slots
 
@@ -154,14 +155,26 @@ def build_sfiller_df(
     target_lemma: str,
     target_pos: str,
     filler_format: str = "lemma/pos",
-    num_processes: int = None,
-    pattern: re.Pattern = None,
-    filtered_pos: list = None,
-) -> pd.DataFrame:
+    num_processes: int | None = None,
+    pattern: re.Pattern | None = None,
+    filtered_pos: Sequence[str] | None = None,
+) -> tuple[pd.DataFrame, list[str]]:
     """
-    1) Walk corpus in parallel, build per-token slot lists.
-    2) Drop rows where all slots are empty (write {target}_dropped.txt).
-    3) Save the resulting DataFrame to {output_folder}/ and return it.
+    Build a slot-filler DataFrame from a parsed corpus.
+
+    Each matched dependency chain is stored as one atomic tuple. Single-depth
+    matches are normalized to one-element tuples, and multi-depth matches
+    preserve path order inside the tuple. Multiple subslots separated by ``|``
+    contribute separate tuple items to the same slot column.
+
+    When saved with pandas, these cells are serialized with Python ``repr``
+    syntax, for example ``"[('bark/NOUN', 'the/DET')]"``. The parser helpers in
+    this module expect that Python-literal list-of-tuples format when reading
+    CSV output back in.
+
+    Returns:
+        Tuple of ``(df, dropped)``, where ``df`` is the slot-filler DataFrame and
+        ``dropped`` contains row ids where all requested slots were empty.
     """
     pattern   = pattern or DEFAULT_PATTERN
     num_procs = num_processes or max(1, cpu_count()-1)
@@ -208,22 +221,96 @@ def build_sfiller_df(
     # --- Optional: insert the new "target" slot at column 0 ------------
     target_slot = f"{target_lemma}/{target_pos}"
     # Create a column of single‐item lists [target_slot] for every row:
-    df.insert(1, "target", [[target_slot]] * len(df))
+    df.insert(1, "target", [[(target_slot,)] for _ in range(len(df))])
 
     return df, dropped
+
+
+def _is_missing_value(value: Any) -> bool:
+    if value is None or value is pd.NA:
+        return True
+    return isinstance(value, (float, np.floating)) and np.isnan(value)
+
+
+def _parse_list_cell(cell: Any) -> list[Any]:
+    if isinstance(cell, list):
+        return cell
+
+    if isinstance(cell, tuple):
+        return [cell]
+
+    if _is_missing_value(cell):
+        return []
+
+    if isinstance(cell, str):
+        stripped = cell.strip()
+        if stripped in {"", "[]", "nan", "None", "<NA>"}:
+            return []
+        if stripped.startswith("[") and stripped.endswith("]"):
+            try:
+                parsed = literal_eval(stripped)
+            except (SyntaxError, ValueError):
+                return [cell]
+            if isinstance(parsed, list):
+                return parsed
+            if isinstance(parsed, tuple):
+                return [parsed]
+            if _is_missing_value(parsed):
+                return []
+            return [parsed]
+        return [cell]
+
+    return [cell]
+
+
+def _normalize_filler_item(item: Any) -> FillerItem | None:
+    if _is_missing_value(item):
+        return None
+
+    if isinstance(item, tuple):
+        values = item
+    elif isinstance(item, list):
+        values = tuple(item)
+    else:
+        values = (item,)
+
+    normalized_values = []
+    for value in values:
+        if _is_missing_value(value):
+            continue
+        normalized_value = str(value).strip()
+        if normalized_value not in {"", "nan", "None", "<NA>"}:
+            normalized_values.append(normalized_value)
+
+    return tuple(normalized_values) if normalized_values else None
+
+
+def _cell_to_filler_items(cell: Any) -> list[FillerItem]:
+    output = []
+    for item in _parse_list_cell(cell):
+        normalized_item = _normalize_filler_item(item)
+        if normalized_item is not None:
+            output.append(normalized_item)
+    return output
+
 
 #-------------------------------------------------------------------------------
 # Column Editing
 #-------------------------------------------------------------------------------
-def replace_in_sfiller_df_column(sfiller_df_path, column_name, replacements, output_path):
+def replace_in_sfiller_df_column(
+    sfiller_df_path: str,
+    column_name: str,
+    replacements: Mapping[str, str],
+    output_path: str,
+) -> None:
     """
     Replace slot-filler values in one CSV column and write the updated CSV.
 
     The target column is expected to contain string representations of Python
-    lists, such as ``"['big/A', 'open/A']"``. Each list item is looked up in
-    ``replacements``; matching items are replaced with their mapped value, and
-    unmatched items are kept unchanged. Cells that cannot be parsed as lists are
-    also left unchanged.
+    lists of tuples, such as ``"[('big/A',), ('open/A',)]"`` or
+    ``"[('bark/NOUN', 'the/DET')]"``. Each tuple element is looked up in
+    ``replacements``; matching elements are replaced with their mapped value,
+    and unmatched elements are kept unchanged.
 
     Args:
         sfiller_df_path (str): Path to the input slot-filler DataFrame.
@@ -235,14 +322,13 @@ def replace_in_sfiller_df_column(sfiller_df_path, column_name, replacements, out
     """
     sfiller_df = pd.read_csv(sfiller_df_path, encoding="utf-8")
 
-    def replace_list_str(cell):
-        try:
-            items = literal_eval(cell)   # parse '["Open/A", "big/A"]' → list
-            if isinstance(items, list):
-                return str([replacements.get(x, x) for x in items])
-        except Exception:
-            pass
-        return cell  # nếu parse không được thì giữ nguyên
+    def replace_list_str(cell: Any) -> str:
+        items = _cell_to_filler_items(cell)
+        replaced_items = [
+            tuple(replacements.get(element, element) for element in item)
+            for item in items
+        ]
+        return str(replaced_items)
 
     sfiller_df[column_name] = sfiller_df[column_name].astype(str).map(replace_list_str)
 
@@ -256,7 +342,11 @@ def merge_sfiller_df_columns(
     deduplicate: bool = False,
 ) -> pd.DataFrame:
     """
-    Merge list-valued slot-filler columns and optionally remove the source columns.
+    Merge tuple-valued slot-filler columns and optionally remove source columns.
+
+    Every cell is normalized to ``list[tuple[str, ...]]`` before merging. If
+    ``deduplicate`` is true, duplicate atomic tuples inside each merged cell are
+    removed while preserving first-seen order.
 
     Args:
         sfiller_df_path (str): Path to the input slot-filler CSV.
@@ -302,37 +392,11 @@ def merge_sfiller_df_columns(
             return [source_cols]
         return list(source_cols)
 
-    def cell_to_list(cell):
-        if isinstance(cell, list):
-            return cell
-        if isinstance(cell, (tuple, set)):
-            return list(cell)
-        if pd.isna(cell):
-            return []
-        if isinstance(cell, str):
-            stripped = cell.strip()
-            if stripped in ("", "[]"):
-                return []
-            if stripped.startswith("[") and stripped.endswith("]"):
-                try:
-                    parsed = literal_eval(stripped)
-                except (SyntaxError, ValueError):
-                    return [cell]
-                if isinstance(parsed, list):
-                    return parsed
-                if isinstance(parsed, (tuple, set)):
-                    return list(parsed)
-                if parsed is None or pd.isna(parsed):
-                    return []
-                return [parsed]
-            return [cell]
-        return [cell]
-
     def merge_row(row, source_cols):
         merged = []
         seen = set()
         for source_col in source_cols:
-            for item in cell_to_list(row[source_col]):
+            for item in _cell_to_filler_items(row[source_col]):
                 if deduplicate:
                     key = repr(item)
                     if key in seen:
@@ -395,14 +459,16 @@ def merge_sfiller_df_columns(
 #-------------------------------------------------------------------------------
 # Slot Extraction
 #-------------------------------------------------------------------------------
-def _non_empty(v):
-    if isinstance(v, list): return len(v) > 0
-    if pd.isna(v): return False
-    if isinstance(v, str): return v.strip() not in ("", "[]")
-    return True
+def _non_empty(v: Any) -> bool:
+    return len(_cell_to_filler_items(v)) > 0
 
-def extract_slot_cols(spath_df: str, slot_names: list, output_path: str | None = None) -> pd.DataFrame:
+def extract_slot_cols(
+    spath_df: str,
+    slot_names: Sequence[str],
+    output_path: str | None = None,
+) -> pd.DataFrame:
     df = pd.read_csv(spath_df)
+    slot_names = list(slot_names)
     cols = [c for c in DEFAULT_COLS + slot_names if c in df.columns]
     sub = df[cols].copy()
     keep = sub[slot_names].map(_non_empty).any(axis=1)
@@ -413,7 +479,7 @@ def extract_slot_cols(spath_df: str, slot_names: list, output_path: str | None =
 
 def explode_slot_col(df: pd.DataFrame, slot_name: str) -> pd.DataFrame:
     """
-    Explode a list-valued slot column so each filler occupies one row.
+    Explode a slot column so each atomic filler tuple occupies one row.
     """
     if slot_name not in df.columns:
         raise KeyError(f"Column not found: {slot_name}")
@@ -443,42 +509,17 @@ def extract_1_slot_col(
 #-------------------------------------------------------------------------------
 # Parsing And Counting Helpers
 #-------------------------------------------------------------------------------
-def _count_fillers(cell) -> int:
+def _count_fillers(cell: Any) -> int:
     """
     Count how many fillers are present in one CSV cell.
 
     Examples:
         "[]" -> 0
-        "['the']" -> 1
-        "['white', 'powerful']" -> 2
+        "[('the',)]" -> 1
+        "[('white',), ('powerful',)]" -> 2
+        "[('bark', 'the')]" -> 1
     """
-    if pd.isna(cell):
-        return 0
-
-    if isinstance(cell, list):
-        return len(cell)
-
-    if isinstance(cell, str):
-        cell = cell.strip()
-
-        if cell == "" or cell == "[]":
-            return 0
-
-        try:
-            parsed = ast.literal_eval(cell)
-        except (ValueError, SyntaxError):
-            # Fallback: treat a non-empty malformed cell as one filler
-            return 1
-
-        if isinstance(parsed, list):
-            return len(parsed)
-
-        if parsed is None:
-            return 0
-
-        return 1
-
-    return 0
+    return len(_cell_to_filler_items(cell))
 
 def _normalize_period_sequence(periods) -> list[str]:
     """Convert period labels to strings while preserving input order."""
@@ -497,68 +538,26 @@ def _normalize_period_column(df: pd.DataFrame, period_col: str) -> pd.DataFrame:
     out.loc[period_mask, period_col] = out.loc[period_mask, period_col].map(str)
     return out
 
-def parse_filler_cell(cell: Any) -> List[str]:
+def parse_filler_cell(cell: Any) -> list[FillerItem]:
     """
-    Parse one slot-filler cell and return a list of string labels.
+    Parse one slot-filler cell and return a list of atomic filler tuples.
 
     The function is idempotent: applying it multiple times produces the same
-    result. Scalar strings are not interpreted as Python literals.
+    result. Scalar strings are normalized to one-element tuples.
+
+    CSV cells must use Python-literal list-of-tuples syntax when representing
+    structured fillers, for example ``"[('bark/NOUN', 'the/DET')]"``.
 
     Examples
     --------
-    "['on', 'in']"     -> ["on", "in"]
-    ["on", "in"]       -> ["on", "in"]
-    [200, "three"]     -> ["200", "three"]
-    [(5, 750, 0)]      -> ["(5, 750, 0)"]
-    "200"              -> ["200"]
-    "(5, 750, 0)"      -> ["(5, 750, 0)"]
-    NaN                -> []
+    "[('on',), ('in',)]"        -> [("on",), ("in",)]
+    [("on",), ("in",)]          -> [("on",), ("in",)]
+    [("bark", "the")]           -> [("bark", "the")]
+    ["legacy", "flat"]          -> [("legacy",), ("flat",)]
+    "200"                       -> [("200",)]
+    NaN                         -> []
     """
-    if isinstance(cell, list):
-        values = cell
-
-    elif cell is None or cell is pd.NA:
-        return []
-
-    elif isinstance(cell, (float, np.floating)) and np.isnan(cell):
-        return []
-
-    elif isinstance(cell, str):
-        text = cell.strip()
-
-        if text in {"", "[]", "nan", "None", "<NA>"}:
-            return []
-
-        # Parse only serialized lists. Do not parse scalar numeric or tuple
-        # strings because that would create mixed int/tuple/string types.
-        if text.startswith("[") and text.endswith("]"):
-            try:
-                parsed = ast.literal_eval(text)
-            except (ValueError, SyntaxError):
-                values = [text]
-            else:
-                values = parsed if isinstance(parsed, list) else [text]
-        else:
-            values = [text]
-
-    else:
-        values = [cell]
-
-    output: List[str] = []
-
-    for value in values:
-        if value is None or value is pd.NA:
-            continue
-
-        if isinstance(value, (float, np.floating)) and np.isnan(value):
-            continue
-
-        normalized_value = str(value).strip()
-
-        if normalized_value not in {"", "nan", "None", "<NA>"}:
-            output.append(normalized_value)
-
-    return output
+    return _cell_to_filler_items(cell)
 
 #-------------------------------------------------------------------------------
 # Support Weighting
@@ -576,21 +575,21 @@ def compute_saturating_support_from_sfiller_df(
     Process a slot-filler DataFrame to calculate saturating support for
     each slot between consecutive periods.
 
-    The support count is calculated after applying a minimum filler frequency
-    threshold to the mixed distribution of each compared period pair.
+    The support count is calculated after applying a minimum atomic filler
+    frequency threshold to the mixed distribution of each compared period pair.
 
     Example:
-        If min_freq = 2 and filler "b" occurs once in period A and once in
-        period B, then "b" is kept for the A-B comparison.
-        If "b" occurs once in period A and zero times in period B,
-        then "b" is ignored for the A-B comparison.
+        If min_freq = 2 and atomic filler ``("b",)`` occurs once in period A
+        and once in period B, then ``("b",)`` is kept for the A-B comparison.
+        If ``("b",)`` occurs once in period A and zero times in period B, then
+        ``("b",)`` is ignored for the A-B comparison.
 
     Steps:
-    1. Read a DataFrame where each slot column contains fillers or list-like
-       filler cells.
-    2. For each slot and adjacent period pair, count individual filler
+    1. Read a DataFrame where each slot column contains atomic filler tuples or
+       cells that parse to lists of atomic filler tuples.
+    2. For each slot and adjacent period pair, count atomic filler tuple
        frequencies across the mixed pair distribution.
-    3. Remove fillers whose mixed frequency is < min_freq for that pair.
+    3. Remove atomic filler tuples whose mixed frequency is < min_freq for that pair.
     4. Aggregate remaining filler counts into raw slot counts by period.
     5. For each consecutive period pair, compute:
            count_support(slot, t-t+1) = min(raw_count(slot, t), raw_count(slot, t+1))
