@@ -8,7 +8,14 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 
-NON_SLOT_COLS = {"Subfolder", "Frequency", "Target"}
+METADATA_COLS = ("subfolder", "frequency", "target")
+NON_SLOT_COLS = set(METADATA_COLS)
+
+
+def _validate_spath_columns(df: pd.DataFrame) -> None:
+    missing_cols = [col for col in METADATA_COLS if col not in df.columns]
+    if missing_cols:
+        raise ValueError("DataFrame must contain lowercase columns: subfolder, frequency, target")
 
 
 def trimming(spath_df: pd.DataFrame, trimmed_rels: Sequence[str]) -> pd.DataFrame:
@@ -16,7 +23,7 @@ def trimming(spath_df: pd.DataFrame, trimmed_rels: Sequence[str]) -> pd.DataFram
     Xóa các slot từ trimmed_rels trở đi trong mỗi cell của các slot.
 
     Args:
-        spath_df (pd.DataFrame): DataFrame chứa các cột Subfolder, Frequency, Target và Slot_*.
+        spath_df (pd.DataFrame): DataFrame chứa các cột subfolder, frequency, target và slot*.
         trimmed_rels (list): List các trimmed_rels cần trim (VD: ['chi_punct', 'chi_subj'])
 
     Returns:
@@ -26,8 +33,9 @@ def trimming(spath_df: pd.DataFrame, trimmed_rels: Sequence[str]) -> pd.DataFram
         raise TypeError("spath_df must be a pandas DataFrame, not a path.")
 
     df = spath_df.copy()
+    _validate_spath_columns(df)
 
-    # Lấy các cột slot (bỏ Subfolder, Frequency và Target)
+    # Lấy các cột slot (bỏ subfolder, frequency và target)
     slot_cols = [c for c in df.columns if c not in NON_SLOT_COLS]
 
     def trim_cell(cell):
@@ -80,6 +88,7 @@ def merging(df: pd.DataFrame, output_path: str | PathLike[str] | None = None) ->
         pd.DataFrame: DataFrame đã merge.
     """
     df = df.copy()
+    _validate_spath_columns(df)
     slot_cols = [c for c in df.columns if c not in NON_SLOT_COLS]
 
     # Loại duplicate trong từng row (chiều ngang), sort để nhất quán
@@ -91,24 +100,24 @@ def merging(df: pd.DataFrame, output_path: str | PathLike[str] | None = None) ->
     # Loại dòng mà slot_key rỗng
     df = df[df["slot_key"].apply(lambda x: len(x) > 0)]
 
-    # Merge theo slot_key và Target
+    # Merge theo slot_key và target
     merged = (
-        df.groupby(["Subfolder", "Target", "slot_key"], as_index=False)
-        .agg({"Frequency": "sum"})
+        df.groupby(["subfolder", "target", "slot_key"], as_index=False)
+        .agg({"frequency": "sum"})
     )
 
     if merged.empty:
-        merged = merged[["Subfolder", "Frequency", "Target"]]
+        merged = merged[["subfolder", "frequency", "target"]]
     else:
         # Tách slot_key ra lại thành cột
         max_len = max(merged["slot_key"].apply(len))
         slot_df = pd.DataFrame(
             merged["slot_key"].apply(lambda x: list(x) + [np.nan] * (max_len - len(x))).tolist(),
-            columns=[f"Slot_{i + 1}" for i in range(max_len)],
+            columns=[f"slot_{i + 1}" for i in range(max_len)],
         )
-        merged = pd.concat([merged[["Subfolder", "Frequency", "Target"]], slot_df], axis=1)
+        merged = pd.concat([merged[["subfolder", "frequency", "target"]], slot_df], axis=1)
 
-    merged = merged.sort_values(["Subfolder","Frequency"], ascending=[True, False]).reset_index(drop=True)
+    merged = merged.sort_values(["subfolder","frequency"], ascending=[True, False]).reset_index(drop=True)
 
     if output_path is not None:
         merged.to_csv(output_path, sep="&", index=False)
@@ -129,12 +138,12 @@ def trim_and_merge(
 
 def spe_group(spath_df: pd.DataFrame, output_folder: str, target_lemma: str):
     """
-    Nhóm DataFrame có cột: Subfolder, Frequency, Target, Slot_*...
+    Nhóm DataFrame có cột: subfolder, frequency, target, slot*...
     Nhóm các row có cùng slot list (đã loại duplicate theo chiều ngang) 
-    trong cùng 1 Subfolder và lưu file JSON.
+    trong cùng 1 subfolder và lưu file JSON.
 
     Args:
-        spath_df (pd.DataFrame): DataFrame chứa các cột Subfolder, Frequency, Target và Slot_*.
+        spath_df (pd.DataFrame): DataFrame chứa các cột subfolder, frequency, target và slot*.
         output_folder (str): Thư mục để lưu file JSON.
 
     Returns:
@@ -163,20 +172,18 @@ def spe_group(spath_df: pd.DataFrame, output_folder: str, target_lemma: str):
     if not isinstance(spath_df, pd.DataFrame):
         raise TypeError("spath_df must be a pandas DataFrame, not a path.")
 
-    required_cols = ["Subfolder", "Frequency", "Target"]
-    missing_cols = [col for col in required_cols if col not in spath_df.columns]
-    if missing_cols:
-        raise ValueError("DataFrame must contain columns: Subfolder, Frequency, Target")
-
     df = spath_df.copy()
+
+    _validate_spath_columns(df)
+
     columns = list(df.columns)
-    target_index = columns.index("Target")
+    target_index = columns.index("target")
     slot_cols = columns[target_index + 1:] # Các cột slots
 
     # bucket theo subfolder
     buckets = {}
     for _, row in df.iterrows():
-        subf = str(row["Subfolder"]).strip()
+        subf = str(row["subfolder"]).strip()
         buckets.setdefault(subf, []).append(row) # Add rows into buckets of subfolders
 
     # xử lý từng subfolder
@@ -187,7 +194,7 @@ def spe_group(spath_df: pd.DataFrame, output_folder: str, target_lemma: str):
         for row in rows:
             # Get all frequencies
             try:
-                freq = int(str(row["Frequency"]).strip())
+                freq = int(str(row["frequency"]).strip())
             except Exception:
                 continue
 

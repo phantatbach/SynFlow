@@ -90,7 +90,7 @@ def process_file(args) -> Counter:
 def save_to_csv_with_subfolder(rows, output_path="output.csv"):
     """
     rows: iterable of (subfolder, freq, target, [slots...])
-    Ghi một CSV duy nhất, delimiter '&', có cột Subfolder.
+    Ghi một CSV duy nhất, delimiter '&', có cột subfolder.
     """
     # Tính max số slot để pad
     max_slots = 0
@@ -101,7 +101,7 @@ def save_to_csv_with_subfolder(rows, output_path="output.csv"):
     # Ghi file
     with open(output_path, mode="w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f, delimiter="&")
-        header = ["Subfolder", "Frequency", "Target"] + [f"Slot{i+1}" for i in range(max_slots)]
+        header = ["subfolder", "frequency", "target"] + [f"slot{i+1}" for i in range(max_slots)]
         writer.writerow(header)
 
         # Sắp xếp: subfolder rồi freq giảm dần
@@ -125,7 +125,7 @@ def spath_comb_explorer(
 ) -> Dict[str, Counter]:
     """
     Trả về dict{subfolder: Counter}, và vẽ top_n theo từng subfolder.
-    Đồng thời ghi một CSV tổng hợp có cột Subfolder.
+    Đồng thời ghi một CSV tổng hợp có cột subfolder.
     """
     pattern   = pattern or DEFAULT_PATTERN
     num_procs = num_processes or max(1, cpu_count()-1)
@@ -183,4 +183,3 @@ def spath_comb_explorer(
     save_to_csv_with_subfolder(csv_rows, output_path=out_csv)
 
     return all_totals
-

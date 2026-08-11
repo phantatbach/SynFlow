@@ -30,16 +30,28 @@ from .sfiller_df import (
     merge_sfiller_df_columns,
     replace_in_sfiller_df_column,
 )
+
+from .construction_df import(
+    spath_to_constructiondf
+)
 __all__ = [
+    spath_explorer,
+
+    spath_comb_explorer,
+
+    full_rel_explorer,
+
+    construction_explorer,
+
+    get_contexts,
+
+    trim_and_merge,
+    spe_group,
+
     build_sfiller_df,
     compute_saturating_support_from_sfiller_df,
-    construction_explorer,
-    full_rel_explorer,
-    get_contexts,
     merge_sfiller_df_columns,
     replace_in_sfiller_df_column,
-    spath_comb_explorer,
-    spath_explorer,
-    spe_group,
-    trim_and_merge,
+
+    spath_to_constructiondf
     ]
