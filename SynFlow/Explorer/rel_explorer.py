@@ -459,7 +459,7 @@ def process_file(
     return results
 
 
-def full_rel_explorer(
+def rel_explorer(
     corpus_folder: str,
     pattern: re.Pattern = None,
     target_lemma: str = None,

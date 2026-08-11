@@ -7,8 +7,8 @@ from .spath_comb_explorer import (
     spath_comb_explorer,
     )
 
-from .full_rel_explorer import (
-    full_rel_explorer,
+from .rel_explorer import (
+    rel_explorer,
     )
 
 from .construction import (
@@ -34,12 +34,16 @@ from .sfiller_df import (
 from .construction_df import(
     spath_to_constructiondf
 )
+
+from .feats_explorer import(
+    feats_explorer
+)
 __all__ = [
     spath_explorer,
 
     spath_comb_explorer,
 
-    full_rel_explorer,
+    rel_explorer,
 
     construction_explorer,
 
@@ -53,5 +57,7 @@ __all__ = [
     merge_sfiller_df_columns,
     replace_in_sfiller_df_column,
 
-    spath_to_constructiondf
+    spath_to_constructiondf,
+    
+    feats_explorer,
     ]
