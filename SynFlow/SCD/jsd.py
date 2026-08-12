@@ -600,6 +600,256 @@ def compute_weighted_consecutive_jsd_df(
         saturating_support,
     )
 
+def compute_period_period_JSD(
+    sfiller_df: pd.DataFrame,
+    period_col: str = "subfolder",
+    slot_col: Optional[str] = None,
+    min_freq: int = 1,
+    mode: str = "data_only",
+    all_periods: Optional[Sequence[Any]] = None,
+    weighting: bool = False,
+    k: float = 20.0,
+) -> pd.DataFrame:
+    """
+    Compute pairwise JSD between all period pairs for one slot column.
+
+    Parameters
+    ----------
+    sfiller_df : pd.DataFrame
+        Slot-filler DataFrame. Metadata columns are excluded using
+        ``DEFAULT_COLS``. If ``slot_col`` is None, the DataFrame must contain
+        exactly one non-metadata slot column.
+
+    period_col : str
+        Name of the period column.
+
+    slot_col : str, optional
+        Slot column to compare. Required when the DataFrame contains multiple
+        non-metadata slot columns.
+
+    min_freq : int
+        Minimum frequency of a filler across each compared period pair.
+        Fillers below this threshold are treated as absent from that pair.
+
+    mode : {"all", "data_only"}
+        ``"all"`` uses the supplied/inferred full period sequence.
+        ``"data_only"`` uses periods with raw data for ``slot_col``.
+
+    all_periods : list, optional
+        Full period sequence. If None, inferred from ``sfiller_df``.
+
+    weighting : bool
+        If True, multiply each JSD value by ``min(1, c / k)``, where ``c`` is
+        the smaller retained row count of the compared periods after
+        pair-specific filtering.
+
+    k : float
+        Support threshold used only when ``weighting=True``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Square period-by-period matrix. The diagonal is 0. Missing comparisons
+        caused by empty data after filtering are NaN.
+    """
+    _validate_period_column(sfiller_df, period_col)
+    _validate_min_freq(min_freq)
+    if weighting:
+        _validate_positive_k(k)
+    mode = _validate_jsd_mode(mode)
+
+    sfiller_data = _normalize_period_column(sfiller_df, period_col)
+
+    slot_cols = [
+        c for c in sfiller_data.columns
+        if c not in DEFAULT_COLS and c != period_col
+    ]
+
+    if slot_col is None:
+        if len(slot_cols) != 1:
+            raise ValueError(
+                "slot_col must be provided when the DataFrame contains "
+                f"{len(slot_cols)} slot columns: {slot_cols}."
+            )
+        slot_col = slot_cols[0]
+    elif slot_col not in sfiller_data.columns:
+        raise ValueError(f"slot_col {slot_col!r} not found in DataFrame.")
+
+    if all_periods is None:
+        all_periods = _normalize_period_sequence(
+            sfiller_data[period_col].dropna().unique()
+        )
+    else:
+        all_periods = _normalize_period_sequence(all_periods)
+
+    slot_df = sfiller_data[[period_col, slot_col]].copy()
+    slot_df[slot_col] = slot_df[slot_col].apply(parse_filler_cell)
+    slot_df = (
+        slot_df
+        .explode(slot_col, ignore_index=True)
+        .dropna(subset=[period_col, slot_col])
+        .reset_index(drop=True)
+    )
+    slot_df = slot_df[slot_df[slot_col].astype(str).str.strip() != ""]
+
+    if mode == "data_only":
+        periods = _normalize_period_sequence(slot_df[period_col].dropna().unique())
+    else:
+        periods = list(all_periods)
+
+    matrix = pd.DataFrame(np.nan, index=periods, columns=periods, dtype=float)
+    for period in periods:
+        matrix.loc[period, period] = 0.0
+
+    if len(periods) < 2 or slot_df.empty:
+        return matrix
+
+    for i, period_1 in enumerate(periods):
+        for period_2 in periods[i + 1:]:
+            pair_work = slot_df[slot_df[period_col].isin([period_1, period_2])].copy()
+            if pair_work.empty:
+                continue
+
+            if min_freq > 1:
+                mixed_filler_freq = pair_work.groupby(slot_col)[slot_col].transform("size")
+                pair_work = pair_work[mixed_filler_freq >= min_freq]
+
+            if pair_work.empty:
+                continue
+
+            freq = (
+                pair_work
+                .groupby([period_col, slot_col])
+                .size()
+                .unstack(fill_value=0)
+                .astype(float)
+            )
+            freq = freq.reindex([period_1, period_2], fill_value=0.0)
+            row_sums = freq.sum(axis=1)
+            sum_1 = row_sums.loc[period_1]
+            sum_2 = row_sums.loc[period_2]
+
+            if sum_1 == 0 or sum_2 == 0:
+                continue
+
+            distribution_a = (freq.loc[period_1] / sum_1).to_numpy()
+            distribution_b = (freq.loc[period_2] / sum_2).to_numpy()
+            value = cal_jsd(distribution_a, distribution_b)
+
+            if weighting:
+                support_count = float(min(sum_1, sum_2))
+                value *= min(1.0, support_count / k)
+
+            matrix.loc[period_1, period_2] = value
+            matrix.loc[period_2, period_1] = value
+
+    return matrix
+
+def plot_period_period_JSD(
+    jsd_matrix: pd.DataFrame,
+    title: str = "Period-Period JSD",
+    colorbar_title: str = "JSD",
+    height: int = 700,
+    width: int = 800,
+    colorscale: str = "Viridis",
+    zmin: Optional[float] = 0.0,
+    zmax: Optional[float] = None,
+    text_auto: bool = True,
+    save_path: Optional[str] = None,
+) -> go.Figure:
+    """
+    Plot a period-by-period JSD matrix as an interactive heatmap.
+
+    Parameters
+    ----------
+    jsd_matrix : pd.DataFrame
+        Square matrix returned by ``compute_period_period_JSD``.
+
+    title : str
+        Figure title.
+
+    colorbar_title : str
+        Label for the heatmap colorbar.
+
+    height : int
+        Figure height.
+
+    width : int
+        Figure width.
+
+    colorscale : str
+        Plotly colorscale name.
+
+    zmin : float, optional
+        Lower color scale bound. Set to None for Plotly auto-scaling.
+
+    zmax : float, optional
+        Upper color scale bound. Set to None for Plotly auto-scaling.
+
+    text_auto : bool
+        If True, show rounded JSD values inside heatmap cells.
+
+    save_path : str, optional
+        If provided, saves the figure as an interactive HTML file.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Interactive Plotly heatmap figure.
+    """
+    if not isinstance(jsd_matrix, pd.DataFrame):
+        raise ValueError("jsd_matrix must be a pandas DataFrame.")
+
+    if jsd_matrix.empty:
+        raise ValueError("jsd_matrix must not be empty.")
+
+    if jsd_matrix.shape[0] != jsd_matrix.shape[1]:
+        raise ValueError("jsd_matrix must be square.")
+
+    if list(jsd_matrix.index.astype(str)) != list(jsd_matrix.columns.astype(str)):
+        raise ValueError("jsd_matrix index and columns must contain the same periods.")
+
+    matrix = jsd_matrix.astype(float)
+    periods = [str(period) for period in matrix.index]
+    values = matrix.to_numpy()
+    rounded_values = np.round(values, 4).astype(str)
+    text = np.where(np.isfinite(values), rounded_values, "") if text_auto else None
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=values,
+            x=periods,
+            y=periods,
+            colorscale=colorscale,
+            zmin=zmin,
+            zmax=zmax,
+            colorbar=dict(title=colorbar_title),
+            text=text,
+            texttemplate="%{text}" if text_auto else None,
+            hovertemplate=(
+                "Period 1: %{y}<br>"
+                "Period 2: %{x}<br>"
+                f"{colorbar_title}: %{{z:.6f}}"
+                "<extra></extra>"
+            ),
+        )
+    )
+
+    fig.update_layout(
+        title=title,
+        xaxis_title="Period",
+        yaxis_title="Period",
+        width=width,
+        height=height,
+        template="plotly_white",
+    )
+    fig.update_yaxes(autorange="reversed")
+
+    if save_path is not None:
+        fig.write_html(save_path)
+
+    return fig
+
 def sfillers_jsd_by_period(
     df: pd.DataFrame,
     period_col: str = "subfolder",

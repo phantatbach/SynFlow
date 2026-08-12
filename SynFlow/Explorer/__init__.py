@@ -21,6 +21,10 @@ from .trimming import (
     spe_group
 )
 
+from .slot_df import (
+    spaths_json_to_slotfiller_df,
+)
+
 from .sfiller_df import (
     build_sfiller_df,
     compute_saturating_support_from_sfiller_df,
@@ -53,6 +57,8 @@ __all__ = [
 
     "trim_and_merge",
     "spe_group",
+    
+    "spaths_json_to_slotfiller_df",
 
     "build_sfiller_df",
     "compute_saturating_support_from_sfiller_df",

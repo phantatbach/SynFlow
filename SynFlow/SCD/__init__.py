@@ -11,12 +11,14 @@ from .freq import (
 
 from .jsd import (
     compute_consecutive_jsd_df,
+    compute_period_period_JSD,
     compute_weighted_consecutive_jsd_df,
     multiply_consecutive_jsd_saturating_support,
     permutation_test_consecutive_jsd,
     plot_all_jsds_by_period,
     plot_items_jsd_by_period,
     plot_jsd_by_period,
+    plot_period_period_JSD,
     plot_permutation_test_consecutive_jsd,
     print_jsd_by_period,
     sfillers_jsd_by_period,
@@ -35,12 +37,14 @@ __all__ = [
 
     # jsd
     "compute_consecutive_jsd_df",
+    "compute_period_period_JSD",
     "compute_weighted_consecutive_jsd_df",
     "multiply_consecutive_jsd_saturating_support",
     "permutation_test_consecutive_jsd",
     "plot_all_jsds_by_period",
     "plot_items_jsd_by_period",
     "plot_jsd_by_period",
+    "plot_period_period_JSD",
     "plot_permutation_test_consecutive_jsd",
     "print_jsd_by_period",
     "sfillers_jsd_by_period",
