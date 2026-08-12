@@ -1671,7 +1671,7 @@ def plot_all_jsds_by_period(
     slots: Optional[List[str]] = None,
     col_to_plot: Optional[str] = None,
     layout: str = "combined",
-    title: str = "Weighted JSD for all slots",
+    title: str = "Weighted JSD for all items",
     y_label: str = "JSD",
     x_label: str = "Time Period",
     height: int = 700,

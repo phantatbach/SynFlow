@@ -98,7 +98,7 @@ def _iter_corpus_files(subfolder_path: str) -> Iterable[str]:
             yield fname
 
 
-def feats_explorer(
+def feat_explorer(
     corpus_folder: str,
     target_lemma: str,
     target_pos: str,

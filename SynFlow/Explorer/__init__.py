@@ -32,9 +32,15 @@ from .construction_df import(
     spath_to_constructiondf
 )
 
-from .feats_explorer import(
-    feats_explorer
+from .feat_explorer import(
+    feat_explorer
 )
+
+from .feat_df import (
+    build_feat_df,
+    parse_feature_cell,
+)
+
 __all__ = [
     "spath_explorer",
     "spath_comb_explorer",
@@ -55,5 +61,7 @@ __all__ = [
 
     "spath_to_constructiondf",
     
-    "feats_explorer",
+    "feat_explorer",
+    "build_feat_df",
+    "parse_feature_cell",
     ]
