@@ -29,9 +29,9 @@ def spaths_json_to_slotfiller_df(
                         "id": f"{subfolder}_{idx}",
                         "subfolder": str(subfolder),
                         "target": [(target,)],
-                        "slot": [(slot,)],
+                        "type": [(slot,)],
                     }
                 )
                 idx += 1
 
-    return pd.DataFrame(rows, columns=["id", "subfolder", "target", "slot"])
+    return pd.DataFrame(rows, columns=["id", "subfolder", "target", "type"])
