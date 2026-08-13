@@ -778,6 +778,7 @@ def compute_period_period_dist(
         Square period-by-period matrix. The diagonal is 0. Missing comparisons
         caused by empty data after filtering are NaN.
     """
+    print('Computing period-period distribution distance with measure:', measure)
     _validate_period_column(sfiller_df, period_col)
     _validate_min_freq(min_freq)
     measure_obj = resolve_distdist(measure)
@@ -1996,7 +1997,7 @@ def plot_dist_by_period(dist_results: Dict[Any, Dict[str, Any]]) -> None:
 
     plt.figure(figsize=(15, 5))
     plt.plot(periods, dist_scores, marker="o")
-    plt.title(f"{y_label} between periods")
+    plt.title(f"Diachronic {y_label}")
     plt.xlabel("Periods")
     plt.ylabel(y_label)
     plt.grid(True)
@@ -2085,7 +2086,6 @@ def plot_all_dists_by_period(
     slots: Optional[List[str]] = None,
     col_to_plot: Optional[str] = None,
     layout: str = "combined",
-    title: str = "Weighted distance for all items",
     y_label: str = "Distance",
     x_label: str = "Time Period",
     height: int = 700,
@@ -2138,7 +2138,7 @@ def plot_all_dists_by_period(
     plotly.graph_objects.Figure
         Interactive Plotly figure.
     """
-    required_cols = {"slot", "period_1", "period_2"}
+    required_cols = {"slot", "period_1", "period_2", "measure"}
     missing_cols = required_cols - set(dist_df.columns)
     if missing_cols:
         raise ValueError(
@@ -2146,19 +2146,17 @@ def plot_all_dists_by_period(
         )
 
     if col_to_plot is None:
-        if "weighted_dist" in dist_df.columns:
-            col_to_plot = "weighted_dist"
-        elif "dist" in dist_df.columns:
-            col_to_plot = "dist"
-        else:
-            raise ValueError(
-                "dist_df must contain 'weighted_dist' or 'dist'."
-            )
-    elif col_to_plot not in dist_df.columns:
+        raise ValueError("col_to_plot must be specified.")
+    
+    measure = dist_df["measure"].dropna().unique()
+    if len(measure) > 1:
         raise ValueError(
-            f"col_to_plot {col_to_plot!r} not found."
-            )
-
+            f"dist_df contains multiple measures: {measure}. "
+            "Please filter to a single measure before plotting."
+        )
+    
+    title= f"Diachronic {measure[0]}"
+    
     plot_df = dist_df.copy()
 
     # Filter slots if specified

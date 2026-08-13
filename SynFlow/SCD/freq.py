@@ -8,13 +8,15 @@ import numpy as np
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from SynFlow.Explorer.sfiller_df import parse_filler_cell
 
-def count_keyword_in_file(file_path, keyword_string):
+
+def count_keyword_in_file(file_path: str, target_string: str) -> int:
     try:
         count = 0
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
-                count += line.count(keyword_string)
+                count += line.count(target_string)
         return count
     except Exception as e:
         print(f"Warning: failed to read {file_path}: {e}")
@@ -22,11 +24,13 @@ def count_keyword_in_file(file_path, keyword_string):
 
 
 def count_keyword_tokens_by_period(
-    corpus_path,
-    keyword_string,
-    fname_pattern,
-    max_workers=8
-):
+    corpus_path: str,
+    target_lemma: str,
+    target_pos: str,
+    max_workers: int = 8,
+) -> dict[str, int]:
+    """Count target-token occurrences in all files under each period folder."""
+    target_string = f"{target_lemma}\t{target_pos}\t"
     counts_by_period = defaultdict(int)
     future_to_subfolder = {}
 
@@ -42,15 +46,10 @@ def count_keyword_tokens_by_period(
                 if not file_entry.is_file():
                     continue
 
-                filename = file_entry.name
-
-                if not fname_pattern.search(filename):
-                    continue
-
                 future = executor.submit(
                     count_keyword_in_file,
                     file_entry.path,
-                    keyword_string
+                    target_string
                 )
 
                 future_to_subfolder[future] = subfolder
@@ -262,6 +261,14 @@ def freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
 
     # Load and prepare data ---
     df = pd.read_csv(csv_path)
+    df[slot_type] = df[slot_type].apply(parse_filler_cell)
+    df = (
+        df
+        .explode(slot_type, ignore_index=True)
+        .dropna(subset=[time_col, slot_type])
+        .reset_index(drop=True)
+    )
+    df = df[df[slot_type].astype(str).str.strip() != ""]
 
     top_n_ovr = set()
     for period in df[time_col].dropna().unique():
@@ -297,7 +304,7 @@ def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
     Returns:
         fig (plotly.graph_objs.Figure): The plotted figure.
     """
-    count_df = freq_top_union_sfillers_by_period(csv_path, slot_type=slot_type, top_n=10,
+    count_df = freq_top_union_sfillers_by_period(csv_path, slot_type=slot_type, top_n=top_n,
                                            normalized=normalized, time_col=time_col)
 
     # Assign y_axis

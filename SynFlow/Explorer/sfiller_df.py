@@ -479,7 +479,10 @@ def extract_slot_cols(
 
 def explode_slot_col(df: pd.DataFrame, slot_name: str) -> pd.DataFrame:
     """
-    Explode a slot column so each atomic filler tuple occupies one row.
+    Explode a slot column so each row contains one atomic filler tuple.
+
+    The exploded filler is wrapped back into a one-item list to preserve the
+    list-of-tuples CSV format used by downstream parsers.
     """
     if slot_name not in df.columns:
         raise KeyError(f"Column not found: {slot_name}")
@@ -488,6 +491,7 @@ def explode_slot_col(df: pd.DataFrame, slot_name: str) -> pd.DataFrame:
     exploded_df[slot_name] = exploded_df[slot_name].apply(parse_filler_cell)
     exploded_df = exploded_df.explode(slot_name, ignore_index=True)
     exploded_df = exploded_df[exploded_df[slot_name].notna()].reset_index(drop=True)
+    exploded_df[slot_name] = exploded_df[slot_name].map(lambda item: [item])
     return exploded_df
 
 def extract_1_slot_col(
