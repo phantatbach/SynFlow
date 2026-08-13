@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import math
 from collections.abc import Iterable, Iterator, Sequence
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,20 +19,73 @@ from SynFlow.Explorer import compute_saturating_support_from_sfiller_df
 from SynFlow.Explorer.sfiller_df import parse_filler_cell
 
 #-------------------------------------------------------------------------------
-# Core JSD Helpers
+# Distribution-Distance Measures
 #-------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class DistDist:
+    """Distance measure between two probability distributions."""
+
+    name: str
+    label: str
+    scorer: Callable[[np.ndarray, np.ndarray], float]
+    decomposer: Callable[[np.ndarray, np.ndarray, Sequence[Any]], List[Dict[str, Any]]]
+
+    def score(self, distribution_a: np.ndarray, distribution_b: np.ndarray) -> float:
+        """Return the distance between two aligned probability distributions."""
+        return self.scorer(distribution_a, distribution_b)
+
+    def decompose(
+        self,
+        distribution_a: np.ndarray,
+        distribution_b: np.ndarray,
+        vocab: Sequence[Any],
+    ) -> List[Dict[str, Any]]:
+        """Return item-level contributions for two aligned distributions."""
+        return self.decomposer(distribution_a, distribution_b, vocab)
+
+    @property
+    def weighted_name(self) -> str:
+        """Column/statistic name for the support-weighted form."""
+        return f"weighted_{self.name}"
+
+
+def _sort_contributions(
+    vocab: Sequence[Any],
+    scores: np.ndarray,
+    distribution_a: np.ndarray,
+    distribution_b: np.ndarray,
+) -> List[Dict[str, Any]]:
+    """Sort contribution scores and attach directional item prefixes."""
+    name_map = direction_prefix_map(vocab, distribution_a, distribution_b)
+    return [
+        {"item": name_map[slot], "contribution": float(score)}
+        for slot, score in sorted(
+            zip(vocab, scores), key=lambda pair: pair[1], reverse=True
+        )
+    ]
+
+
 def cal_jsd(distribution_a: np.ndarray, distribution_b: np.ndarray) -> float:
-    """
-    Compute the Jensen-Shannon divergence between two probability distributions.
+    """Compute squared Jensen-Shannon distance with base-2 logarithms."""
+    return float(jensenshannon(distribution_a, distribution_b, base=2) ** 2)
 
-    Parameters:
-        distribution_a (numpy array): First probability distribution.
-        distribution_b (numpy array): Second probability distribution.
 
-    Returns:
-        float: The Jensen-Shannon divergence between p and q.
-    """
-    return jensenshannon(distribution_a, distribution_b, base=2)**2
+def cal_tvd(distribution_a: np.ndarray, distribution_b: np.ndarray) -> float:
+    """Compute total variation distance."""
+    return float(0.5 * np.abs(distribution_a - distribution_b).sum())
+
+
+def cal_cosine_distance(
+    distribution_a: np.ndarray,
+    distribution_b: np.ndarray,
+) -> float:
+    """Compute cosine distance, ``1 - cosine_similarity``."""
+    norm_a = np.linalg.norm(distribution_a)
+    norm_b = np.linalg.norm(distribution_b)
+    if norm_a == 0 or norm_b == 0:
+        return np.nan
+    similarity = float(np.dot(distribution_a, distribution_b) / (norm_a * norm_b))
+    return 1.0 - similarity
 
 def direction_prefix_map(
     vocab: Sequence[Any],
@@ -72,44 +128,90 @@ def direction_prefix_map(
                 out[slot] = f"{prefix_decrease}{slot}"
     return out
 
-def cal_contrib_jsd(
+def cal_jsd_contrib(
     distribution_a: np.ndarray,
     distribution_b: np.ndarray,
     vocab: Sequence[Any],
 ) -> List[Dict[str, Any]]:
-    """
-    Decompose a global JSD score into pointwise item contributions.
-
-    Parameters:
-        distribution_a (numpy array): First probability distribution.
-        distribution_b (numpy array): Second probability distribution.
-        vocab (list): List of slot types corresponding to the two distributions.
-
-    Returns:
-        list[dict]: Sorted list of dictionaries with keys ``item`` and ``contribution``.
-    """
+    """Decompose squared Jensen-Shannon distance into item contributions."""
     distribution_mix = 0.5 * (distribution_a + distribution_b)
-    pointwise_jsd = 0.5 * (distribution_a * np.log2(distribution_a / distribution_mix + 1e-12) +
-                           distribution_b * np.log2(distribution_b / distribution_mix + 1e-12))
-
-    name_map = direction_prefix_map(
+    with np.errstate(divide="ignore", invalid="ignore"):
+        term_a = np.where(
+            distribution_a > 0,
+            distribution_a * np.log2(distribution_a / distribution_mix),
+            0.0,
+        )
+        term_b = np.where(
+            distribution_b > 0,
+            distribution_b * np.log2(distribution_b / distribution_mix),
+            0.0,
+        )
+    return _sort_contributions(
         vocab,
+        0.5 * (term_a + term_b),
         distribution_a,
         distribution_b,
-        prefix_increase="in_",
-        prefix_decrease="de_",
-        prefix_born="bo_",
-        prefix_lost="lo_",
-        neutral=""
     )
-    contrib = [
-        {"item": name_map[slot], "contribution": float(score)}
-        for slot, score in sorted(
-            zip(vocab, pointwise_jsd), key=lambda pair: pair[1], reverse=True
-        )
-    ]
 
-    return contrib
+def cal_tvd_contrib(
+    distribution_a: np.ndarray,
+    distribution_b: np.ndarray,
+    vocab: Sequence[Any],
+) -> List[Dict[str, Any]]:
+    """Decompose total variation distance into item contributions."""
+    return _sort_contributions(
+        vocab,
+        0.5 * np.abs(distribution_a - distribution_b),
+        distribution_a,
+        distribution_b,
+    )
+
+def cal_cosine_distance_contrib(
+    distribution_a: np.ndarray,
+    distribution_b: np.ndarray,
+    vocab: Sequence[Any],
+) -> List[Dict[str, Any]]:
+    """Decompose cosine distance into additive item contributions."""
+    norm_a = np.linalg.norm(distribution_a)
+    norm_b = np.linalg.norm(distribution_b)
+    if norm_a == 0 or norm_b == 0:
+        scores = np.full(len(vocab), np.nan)
+    else:
+        normalized_a = distribution_a / norm_a
+        normalized_b = distribution_b / norm_b
+        scores = (1.0 / len(vocab)) - (normalized_a * normalized_b)
+    return _sort_contributions(vocab, scores, distribution_a, distribution_b)
+
+
+JSD = DistDist("jsd", "JSD", cal_jsd, cal_jsd_contrib)
+COSINE_DISTANCE = DistDist(
+    "cosine_distance",
+    "Cosine distance",
+    cal_cosine_distance,
+    cal_cosine_distance_contrib,
+)
+TVD = DistDist("tvd", "TVD", cal_tvd, cal_tvd_contrib)
+
+DISTDIST_MEASURES: Dict[str, DistDist] = {
+    measure.name: measure
+    for measure in (JSD, COSINE_DISTANCE, TVD)
+}
+
+
+def resolve_distdist(measure: str | DistDist) -> DistDist:
+    """Normalize a distribution-distance measure name or instance."""
+    if isinstance(measure, DistDist):
+        return measure
+    if not isinstance(measure, str):
+        raise TypeError("measure must be a DistDist instance or measure name.")
+    measure_name = measure.lower()
+    try:
+        return DISTDIST_MEASURES[measure_name]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unknown measure {measure!r}. "
+            f"Available measures: {sorted(DISTDIST_MEASURES)}."
+        ) from exc
 
 #-------------------------------------------------------------------------------
 # Period And Validation Helpers
@@ -170,8 +272,8 @@ def _validate_positive_k(k: float) -> None:
     if k <= 0:
         raise ValueError("k must be > 0.")
 
-def _validate_jsd_mode(mode: str) -> str:
-    """Validate and normalize a JSD period-comparison mode."""
+def _validate_dist_mode(mode: str) -> str:
+    """Validate and normalize a Dist period-comparison mode."""
     if not isinstance(mode, str):
         raise ValueError(
             f"`mode` must be either 'all' or 'data_only', but got {mode!r}."
@@ -200,23 +302,24 @@ def _validate_permutation_arguments(
         raise ValueError("n_jobs must be >= 1.")
 
 #-------------------------------------------------------------------------------
-# Consecutive JSD
+# Consecutive Dist
 #-------------------------------------------------------------------------------
-def consecutive_jsd(
+def consecutive_dist(
     temp_slot_df: pd.DataFrame,
     slot_col: Optional[str] = None,
     period_col: str = "subfolder",
     min_freq: int = 1,
     mode: str = "all",
     all_periods: Optional[Sequence[Any]] = None,
+    measure: str | DistDist = "jsd",
 ) -> pd.DataFrame:
     """
-    Compute consecutive Jensen-Shannon Divergence for one slot.
+    Compute consecutive Distribution distance for one slot.
 
     Modes
     -----
     mode="all":
-        Compute JSD only between adjacent periods in the full period sequence.
+        Compute Dist only between adjacent periods in the full period sequence.
         If either period has no data after pair-level filtering, skip that pair.
 
         Example:
@@ -226,7 +329,7 @@ def consecutive_jsd(
             -> no 1880-1900 comparison
 
     mode="data_only":
-        Compute JSD between adjacent periods with raw filler data for that slot.
+        Compute Dist between adjacent periods with raw filler data for that slot.
         Each pair is then filtered by mixed pair frequency; pairs without data
         on both sides after filtering are skipped.
 
@@ -250,7 +353,7 @@ def consecutive_jsd(
         compared period pair.
 
     mode : {"all", "data_only"}
-        JSD computation mode.
+        Dist computation mode.
 
     all_periods : list, optional
         Full period sequence in the desired comparison order. Required for
@@ -259,8 +362,9 @@ def consecutive_jsd(
     Returns
     -------
     pd.DataFrame
-        Columns: slot, period_1, period_2, jsd
+        Columns: slot, period_1, period_2, measure, dist
     """
+    measure_obj = resolve_distdist(measure)
     mode = mode.lower()
     if mode not in {"all", "data_only"}:
         raise ValueError(
@@ -278,7 +382,7 @@ def consecutive_jsd(
 
     # If no data survives filtering, return empty result
     if work.empty:
-        return pd.DataFrame(columns=["slot", "period_1", "period_2", "jsd"])
+        return pd.DataFrame(columns=["slot", "period_1", "period_2", "measure", "dist"])
 
     if mode == "all":
         if all_periods is None:
@@ -293,9 +397,9 @@ def consecutive_jsd(
     elif mode == "data_only":
         periods = _normalize_period_sequence(work[period_col].dropna().unique())
 
-    # If fewer than two periods remain, no JSD can be computed
+    # If fewer than two periods remain, no Dist can be computed
     if len(periods) < 2:
-        return pd.DataFrame(columns=["slot", "period_1", "period_2", "jsd"])
+        return pd.DataFrame(columns=["slot", "period_1", "period_2", "measure", "dist"])
 
     results = []
 
@@ -328,33 +432,35 @@ def consecutive_jsd(
         sum_2 = row_sums.loc[period_2]
 
         # Critical rule:
-        # Do not compute JSD if either side has no data.
+        # Do not compute Dist if either side has no data.
         if sum_1 == 0 or sum_2 == 0:
             continue
 
         distribution_a = (freq.loc[period_1] / sum_1).to_numpy()
         distribution_b = (freq.loc[period_2] / sum_2).to_numpy()
 
-        jsd = cal_jsd(distribution_a, distribution_b)
+        dist = measure_obj.score(distribution_a, distribution_b)
 
         results.append({
             "slot": slot_col,
             "period_1": period_1,
             "period_2": period_2,
-            "jsd": jsd
+            "measure": measure_obj.name,
+            "dist": dist
         })
 
-    return pd.DataFrame(results, columns=["slot", "period_1", "period_2", "jsd"])
+    return pd.DataFrame(results, columns=["slot", "period_1", "period_2", "measure", "dist"])
 
-def compute_consecutive_jsd_df(
+def compute_consecutive_dist_df(
     sfiller_df: pd.DataFrame,
     period_col: str = "subfolder",
     min_freq: int = 1,
     mode: str = "all",
     all_periods: Optional[Sequence[Any]] = None,
+    measure: str | DistDist = "jsd",
 ) -> pd.DataFrame:
     """
-    Compute consecutive JSD for all slot-filler columns in a DataFrame.
+    Compute consecutive Dist for all slot-filler columns in a DataFrame.
 
     Modes
     -----
@@ -381,7 +487,7 @@ def compute_consecutive_jsd_df(
         absent from that pair.
 
     mode : {"all", "data_only"}
-        JSD computation mode.
+        Dist computation mode.
 
     all_periods : list, optional
         Full period sequence. If None, inferred from the DataFrame.
@@ -389,12 +495,13 @@ def compute_consecutive_jsd_df(
     Returns
     -------
     pd.DataFrame
-        Columns: slot, period_1, period_2, jsd.
+        Columns: slot, period_1, period_2, measure, dist.
     """
+    measure_obj = resolve_distdist(measure)
     _validate_period_column(sfiller_df, period_col)
     _validate_min_freq(min_freq)
 
-    mode = _validate_jsd_mode(mode)
+    mode = _validate_dist_mode(mode)
 
     sfiller_data = _normalize_period_column(sfiller_df, period_col)
 
@@ -428,35 +535,37 @@ def compute_consecutive_jsd_df(
         # Remove empty string fillers, if any
         slot_df = slot_df[slot_df[slot_col].astype(str).str.strip() != ""]
 
-        # Compute JSD
-        consecutive_jsd_table = consecutive_jsd(
+        # Compute Dist
+        consecutive_dist_table = consecutive_dist(
             temp_slot_df=slot_df,
             slot_col=slot_col,
             period_col=period_col,
             min_freq=min_freq,
             mode=mode,
-            all_periods=all_periods if mode == "all" else None
+            all_periods=all_periods if mode == "all" else None,
+            measure=measure_obj,
         )
 
-        if not consecutive_jsd_table.empty:
-            output_frames.append(consecutive_jsd_table)
+        if not consecutive_dist_table.empty:
+            output_frames.append(consecutive_dist_table)
 
     if not output_frames:
-        return pd.DataFrame(columns=["slot", "period_1", "period_2", "jsd"])
+        return pd.DataFrame(columns=["slot", "period_1", "period_2", "measure", "dist"])
 
     return pd.concat(output_frames, ignore_index=True)
 
-def multiply_consecutive_jsd_saturating_support(
-    consecutive_jsd: pd.DataFrame,
+def multiply_consecutive_dist_saturating_support(
+    consecutive_dist_df: pd.DataFrame,
     saturating_support: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Multiply consecutive JSD values by matching support weights.
+    Multiply consecutive Dist values by matching support weights.
 
     Parameters
     ----------
-    consecutive_jsd : pd.DataFrame
-        DataFrame with columns ``slot``, ``period_1``, ``period_2``, and ``jsd``.
+    consecutive_dist_df : pd.DataFrame
+        DataFrame with columns ``slot``, ``period_1``, ``period_2``,
+        ``measure``, and ``dist``.
 
     saturating_support : pd.DataFrame
         DataFrame with columns ``slot``, ``period_1``, ``period_2``,
@@ -465,20 +574,22 @@ def multiply_consecutive_jsd_saturating_support(
     Returns
     -------
     pd.DataFrame
-        DataFrame with columns ``slot``, ``period_1``, ``period_2``, ``jsd``,
-        ``support_count``, ``support_weight``, and ``weighted_jsd``.
+        DataFrame with columns ``slot``, ``period_1``, ``period_2``,
+        ``measure``, ``dist``, ``support_count``, ``support_weight``, and
+        ``weighted_dist``.
     """
     output_cols = [
         "slot",
         "period_1",
         "period_2",
-        "jsd",
+        "measure",
+        "dist",
         "support_count",
         "support_weight",
-        "weighted_jsd",
+        "weighted_dist",
     ]
 
-    if consecutive_jsd.empty:
+    if consecutive_dist_df.empty:
         return pd.DataFrame(columns=output_cols)
 
     support_cols = [
@@ -496,7 +607,14 @@ def multiply_consecutive_jsd_saturating_support(
             f"saturating_support is missing required columns: {sorted(missing_cols)}"
         )
 
-    weighted_consecutive_jsd = consecutive_jsd.merge(
+    metric_cols = {"slot", "period_1", "period_2", "measure", "dist"}
+    missing_metric_cols = metric_cols - set(consecutive_dist_df.columns)
+    if missing_metric_cols:
+        raise ValueError(
+            f"consecutive_dist_df is missing required columns: {sorted(missing_metric_cols)}"
+        )
+
+    weighted_consecutive_dist = consecutive_dist_df.merge(
         saturating_support[support_cols],
         on=support_key_cols,
         how="left",
@@ -504,39 +622,40 @@ def multiply_consecutive_jsd_saturating_support(
         indicator=True,
     )
 
-    missing_support = weighted_consecutive_jsd["_merge"] != "both"
+    missing_support = weighted_consecutive_dist["_merge"] != "both"
     if missing_support.any():
-        missing_keys = weighted_consecutive_jsd.loc[
+        missing_keys = weighted_consecutive_dist.loc[
             missing_support,
             support_key_cols,
         ]
         raise ValueError(
-            "Missing support for the following JSD rows:\n"
+            "Missing support for the following distance rows:\n"
             f"{missing_keys.to_string(index=False)}"
         )
 
-    weighted_consecutive_jsd = weighted_consecutive_jsd.drop(columns="_merge")
-    weighted_consecutive_jsd["weighted_jsd"] = (
-        weighted_consecutive_jsd["jsd"]
-        * weighted_consecutive_jsd["support_weight"]
+    weighted_consecutive_dist = weighted_consecutive_dist.drop(columns="_merge")
+    weighted_consecutive_dist["weighted_dist"] = (
+        weighted_consecutive_dist["dist"]
+        * weighted_consecutive_dist["support_weight"]
     )
 
-    return weighted_consecutive_jsd[output_cols]
+    return weighted_consecutive_dist[output_cols]
 
-def compute_weighted_consecutive_jsd_df(
+def compute_weighted_consecutive_dist_df(
     sfiller_df: pd.DataFrame,
     period_col: str = "subfolder",
     min_freq: int = 1,
     mode: str = "all",
     all_periods: Optional[Sequence[Any]] = None,
+    measure: str | DistDist = "jsd",
     k: float = 20.0,
     include_zero_slots: bool = False,
 ) -> pd.DataFrame:
     """
-    Compute support-weighted consecutive JSD for all slot columns.
+    Compute support-weighted consecutive Dist for all slot columns.
 
-    This function computes raw consecutive JSD with
-    `compute_consecutive_jsd_df`, computes saturating support with
+    This function computes raw consecutive Dist with
+    `compute_consecutive_dist_df`, computes saturating support with
     `compute_saturating_support_from_sfiller_df``, and multiplies matching
     slot/period values.
 
@@ -554,7 +673,7 @@ def compute_weighted_consecutive_jsd_df(
         Fillers below this threshold are treated as absent from that pair.
 
     mode : {"all", "data_only"}
-        Period-comparison mode used for both JSD and support.
+        Period-comparison mode used for both Dist and support.
 
     all_periods : list, optional
         Full period sequence. If None, inferred from ``sfiller_df``.
@@ -569,20 +688,22 @@ def compute_weighted_consecutive_jsd_df(
     Returns
     -------
     pd.DataFrame
-        Columns: slot, period_1, period_2, jsd, support_count,
-        support_weight, weighted_jsd.
+        Columns: slot, period_1, period_2, dist, support_count,
+        support_weight, weighted_dist.
     """
     _validate_period_column(sfiller_df, period_col)
     _validate_min_freq(min_freq)
     _validate_positive_k(k)
-    mode = _validate_jsd_mode(mode)
+    mode = _validate_dist_mode(mode)
 
-    consecutive_jsd = compute_consecutive_jsd_df(
+    measure_obj = resolve_distdist(measure)
+    consecutive_dist_df = compute_consecutive_dist_df(
         sfiller_df=sfiller_df,
         period_col=period_col,
         min_freq=min_freq,
         mode=mode,
         all_periods=all_periods,
+        measure=measure_obj,
     )
 
     saturating_support = compute_saturating_support_from_sfiller_df(
@@ -595,23 +716,24 @@ def compute_weighted_consecutive_jsd_df(
         include_zero_slots=include_zero_slots,
     )
 
-    return multiply_consecutive_jsd_saturating_support(
-        consecutive_jsd,
+    return multiply_consecutive_dist_saturating_support(
+        consecutive_dist_df,
         saturating_support,
     )
 
-def compute_period_period_JSD(
+def compute_period_period_dist(
     sfiller_df: pd.DataFrame,
     period_col: str = "subfolder",
     slot_col: Optional[str] = None,
     min_freq: int = 1,
     mode: str = "data_only",
     all_periods: Optional[Sequence[Any]] = None,
+    measure: str | DistDist = "jsd",
     weighting: bool = False,
     k: float = 20.0,
 ) -> pd.DataFrame:
     """
-    Compute pairwise JSD between all period pairs for one slot column.
+    Compute pairwise distribution distance between all period pairs for one slot column.
 
     Parameters
     ----------
@@ -638,8 +760,12 @@ def compute_period_period_JSD(
     all_periods : list, optional
         Full period sequence. If None, inferred from ``sfiller_df``.
 
+    measure : str or DistDist
+        Distribution-distance measure. Available names are ``"jsd"``,
+        ``"cosine_distance"``, and ``"tvd"``.
+
     weighting : bool
-        If True, multiply each JSD value by ``min(1, c / k)``, where ``c`` is
+        If True, multiply each Dist value by ``min(1, c / k)``, where ``c`` is
         the smaller retained row count of the compared periods after
         pair-specific filtering.
 
@@ -654,9 +780,10 @@ def compute_period_period_JSD(
     """
     _validate_period_column(sfiller_df, period_col)
     _validate_min_freq(min_freq)
+    measure_obj = resolve_distdist(measure)
     if weighting:
         _validate_positive_k(k)
-    mode = _validate_jsd_mode(mode)
+    mode = _validate_dist_mode(mode)
 
     sfiller_data = _normalize_period_column(sfiller_df, period_col)
 
@@ -734,7 +861,7 @@ def compute_period_period_JSD(
 
             distribution_a = (freq.loc[period_1] / sum_1).to_numpy()
             distribution_b = (freq.loc[period_2] / sum_2).to_numpy()
-            value = cal_jsd(distribution_a, distribution_b)
+            value = measure_obj.score(distribution_a, distribution_b)
 
             if weighting:
                 support_count = float(min(sum_1, sum_2))
@@ -745,10 +872,10 @@ def compute_period_period_JSD(
 
     return matrix
 
-def plot_period_period_JSD(
-    jsd_matrix: pd.DataFrame,
-    title: str = "Period-Period JSD",
-    colorbar_title: str = "JSD",
+def plot_period_period_dist(
+    dist_matrix: pd.DataFrame,
+    title: str = "Period-period distance",
+    colorbar_title: str = "Distance",
     height: int = 700,
     width: int = 800,
     colorscale: str = "Viridis",
@@ -758,12 +885,12 @@ def plot_period_period_JSD(
     save_path: Optional[str] = None,
 ) -> go.Figure:
     """
-    Plot a period-by-period JSD matrix as an interactive heatmap.
+    Plot a period-by-period Dist matrix as an interactive heatmap.
 
     Parameters
     ----------
-    jsd_matrix : pd.DataFrame
-        Square matrix returned by ``compute_period_period_JSD``.
+    dist_matrix : pd.DataFrame
+        Square matrix returned by ``compute_period_period_dist``.
 
     title : str
         Figure title.
@@ -787,7 +914,7 @@ def plot_period_period_JSD(
         Upper color scale bound. Set to None for Plotly auto-scaling.
 
     text_auto : bool
-        If True, show rounded JSD values inside heatmap cells.
+        If True, show rounded Dist values inside heatmap cells.
 
     save_path : str, optional
         If provided, saves the figure as an interactive HTML file.
@@ -797,19 +924,19 @@ def plot_period_period_JSD(
     plotly.graph_objects.Figure
         Interactive Plotly heatmap figure.
     """
-    if not isinstance(jsd_matrix, pd.DataFrame):
-        raise ValueError("jsd_matrix must be a pandas DataFrame.")
+    if not isinstance(dist_matrix, pd.DataFrame):
+        raise ValueError("dist_matrix must be a pandas DataFrame.")
 
-    if jsd_matrix.empty:
-        raise ValueError("jsd_matrix must not be empty.")
+    if dist_matrix.empty:
+        raise ValueError("dist_matrix must not be empty.")
 
-    if jsd_matrix.shape[0] != jsd_matrix.shape[1]:
-        raise ValueError("jsd_matrix must be square.")
+    if dist_matrix.shape[0] != dist_matrix.shape[1]:
+        raise ValueError("dist_matrix must be square.")
 
-    if list(jsd_matrix.index.astype(str)) != list(jsd_matrix.columns.astype(str)):
-        raise ValueError("jsd_matrix index and columns must contain the same periods.")
+    if list(dist_matrix.index.astype(str)) != list(dist_matrix.columns.astype(str)):
+        raise ValueError("dist_matrix index and columns must contain the same periods.")
 
-    matrix = jsd_matrix.astype(float)
+    matrix = dist_matrix.astype(float)
     periods = [str(period) for period in matrix.index]
     values = matrix.to_numpy()
     rounded_values = np.round(values, 4).astype(str)
@@ -850,26 +977,27 @@ def plot_period_period_JSD(
 
     return fig
 
-def sfillers_jsd_by_period(
+def sfillers_dist_contrib_by_period(
     df: pd.DataFrame,
     period_col: str = "subfolder",
     slot_col: str = "chi_amod",
     min_freq: int = 1,
     mode: str = "all",
     all_periods: Optional[Sequence[Any]] = None,
+    measure: str | DistDist = "jsd",
     top_n: int = 10,
     weighting: bool = False,
     k: float = 20.0,
     include_zero_slots: bool = False,
 ) -> Dict[Any, Dict[str, Any]]:
     """
-    Compute atomic filler-level JSD for one slot across consecutive periods.
+    Compute atomic filler-level distribution-distance contributions.
 
     The input may contain either one atomic filler tuple per row or cells that
     parse to lists of atomic filler tuples. List-valued cells are exploded
-    internally before computing JSD. If ``weighting=True``, the raw JSD and item
-    contributions are multiplied by saturating support computed from the same
-    input column.
+    internally before computing the distance. If ``weighting=True``, the raw
+    distance and item contributions are multiplied by saturating support
+    computed from the same input column.
 
     Parameters
     ----------
@@ -895,11 +1023,15 @@ def sfillers_jsd_by_period(
     all_periods : list, optional
         Full period sequence. If None, inferred from ``df``.
 
+    measure : str or DistDist
+        Distribution-distance measure. Available names are ``"jsd"``,
+        ``"cosine_distance"``, and ``"tvd"``.
+
     top_n : int
         Number of top shifted items to return for each period pair.
 
     weighting : bool
-        If True, weight JSD scores by saturating support.
+        If True, weight Dist scores by saturating support.
 
     k : float
         Support threshold for saturating weighting. Used only when
@@ -913,11 +1045,13 @@ def sfillers_jsd_by_period(
     dict
         {
             period2: {
-                "JSD": float,
+                "measure": str,
+                "dist": float,
                 "top_shifted_items": list[dict]
             }
         }
     """
+    measure_obj = resolve_distdist(measure)
 
     if min_freq < 1:
         raise ValueError("`min_freq` must be >= 1.")
@@ -941,15 +1075,15 @@ def sfillers_jsd_by_period(
     else:
         all_periods = _normalize_period_sequence(all_periods)
 
-    jsd_df = df[[period_col, slot_col]].copy()
-    jsd_df[slot_col] = jsd_df[slot_col].apply(parse_filler_cell)
-    jsd_df = (
-        jsd_df
+    dist_df = df[[period_col, slot_col]].copy()
+    dist_df[slot_col] = dist_df[slot_col].apply(parse_filler_cell)
+    dist_df = (
+        dist_df
         .explode(slot_col, ignore_index=True)
         .dropna(subset=[period_col, slot_col])
         .reset_index(drop=True)
     )
-    jsd_df = jsd_df[jsd_df[slot_col].astype(str).str.strip() != ""]
+    dist_df = dist_df[dist_df[slot_col].astype(str).str.strip() != ""]
 
     output = {}
     output_period_pairs = {}
@@ -957,13 +1091,13 @@ def sfillers_jsd_by_period(
     if mode == "all":
         periods = list(all_periods)
     else:
-        periods = _normalize_period_sequence(jsd_df[period_col].dropna().unique())
+        periods = _normalize_period_sequence(dist_df[period_col].dropna().unique())
 
     for period in range(1, len(periods)):
         period_1, period_2 = periods[period - 1], periods[period]
 
-        vocab_1 = jsd_df[jsd_df[period_col] == period_1][slot_col].value_counts()
-        vocab_2 = jsd_df[jsd_df[period_col] == period_2][slot_col].value_counts()
+        vocab_1 = dist_df[dist_df[period_col] == period_1][slot_col].value_counts()
+        vocab_2 = dist_df[dist_df[period_col] == period_2][slot_col].value_counts()
 
         # Apply pair-specific min_freq on the mixed distribution.
         # Fillers below min_freq across both periods are removed from this pair.
@@ -991,14 +1125,13 @@ def sfillers_jsd_by_period(
         distribution_a /= distribution_a.sum()
         distribution_b /= distribution_b.sum()
 
-        # Compute JSD
-        jsd = cal_jsd(distribution_a, distribution_b)
+        dist = measure_obj.score(distribution_a, distribution_b)
 
-        # Decompose JSD into individual item contributions
-        contrib = cal_contrib_jsd(distribution_a, distribution_b, vocab)
+        contrib = measure_obj.decompose(distribution_a, distribution_b, vocab)
 
         output[period_2] = {
-            "JSD": jsd,
+            "measure": measure_obj.name,
+            "dist": dist,
             "top_shifted_items": [
                 item for item in contrib
                 if item["contribution"] > 0
@@ -1044,8 +1177,7 @@ def sfillers_jsd_by_period(
 
             support_weight = float(support_match["support_weight"].iloc[0])
 
-            # Weight final JSD
-            values["JSD"] = values["JSD"] * support_weight
+            values["dist"] = values["dist"] * support_weight
 
             # Weight individual top filler contributions
             for item in values["top_shifted_items"]:
@@ -1063,7 +1195,7 @@ def _explode_slot_filler_rows_for_permutation(
     """
     Explode slot-filler cells before period-label permutation.
 
-    The output keeps the wide slot-column interface used by the existing JSD
+    The output keeps the wide slot-column interface used by the existing Dist
     and support helpers, but each retained row contains one filler occurrence
     for one slot. This lets the permutation shuffle period labels at the
     filler-occurrence row level.
@@ -1237,53 +1369,54 @@ def chunk_list(x: Sequence[Any], chunk_size: int) -> Iterator[Sequence[Any]]:
     for i in range(0, len(x), chunk_size):
         yield x[i:i + chunk_size]
 
-def jsd_stat_df_to_keyed_values(
-    jsd_df: pd.DataFrame,
+def dist_stat_df_to_keyed_values(
+    dist_df: pd.DataFrame,
     value_col: str,
 ) -> Dict[tuple[Any, Any, Any], float]:
     """
-    Convert a JSD DataFrame to keyed values for permutation matching.
+    Convert a Dist DataFrame to keyed values for permutation matching.
 
     Parameters
     ----------
-    jsd_df : pd.DataFrame
+    dist_df : pd.DataFrame
         DataFrame with ``slot``, ``period_1``, ``period_2``, and ``value_col``.
 
     value_col : str
-        JSD statistic column to use, usually ``jsd`` or ``weighted_jsd``.
+        Dist statistic column to use, usually ``dist`` or ``weighted_dist``.
 
     Returns
     -------
     dict
-        Mapping ``(slot, period_1, period_2)`` to the selected JSD statistic.
+        Mapping ``(slot, period_1, period_2)`` to the selected Dist statistic.
     """
     required_cols = {"slot", "period_1", "period_2", value_col}
-    missing_cols = required_cols - set(jsd_df.columns)
+    missing_cols = required_cols - set(dist_df.columns)
     if missing_cols:
         raise ValueError(
-            f"jsd_df is missing required columns: {sorted(missing_cols)}"
+            f"dist_df is missing required columns: {sorted(missing_cols)}"
         )
 
     return {
         (row["slot"], row["period_1"], row["period_2"]): float(row[value_col])
-        for _, row in jsd_df.iterrows()
+        for _, row in dist_df.iterrows()
     }
 
-def _permutation_consecutive_jsd_worker_chunk(
+def _permutation_consecutive_dist_worker_chunk(
     df_pair: pd.DataFrame,
     period_col: str,
     seeds: Sequence[int],
     min_freq: int,
     k: float,
     weighting: bool,
+    measure: str,
 ) -> List[Dict[tuple[Any, Any, Any], float]]:
     """
-    Run a chunk of consecutive-JSD permutations.
+    Run a chunk of consecutive-Dist permutations.
 
     This worker is submitted to a process pool. ``df_pair`` is expected to
     already be exploded to one filler occurrence per row. For each seed, the
     worker shuffles period labels separately within each slot, recomputes the
-    selected consecutive JSD statistic with ``mode="data_only"``, and converts
+    selected consecutive Dist statistic with ``mode="data_only"``, and converts
     the output to slot-transition-keyed numeric values.
 
     Parameters
@@ -1305,15 +1438,16 @@ def _permutation_consecutive_jsd_worker_chunk(
         ``weighting=True``.
 
     weighting : bool
-        If True, use support-weighted JSD. If False, use raw JSD.
+        If True, use support-weighted Dist. If False, use raw Dist.
 
     Returns
     -------
     list[dict]
-        One slot-transition-keyed JSD-statistic dictionary per permutation.
+        One slot-transition-keyed Dist-statistic dictionary per permutation.
     """
     chunk_results = []
-    value_col = "weighted_jsd" if weighting else "jsd"
+    value_col = "weighted_dist" if weighting else "dist"
+    measure_obj = resolve_distdist(measure)
 
     for seed in seeds:
         rng = np.random.default_rng(int(seed))
@@ -1325,22 +1459,24 @@ def _permutation_consecutive_jsd_worker_chunk(
         )
 
         if weighting:
-            null_df = compute_weighted_consecutive_jsd_df(
+            null_df = compute_weighted_consecutive_dist_df(
                 sfiller_df=shuffled_df_pair,
                 period_col=period_col,
                 min_freq=min_freq,
                 k=k,
-                mode="data_only"
+                mode="data_only",
+                measure=measure_obj,
             )
         else:
-            null_df = compute_consecutive_jsd_df(
+            null_df = compute_consecutive_dist_df(
                 sfiller_df=shuffled_df_pair,
                 period_col=period_col,
                 min_freq=min_freq,
-                mode="data_only"
+                mode="data_only",
+                measure=measure_obj,
             )
 
-        null_values = jsd_stat_df_to_keyed_values(null_df, value_col)
+        null_values = dist_stat_df_to_keyed_values(null_df, value_col)
         chunk_results.append(null_values)
 
     return chunk_results
@@ -1375,6 +1511,7 @@ def _empty_permutation_result_df() -> pd.DataFrame:
         "slot",
         "period_1",
         "period_2",
+        "measure",
         "statistic",
         "weighting",
         "observed_statistic",
@@ -1396,6 +1533,7 @@ def _summarize_permutation_values(
     null_values: Sequence[float],
     value_col: str,
     weighting: bool,
+    measure: str,
 ) -> Dict[str, Any]:
     """Summarize one observed statistic against its permutation values."""
     slot, period_1, period_2 = slot_transition_key
@@ -1422,6 +1560,7 @@ def _summarize_permutation_values(
         "slot": slot,
         "period_1": period_1,
         "period_2": period_2,
+        "measure": measure,
         "statistic": value_col,
         "weighting": weighting,
         "observed_statistic": obs_value,
@@ -1438,12 +1577,13 @@ def _summarize_permutation_values(
 #-------------------------------------------------------------------------------
 # Permutation Test API
 #-------------------------------------------------------------------------------
-def permutation_test_consecutive_jsd(
+def permutation_test_consecutive_dist(
     sfiller_df: pd.DataFrame,
     period_col: str = "subfolder",
     all_periods: Optional[Sequence[Any]] = None,
     n_permutations: int = 1000,
     min_freq: int = 1,
+    measure: str | DistDist = "jsd",
     k: float = 100,
     weighting: bool = True,
     seed: int = 42,
@@ -1452,12 +1592,12 @@ def permutation_test_consecutive_jsd(
     chunk_size: int = 50,
 ) -> pd.DataFrame:
     """
-    Run pairwise permutation tests for consecutive JSD.
+    Run pairwise permutation tests for consecutive distribution distance.
 
     For each adjacent period pair in ``all_periods``, this function computes
-    the observed consecutive JSD statistic for every slot column. If
-    ``weighting=True``, the statistic is support-weighted JSD. If
-    ``weighting=False``, the statistic is raw JSD. Before permutation, slot
+    the observed consecutive Dist statistic for every slot column. If
+    ``weighting=True``, the statistic is support-weighted Dist. If
+    ``weighting=False``, the statistic is raw Dist. Before permutation, slot
     filler cells are exploded to one filler occurrence per row. The null
     distribution is built by first filtering fillers whose mixed frequency in
     the period pair is below ``min_freq``, then repeatedly shuffling period
@@ -1471,7 +1611,7 @@ def permutation_test_consecutive_jsd(
     ----------
     sfiller_df : pd.DataFrame
         Slot-filler DataFrame. Metadata columns are excluded by
-        ``compute_weighted_consecutive_jsd_df`` using ``DEFAULT_COLS``.
+        ``compute_weighted_consecutive_dist_df`` using ``DEFAULT_COLS``.
 
     period_col : str
         Column containing period labels.
@@ -1488,14 +1628,18 @@ def permutation_test_consecutive_jsd(
         compared period pair. Filtering happens before period-label
         permutation for each pair.
 
+    measure : str or DistDist
+        Distribution-distance measure. Available names are ``"jsd"``,
+        ``"cosine_distance"``, and ``"tvd"``.
+
     k : float
         Support threshold for saturating weighting. If support count is at
         least ``k``, the support weight is 1.0. Used only when
         ``weighting=True``.
 
     weighting : bool
-        If True, run the permutation test on support-weighted JSD. If False,
-        run it on raw JSD.
+        If True, run the permutation test on support-weighted Dist. If False,
+        run it on raw Dist.
 
     seed : int
         Seed for the master random number generator that creates independent
@@ -1525,8 +1669,10 @@ def permutation_test_consecutive_jsd(
     _validate_positive_k(k)
     _validate_permutation_arguments(n_permutations, chunk_size, n_jobs)
 
+    measure_obj = resolve_distdist(measure)
     master_rng = np.random.default_rng(seed)
-    value_col = "weighted_jsd" if weighting else "jsd"
+    value_col = "weighted_dist" if weighting else "dist"
+    statistic_name = measure_obj.weighted_name if weighting else measure_obj.name
 
     if keep_cols is not None:
         required_cols = {period_col}
@@ -1567,22 +1713,24 @@ def permutation_test_consecutive_jsd(
 
         # 1. Observed statistic
         if weighting:
-            obs_df = compute_weighted_consecutive_jsd_df(
+            obs_df = compute_weighted_consecutive_dist_df(
                 sfiller_df=permutation_df_pair,
                 period_col=period_col,
                 min_freq=1,
                 k=k,
-                mode="data_only"
+                mode="data_only",
+                measure=measure_obj,
             )
         else:
-            obs_df = compute_consecutive_jsd_df(
+            obs_df = compute_consecutive_dist_df(
                 sfiller_df=permutation_df_pair,
                 period_col=period_col,
                 min_freq=1,
-                mode="data_only"
+                mode="data_only",
+                measure=measure_obj,
             )
 
-        obs_values = jsd_stat_df_to_keyed_values(obs_df, value_col)
+        obs_values = dist_stat_df_to_keyed_values(obs_df, value_col)
 
         null_values = {
             slot_transition_key: []
@@ -1604,13 +1752,14 @@ def permutation_test_consecutive_jsd(
         with ProcessPoolExecutor(max_workers=n_jobs) as executor:
             futures = [
                 executor.submit(
-                    _permutation_consecutive_jsd_worker_chunk,
+                    _permutation_consecutive_dist_worker_chunk,
                     permutation_df_pair,
                     period_col,
                     seed_chunk,
                     1,
                     k,
                     weighting,
+                    measure_obj.name,
                 )
                 for seed_chunk in seed_chunks
             ]
@@ -1650,7 +1799,8 @@ def permutation_test_consecutive_jsd(
                 "slot": slot,
                 "period_1": period_1,
                 "period_2": period_2,
-                "statistic": value_col,
+                "measure": measure_obj.name,
+                "statistic": statistic_name,
                 "weighting": weighting,
                 "observed_statistic": obs_value,
                 "null_mean": null_mean,
@@ -1670,6 +1820,7 @@ def permutation_test_consecutive_jsd(
             "slot",
             "period_1",
             "period_2",
+            "measure",
             "statistic",
             "weighting",
             "observed_statistic",
@@ -1804,49 +1955,56 @@ def summarize_fdr_correction(
 #-------------------------------------------------------------------------------
 # Plotting And Printing
 #-------------------------------------------------------------------------------
-def print_jsd_by_period(jsd_results: Dict[Any, Dict[str, Any]]) -> None:
+def print_dist_contrib_by_period(dist_results: Dict[Any, Dict[str, Any]]) -> None:
     """
-    Print the Jensen-Shannon Divergence and top shifted items for each period.
+    Print the distribution distance and top shifted items for each period.
 
     Parameters:
-        jsd_results (dict): A dictionary with period as key and a dictionary as value.
-            The dictionary contains the JSD and top shifted items.
+        dist_results (dict): A dictionary with period as key and a dictionary as value.
+            The dictionary contains the distance and top shifted items.
 
     Returns:
         None
     """
-    for period, result in jsd_results.items():
+    for period, result in dist_results.items():
+        label = resolve_distdist(result["measure"]).label
         print(f"\n=== Shift to period {period} ===")
-        print(f"Jensen-Shannon Divergence: {result['JSD']:.4f}")
+        print(f"{label}: {result['dist']:.4f}")
         print("Top shifted items:")
         for item in result["top_shifted_items"]:
             print(f"  {item['item']}: {item['contribution']:.4f}")
 
-def plot_jsd_by_period(jsd_results: Dict[Any, Dict[str, Any]]) -> None:
+def plot_dist_by_period(dist_results: Dict[Any, Dict[str, Any]]) -> None:
     """
-    Plot Jensen-Shannon Divergence values across period transitions.
+    Plot Distribution distance values across period transitions.
 
     Parameters:
-        jsd_results (dict): A dictionary with period as key and a dictionary as value.
-            The dictionary contains the JSD and top shifted items.
+        dist_results (dict): A dictionary with period as key and a dictionary as value.
+            The dictionary contains the distance and top shifted items.
 
     Returns:
         None
     """
-    periods = list(jsd_results.keys())
-    jsd_scores = [jsd_results[d]["JSD"] for d in periods]
+    periods = list(dist_results.keys())
+    dist_scores = [dist_results[d]["dist"] for d in periods]
+    measures = [result["measure"] for result in dist_results.values()]
+    y_label = (
+        resolve_distdist(measures[0]).label
+        if len(set(measures)) == 1
+        else "Distance"
+    )
 
     plt.figure(figsize=(15, 5))
-    plt.plot(periods, jsd_scores, marker="o")
-    plt.title("Jensen-Shannon Divergence Between Periods")
+    plt.plot(periods, dist_scores, marker="o")
+    plt.title(f"{y_label} between periods")
     plt.xlabel("Periods")
-    plt.ylabel("JSD")
+    plt.ylabel(y_label)
     plt.grid(True)
     plt.tight_layout()
     plt.show()
 
-def plot_items_jsd_by_period(
-    jsd_results: Dict[Any, Dict[str, Any]],
+def plot_items_dist_contrib_by_period(
+    dist_results: Dict[Any, Dict[str, Any]],
     top_n: int = 10,
     cols: int = 3,
 ) -> None:
@@ -1854,33 +2012,39 @@ def plot_items_jsd_by_period(
     Plot the top-N shifting items between two periods.
 
     Parameters:
-        jsd_results (dict): A dictionary with period as key and a dictionary as value.
-            The dictionary contains the JSD and top shifted items.
+        dist_results (dict): A dictionary with period as key and a dictionary as value.
+            The dictionary contains the distance and top shifted items.
         top_n (int): The number of top shifted items to plot.
         cols (int): The number of columns in the plot.
 
     Returns:
         None
     """
-    if not jsd_results:
+    if not dist_results:
         return
 
     if cols < 1:
         raise ValueError("cols must be >= 1.")
 
-    num_periods = len(jsd_results)
+    num_periods = len(dist_results)
     rows = math.ceil(num_periods / cols)
+    measures = [result["measure"] for result in dist_results.values()]
+    x_label = (
+        f"{resolve_distdist(measures[0]).label} contribution"
+        if len(set(measures)) == 1
+        else "Distance contribution"
+    )
 
     # Find global max contribution across all periods
     global_max = max(
         max((item["contribution"] for item in result["top_shifted_items"][:top_n]), default=0)
-        for result in jsd_results.values()
+        for result in dist_results.values()
     )
 
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4))
     axes = np.atleast_1d(axes).ravel()
 
-    for idx, (decade, result) in enumerate(jsd_results.items()):
+    for idx, (decade, result) in enumerate(dist_results.items()):
         ax = axes[idx]
         top_words = result["top_shifted_items"][:top_n]
         labels = [
@@ -1901,8 +2065,8 @@ def plot_items_jsd_by_period(
         ax.barh(labels, values, color=colors)
         ax.invert_yaxis()
 
-        ax.set_title(f"{decade} (JSD: {result['JSD']:.3f})", fontsize=10)
-        ax.set_xlabel("JSD Contribution", fontsize=9)
+        ax.set_title(f"{decade} ({result['dist']:.3f})", fontsize=10)
+        ax.set_xlabel(x_label, fontsize=9)
         ax.set_ylabel("")
         ax.tick_params(labelsize=8)
 
@@ -1916,34 +2080,34 @@ def plot_items_jsd_by_period(
     plt.tight_layout()
     plt.show()
 
-def plot_all_jsds_by_period(
-    jsd_df: pd.DataFrame,
+def plot_all_dists_by_period(
+    dist_df: pd.DataFrame,
     slots: Optional[List[str]] = None,
     col_to_plot: Optional[str] = None,
     layout: str = "combined",
-    title: str = "Weighted JSD for all items",
-    y_label: str = "JSD",
+    title: str = "Weighted distance for all items",
+    y_label: str = "Distance",
     x_label: str = "Time Period",
     height: int = 700,
     width: int = 1100,
     save_path: Optional[str] = None,
 ) -> go.Figure:
     """
-    Interactive time-series plot for slot-level JSD DataFrames.
+    Interactive time-series plot for slot-level Dist DataFrames.
 
     Parameters
     ----------
-    jsd_df : pd.DataFrame
+    dist_df : pd.DataFrame
         DataFrame with at least ``slot``, ``period_1``, ``period_2``, and one
-        numeric JSD value column. Common value columns are ``weighted_jsd`` and
-        ``jsd``.
+        numeric Dist value column. Common value columns are ``weighted_dist`` and
+        ``dist``.
 
     slots : list, optional
         List of slot names to plot. If None, all slots are plotted.
 
     col_to_plot : str, optional
-        Column to plot on the y-axis. If None, ``weighted_jsd`` is used when
-        present, otherwise ``jsd``.
+        Column to plot on the y-axis. If None, ``weighted_dist`` is used when
+        present, otherwise ``dist``.
 
     layout : {"combined", "subplots", "dropdown"}
         - "combined": all slots on one interactive plot
@@ -1967,7 +2131,7 @@ def plot_all_jsds_by_period(
 
     save_path : str, optional
         If provided, saves the figure as an interactive HTML file.
-        Example: "slot_jsd_timeseries.html"
+        Example: "slot_distance_timeseries.html"
 
     Returns
     -------
@@ -1975,27 +2139,27 @@ def plot_all_jsds_by_period(
         Interactive Plotly figure.
     """
     required_cols = {"slot", "period_1", "period_2"}
-    missing_cols = required_cols - set(jsd_df.columns)
+    missing_cols = required_cols - set(dist_df.columns)
     if missing_cols:
         raise ValueError(
-            f"jsd_df is missing required columns: {sorted(missing_cols)}"
+            f"dist_df is missing required columns: {sorted(missing_cols)}"
         )
 
     if col_to_plot is None:
-        if "weighted_jsd" in jsd_df.columns:
-            col_to_plot = "weighted_jsd"
-        elif "jsd" in jsd_df.columns:
-            col_to_plot = "jsd"
+        if "weighted_dist" in dist_df.columns:
+            col_to_plot = "weighted_dist"
+        elif "dist" in dist_df.columns:
+            col_to_plot = "dist"
         else:
             raise ValueError(
-                "jsd_df must contain 'weighted_jsd' or 'jsd'."
+                "dist_df must contain 'weighted_dist' or 'dist'."
             )
-    elif col_to_plot not in jsd_df.columns:
+    elif col_to_plot not in dist_df.columns:
         raise ValueError(
             f"col_to_plot {col_to_plot!r} not found."
             )
 
-    plot_df = jsd_df.copy()
+    plot_df = dist_df.copy()
 
     # Filter slots if specified
     if slots is not None:
@@ -2194,7 +2358,7 @@ def plot_all_jsds_by_period(
 
     return fig
 
-def plot_permutation_test_consecutive_jsd(
+def plot_permutation_test_consecutive_dist(
     perm_result_df: pd.DataFrame,
     y_label: Optional[str] = None,
 ) -> None:
@@ -2205,10 +2369,10 @@ def plot_permutation_test_consecutive_jsd(
 
     if y_label is None:
         statistics = plot_df["statistic"].dropna().unique()
-        if len(statistics) == 1 and statistics[0] == "weighted_jsd":
-            y_label = "Weighted JSD"
-        elif len(statistics) == 1 and statistics[0] == "jsd":
-            y_label = "JSD"
+        measures = plot_df["measure"].dropna().unique() if "measure" in plot_df else []
+        if len(measures) == 1:
+            measure_label = resolve_distdist(measures[0]).label
+            y_label = f"Weighted {measure_label}" if len(statistics) == 1 and str(statistics[0]).startswith("weighted_") else measure_label
         else:
             y_label = "Observed statistic"
 

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional, Union
 import pandas as pd
 #--------------------------------------------------------------------------
-# Convert individual slot path df to construction df for jsd calculation
+# Convert individual slot path df to construction df for distance calculation
 #--------------------------------------------------------------------------
 def parse_frequency(value: object) -> int:
     if pd.isna(value):
