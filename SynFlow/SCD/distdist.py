@@ -289,7 +289,7 @@ def _validate_dist_mode(mode: str) -> str:
 def _validate_permutation_arguments(
     n_permutations: int,
     chunk_size: int,
-    n_jobs: int,
+    num_processes: int,
 ) -> None:
     """Validate permutation execution arguments."""
     if n_permutations < 1:
@@ -298,8 +298,8 @@ def _validate_permutation_arguments(
     if chunk_size < 1:
         raise ValueError("chunk_size must be >= 1.")
 
-    if n_jobs < 1:
-        raise ValueError("n_jobs must be >= 1.")
+    if num_processes < 1:
+        raise ValueError("num_processes must be >= 1.")
 
 #-------------------------------------------------------------------------------
 # Consecutive Dist
@@ -1589,7 +1589,7 @@ def permutation_test_consecutive_dist(
     weighting: bool = True,
     seed: int = 42,
     keep_cols: Optional[Sequence[str]] = None,
-    n_jobs: int = 8,
+    num_processes: int = 8,
     chunk_size: int = 50,
 ) -> pd.DataFrame:
     """
@@ -1650,8 +1650,10 @@ def permutation_test_consecutive_dist(
         Optional subset of columns to keep before running the test. The period
         column is always retained.
 
-    n_jobs : int
-        Number of worker processes used for permutations.
+    num_processes : int
+        Maximum number of worker processes used for permutation chunks.
+        Effective parallelism is bounded by
+        ``ceil(n_permutations / chunk_size)``.
 
     chunk_size : int
         Number of permutation seeds submitted to each worker task.
@@ -1668,7 +1670,7 @@ def permutation_test_consecutive_dist(
     _validate_period_column(sfiller_df, period_col)
     _validate_min_freq(min_freq)
     _validate_positive_k(k)
-    _validate_permutation_arguments(n_permutations, chunk_size, n_jobs)
+    _validate_permutation_arguments(n_permutations, chunk_size, num_processes)
 
     measure_obj = resolve_distdist(measure)
     master_rng = np.random.default_rng(seed)
@@ -1750,7 +1752,7 @@ def permutation_test_consecutive_dist(
         seed_chunks = list(chunk_list(seeds, chunk_size))
 
         # 3. Run permutations in parallel
-        with ProcessPoolExecutor(max_workers=n_jobs) as executor:
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
             futures = [
                 executor.submit(
                     _permutation_consecutive_dist_worker_chunk,
