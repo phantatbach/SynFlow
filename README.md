@@ -53,12 +53,6 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Start Jupyter from the repository root:
-
-```bash
-jupyter lab
-```
-
 The notebooks include the repository path in their setup cells, so no package
 installation step is needed beyond installing `requirements.txt`.
 
@@ -68,7 +62,7 @@ Python 3.10 or newer is recommended.
 
 The dependency list is maintained in `requirements.txt`. It includes:
 
-- notebook runtime: `jupyterlab`, `ipykernel`, `ipython`;
+- notebook runtime: `ipykernel`, `ipython`;
 - data handling: `pandas`, `numpy`;
 - statistics and distance measures: `scipy`, `statsmodels`, `scikit-learn`;
 - plotting: `matplotlib`, `plotly`, `seaborn`, `dash`;
