@@ -279,12 +279,12 @@ def freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
 
     # Compute frequency ---
     if normalized:
-        token_counts = df_top.groupby(time_col)["id"].nunique().reset_index(name="token_count")
-        count_df = df_top.groupby([time_col, slot_type]).size().reset_index(name="count")
+        token_counts = df_top.groupby(time_col, sort=False)["id"].nunique().reset_index(name="token_count")
+        count_df = df_top.groupby([time_col, slot_type], sort=False).size().reset_index(name="count")
         count_df = count_df.merge(token_counts, on=time_col)
         count_df["norm_count"] = count_df["count"] / count_df["token_count"]
     else:
-        count_df = df_top.groupby([time_col, slot_type]).size().reset_index(name="count")
+        count_df = df_top.groupby([time_col, slot_type], sort=False).size().reset_index(name="count")
     
     return count_df
 
@@ -315,15 +315,13 @@ def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
         y = "count"
         ylabel = "Absolute Frequency"
 
-    # Assign numeric x-axis for correct time ordering
-    count_df["time_num"] = count_df[time_col]
-    tick_map = count_df.drop_duplicates("time_num")[["time_num", time_col]].sort_values("time_num")
-    x_col = "time_num"
+    period_order = count_df[time_col].drop_duplicates().tolist()
 
     # Ensure consistent ordering of slot fillers when plotting
     filler_order = sorted(count_df[slot_type].unique(), key=lambda s: str(s).lower())
     count_df[slot_type] = pd.Categorical(count_df[slot_type], categories=filler_order, ordered=True)
-    count_df = count_df.sort_values([slot_type, x_col])
+    count_df[time_col] = pd.Categorical(count_df[time_col], categories=period_order, ordered=True)
+    count_df = count_df.sort_values([slot_type, time_col])
 
     # Assign random colors to slot fillers
     unique_slot_fillers = sorted(count_df[slot_type].unique())
@@ -337,23 +335,22 @@ def plot_freq_top_union_sfillers_by_period(csv_path, slot_type=None, top_n=10,
 
     fig = px.line(
         count_df,
-        x=x_col,
+        x=time_col,
         y=y,
         color=slot_type,
         color_discrete_map=color_map,
         title=title,
         markers=True,
         labels={
-            x_col: time_col,
+            time_col: time_col,
             y: ylabel,
         }
     )
 
     fig.update_layout(
         xaxis=dict(
-            tickmode="array",
-            tickvals=tick_map["time_num"],
-            ticktext=tick_map[time_col]
+            categoryorder="array",
+            categoryarray=period_order,
         ),
         legend_title_text=slot_type,
         hovermode="x unified",

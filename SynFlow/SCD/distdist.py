@@ -220,25 +220,19 @@ def _format_period_label(period_1: Any, period_2: Any) -> str:
     """
     Format a period transition label.
 
-    The current public dictionary format uses the second period of the pair as
-    the transition key.
-
     Parameters
     ----------
     period_1
-        First period in the transition. Kept for call-site symmetry.
+        First period in the transition.
     period_2
         Second period in the transition.
 
     Returns
     -------
     str
-        String label for ``period_2``.
+        Transition label in ``period_1 vs period_2`` form.
     """
-    try:
-        return f"{int(period_2)}"
-    except Exception:
-        return f"{period_2}"
+    return f"{period_1} vs {period_2}"
 
 def _normalize_period_sequence(periods: Iterable[Any]) -> List[str]:
     """Convert period labels to strings while preserving input order."""
@@ -1045,7 +1039,7 @@ def sfillers_dist_contrib_by_period(
     -------
     dict
         {
-            period2: {
+            "period1 vs period2": {
                 "measure": str,
                 "dist": float,
                 "top_shifted_items": list[dict]
@@ -1129,8 +1123,9 @@ def sfillers_dist_contrib_by_period(
         dist = measure_obj.score(distribution_a, distribution_b)
 
         contrib = measure_obj.decompose(distribution_a, distribution_b, vocab)
+        period_label = _format_period_label(period_1, period_2)
 
-        output[period_2] = {
+        output[period_label] = {
             "measure": measure_obj.name,
             "dist": dist,
             "top_shifted_items": [
@@ -1138,7 +1133,7 @@ def sfillers_dist_contrib_by_period(
                 if item["contribution"] > 0
             ][:top_n]
         }
-        output_period_pairs[period_2] = period_1
+        output_period_pairs[period_label] = (period_1, period_2)
 
     # Apply support weight after the raw output has been created.
     if weighting:
@@ -1155,24 +1150,24 @@ def sfillers_dist_contrib_by_period(
             include_zero_slots=include_zero_slots,
         )
 
-        for year, values in output.items():
-            period_1 = output_period_pairs[year]
+        for period_label, values in output.items():
+            period_1, period_2 = output_period_pairs[period_label]
             support_match = saturating_support[
                 (saturating_support["slot"] == slot_col)
                 & (saturating_support["period_1"].astype(str) == str(period_1))
-                & (saturating_support["period_2"].astype(str) == str(year))
+                & (saturating_support["period_2"].astype(str) == str(period_2))
             ]
 
             if support_match.empty:
                 raise ValueError(
                     "No support found for "
-                    f"slot={slot_col!r}, period_1={period_1!r}, period_2={year!r}."
+                    f"slot={slot_col!r}, period_1={period_1!r}, period_2={period_2!r}."
                 )
 
             if len(support_match) != 1:
                 raise ValueError(
                     "Expected one support row for "
-                    f"slot={slot_col!r}, period_1={period_1!r}, period_2={year!r}; "
+                    f"slot={slot_col!r}, period_1={period_1!r}, period_2={period_2!r}; "
                     f"found {len(support_match)}."
                 )
 
@@ -1960,18 +1955,18 @@ def summarize_fdr_correction(
 #-------------------------------------------------------------------------------
 def print_dist_contrib_by_period(dist_results: Dict[Any, Dict[str, Any]]) -> None:
     """
-    Print the distribution distance and top shifted items for each period.
+    Print the distribution distance and top shifted items for each period transition.
 
     Parameters:
-        dist_results (dict): A dictionary with period as key and a dictionary as value.
+        dist_results (dict): A dictionary with period-transition label as key.
             The dictionary contains the distance and top shifted items.
 
     Returns:
         None
     """
-    for period, result in dist_results.items():
+    for period_label, result in dist_results.items():
         label = resolve_distdist(result["measure"]).label
-        print(f"\n=== Shift to period {period} ===")
+        print(f"\n=== Shift across {period_label} ===")
         print(f"{label}: {result['dist']:.4f}")
         print("Top shifted items:")
         for item in result["top_shifted_items"]:
@@ -1982,14 +1977,14 @@ def plot_dist_by_period(dist_results: Dict[Any, Dict[str, Any]]) -> None:
     Plot Distribution distance values across period transitions.
 
     Parameters:
-        dist_results (dict): A dictionary with period as key and a dictionary as value.
+        dist_results (dict): A dictionary with period-transition label as key.
             The dictionary contains the distance and top shifted items.
 
     Returns:
         None
     """
-    periods = list(dist_results.keys())
-    dist_scores = [dist_results[d]["dist"] for d in periods]
+    period_labels = list(dist_results.keys())
+    dist_scores = [result["dist"] for result in dist_results.values()]
     measures = [result["measure"] for result in dist_results.values()]
     y_label = (
         resolve_distdist(measures[0]).label
@@ -1998,11 +1993,12 @@ def plot_dist_by_period(dist_results: Dict[Any, Dict[str, Any]]) -> None:
     )
 
     plt.figure(figsize=(15, 5))
-    plt.plot(periods, dist_scores, marker="o")
+    plt.plot(period_labels, dist_scores, marker="o")
     plt.title(f"Diachronic {y_label}")
-    plt.xlabel("Periods")
+    plt.xlabel("Period Transitions")
     plt.ylabel(y_label)
     plt.grid(True)
+    plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
     plt.show()
 
@@ -2015,7 +2011,7 @@ def plot_items_dist_contrib_by_period(
     Plot the top-N shifting items between two periods.
 
     Parameters:
-        dist_results (dict): A dictionary with period as key and a dictionary as value.
+        dist_results (dict): A dictionary with period-transition label as key.
             The dictionary contains the distance and top shifted items.
         top_n (int): The number of top shifted items to plot.
         cols (int): The number of columns in the plot.
@@ -2038,7 +2034,7 @@ def plot_items_dist_contrib_by_period(
         else "Distance contribution"
     )
 
-    # Find global max contribution across all periods
+    # Find global max contribution across all period transitions
     global_max = max(
         max((item["contribution"] for item in result["top_shifted_items"][:top_n]), default=0)
         for result in dist_results.values()
@@ -2047,7 +2043,7 @@ def plot_items_dist_contrib_by_period(
     fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 4))
     axes = np.atleast_1d(axes).ravel()
 
-    for idx, (decade, result) in enumerate(dist_results.items()):
+    for idx, (period_label, result) in enumerate(dist_results.items()):
         ax = axes[idx]
         top_words = result["top_shifted_items"][:top_n]
         labels = [
@@ -2068,7 +2064,7 @@ def plot_items_dist_contrib_by_period(
         ax.barh(labels, values, color=colors)
         ax.invert_yaxis()
 
-        ax.set_title(f"{decade} ({result['dist']:.3f})", fontsize=10)
+        ax.set_title(f"{period_label} ({result['dist']:.3f})", fontsize=10)
         ax.set_xlabel(x_label, fontsize=9)
         ax.set_ylabel("")
         ax.tick_params(labelsize=8)
