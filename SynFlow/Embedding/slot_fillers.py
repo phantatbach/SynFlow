@@ -73,7 +73,9 @@ def collect_slot_fillers_by_period(
 
     rows = []
     for period_value, slot_value in zip(slot_df[period_col], slot_df[slot_col]):
-        period = int(period_value)
+        period = _normalize_period_label(period_value)
+        if period is None:
+            continue
         for filler in parse_slot_values(slot_value):
             rows.append(
                 {
@@ -86,12 +88,22 @@ def collect_slot_fillers_by_period(
     if not rows:
         return pd.DataFrame(columns=["period", "slot", "filler", "count"])
 
-    return (
-        pd.DataFrame(rows)
-        .value_counts(["period", "slot", "filler"])
+    rows_df = pd.DataFrame(rows)
+    period_order = _period_order_map(rows_df["period"])
+    freq_df = (
+        rows_df.groupby(["period", "slot", "filler"], sort=False)
+        .size()
         .rename("count")
         .reset_index()
-        .sort_values(["period", "count", "filler"], ascending=[True, False, True])
+    )
+    freq_df["_period_order"] = freq_df["period"].map(period_order)
+    return (
+        freq_df.sort_values(
+            ["_period_order", "count", "filler"],
+            ascending=[True, False, True],
+        )
+        .drop(columns="_period_order")
+        .reset_index(drop=True)
     )
 
 
@@ -99,36 +111,51 @@ def select_slot_fillers(
     filler_freq_df: pd.DataFrame,
     min_freq: int | None = None,
     top_n: int | None = None,
-    periods: list[int] | None = None,
+    periods: list[str | int] | None = None,
 ) -> pd.DataFrame:
     """Filter slot fillers by period frequency and optional per-period rank."""
     selected_df = filler_freq_df.copy()
     if periods is not None:
-        selected_df = selected_df[selected_df["period"].isin(periods)]
+        period_labels = [
+            period
+            for period in (_normalize_period_label(value) for value in periods)
+            if period is not None
+        ]
+        selected_df = selected_df[selected_df["period"].isin(period_labels)]
+        period_order = {period: index for index, period in enumerate(period_labels)}
+    else:
+        period_order = _period_order_map(selected_df["period"])
+
     if min_freq is not None:
         selected_df = selected_df[selected_df["count"] >= min_freq]
 
+    selected_df["_period_order"] = selected_df["period"].map(period_order)
     selected_df = selected_df.sort_values(
-        ["period", "count", "filler"],
+        ["_period_order", "count", "filler"],
         ascending=[True, False, True],
     )
     if top_n is None:
-        return selected_df.reset_index(drop=True)
+        return selected_df.drop(columns="_period_order").reset_index(drop=True)
 
-    return selected_df.groupby("period", group_keys=False).head(top_n).reset_index(drop=True)
+    return (
+        selected_df.groupby("period", sort=False, group_keys=False)
+        .head(top_n)
+        .drop(columns="_period_order")
+        .reset_index(drop=True)
+    )
 
 
 def build_slot_embedding_points(
     selected_fillers_df: pd.DataFrame,
-    embeddings: dict[int, HistWordsSlice],
+    embeddings: dict[str | int, HistWordsSlice],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Attach period-specific embedding vectors to selected fillers."""
     rows = []
     missing_rows = []
 
     for row in selected_fillers_df.itertuples(index=False):
-        period = int(row.period)
-        embedding = embeddings.get(period)
+        period = row.period
+        embedding = _get_period_embedding(embeddings, period)
         if embedding is None or not embedding.has_word(row.filler):
             missing_rows.append(
                 {
@@ -153,6 +180,38 @@ def build_slot_embedding_points(
     points_df = pd.DataFrame(rows, columns=["period", "slot", "filler", "count", "vector"])
     missing_df = pd.DataFrame(missing_rows, columns=["period", "slot", "filler", "count"])
     return points_df, missing_df
+
+
+def _normalize_period_label(value: object) -> str | None:
+    if value is None or value is pd.NA:
+        return None
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    period = str(value).strip()
+    return period or None
+
+
+def _period_order_map(periods: pd.Series) -> dict[object, int]:
+    return {period: index for index, period in enumerate(pd.unique(periods.dropna()))}
+
+
+def _get_period_embedding(
+    embeddings: dict[str | int, HistWordsSlice],
+    period: str | int,
+) -> HistWordsSlice | None:
+    if period in embeddings:
+        return embeddings[period]
+
+    period_label = _normalize_period_label(period)
+    if period_label is not None and period_label in embeddings:
+        return embeddings[period_label]
+
+    if period_label is not None and period_label.isdigit():
+        period_number = int(period_label)
+        if period_number in embeddings:
+            return embeddings[period_number]
+
+    return None
 
 
 def add_period_pca_coordinates(points_df: pd.DataFrame) -> pd.DataFrame:
@@ -205,7 +264,7 @@ def plot_slot_fillers_by_period(
     """Plot one PCA scatter plot per period."""
     import matplotlib.pyplot as plt
 
-    period_values = sorted(points_df["period"].unique())
+    period_values = points_df["period"].dropna().drop_duplicates().tolist()
     if not period_values:
         raise ValueError("No in-vocabulary fillers to plot.")
 

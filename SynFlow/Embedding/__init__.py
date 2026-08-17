@@ -40,13 +40,22 @@ from .slot_fillers import (
     scale_marker_sizes,
     select_slot_fillers,
 )
+from .w2v_training import (
+    W2VAlignmentResult,
+    W2VTrainingResult,
+    align_w2v_folder,
+    train_w2v_folder,
+)
 
 __all__ = [
     "DiachronicCluster",
     "HistWordsSlice",
+    "W2VAlignmentResult",
+    "W2VTrainingResult",
     "add_period_pca_coordinates",
     "add_top_members_to_cluster_summary",
     "agglomerative_cosine_cluster",
+    "align_w2v_folder",
     "assign_to_existing_clusters",
     "build_slot_embedding_points",
     "cluster_individual_period",
@@ -73,6 +82,7 @@ __all__ = [
     "select_slot_fillers",
     "summarize_clusters",
     "summarize_individual_period_clusters",
+    "train_w2v_folder",
     "update_clusters_one_period",
     "vector_norm",
     "weighted_centroid",

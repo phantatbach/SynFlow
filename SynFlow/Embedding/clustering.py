@@ -104,7 +104,9 @@ def _rank_period_cluster_labels(
 
     return {
         label: period_cluster_id
-        for period_cluster_id, (label, _, _) in enumerate(sorted(label_stats, key=lambda x: (x[1], x[2])))
+        for period_cluster_id, (label, _, _) in enumerate(
+            sorted(label_stats, key=lambda x: (x[1], x[2]))
+        )
     }
 
 
@@ -164,7 +166,7 @@ def run_individual_period_clustering(
     assignment_dfs = []
     centroid_dfs = []
 
-    for period in sorted(points_df["period"].unique()):
+    for period in _unique_in_order(points_df["period"]):
         words, matrix, counts = get_points_for_period(points_df, period)
         period_assignments, period_centroids = cluster_individual_period(
             period=period,
@@ -191,7 +193,10 @@ def summarize_individual_period_clusters(assignments_df: pd.DataFrame) -> pd.Dat
         return pd.DataFrame()
 
     rows = []
-    for (period, period_cluster_id), sub in assignments_df.groupby(["period", "period_cluster_id"]):
+    for (period, period_cluster_id), sub in assignments_df.groupby(
+        ["period", "period_cluster_id"],
+        sort=False,
+    ):
         sub = sub.sort_values("count", ascending=False)
         fillers = sub["filler"].astype(str).tolist()
         rows.append(
@@ -205,9 +210,16 @@ def summarize_individual_period_clusters(assignments_df: pd.DataFrame) -> pd.Dat
             }
         )
 
+    summary_df = pd.DataFrame(rows)
+    summary_df["_period_order"] = summary_df["period"].map(
+        _period_order_map(summary_df["period"])
+    )
     return (
-        pd.DataFrame(rows)
-        .sort_values(["period", "total_count", "period_cluster_id"], ascending=[True, False, True])
+        summary_df.sort_values(
+            ["_period_order", "total_count", "period_cluster_id"],
+            ascending=[True, False, True],
+        )
+        .drop(columns="_period_order")
         .reset_index(drop=True)
     )
 
@@ -216,7 +228,7 @@ def print_individual_period_clusters(assignments_df: pd.DataFrame) -> None:
     """Print independently estimated clusters grouped by period."""
     summary_df = summarize_individual_period_clusters(assignments_df)
 
-    for period, period_df in summary_df.groupby("period"):
+    for period, period_df in summary_df.groupby("period", sort=False):
         print(f"\nPeriod {period}")
         for row in period_df.itertuples(index=False):
             print(
@@ -485,7 +497,7 @@ def run_incremental_clustering(
     next_cluster_id = 0
     assignment_dfs = []
 
-    for period in sorted(points_df["period"].unique()):
+    for period in _unique_in_order(points_df["period"]):
         words, matrix, counts = get_points_for_period(points_df, period)
         if len(words) == 0:
             continue
@@ -512,7 +524,11 @@ def run_incremental_clustering(
 
         assignment_dfs.append(period_assignments)
 
-    assignments_df = pd.concat(assignment_dfs, ignore_index=True) if assignment_dfs else pd.DataFrame()
+    assignments_df = (
+        pd.concat(assignment_dfs, ignore_index=True)
+        if assignment_dfs
+        else pd.DataFrame()
+    )
     return clusters, assignments_df
 
 
@@ -521,7 +537,7 @@ def summarize_clusters(clusters: dict[int, DiachronicCluster]) -> pd.DataFrame:
     rows = []
 
     for cluster_id, cluster in clusters.items():
-        for period, words in sorted(cluster.members_by_period.items()):
+        for period, words in cluster.members_by_period.items():
             counts = cluster.counts_by_period.get(period, {})
             rows.append(
                 {
@@ -537,7 +553,14 @@ def summarize_clusters(clusters: dict[int, DiachronicCluster]) -> pd.DataFrame:
                 }
             )
 
-    return pd.DataFrame(rows).sort_values(["cluster_id", "period"]).reset_index(drop=True)
+    summary_df = pd.DataFrame(rows)
+    period_order = _period_order_map(summary_df["period"])
+    summary_df["_period_order"] = summary_df["period"].map(period_order)
+    return (
+        summary_df.sort_values(["cluster_id", "_period_order"])
+        .drop(columns="_period_order")
+        .reset_index(drop=True)
+    )
 
 
 def add_top_members_to_cluster_summary(
@@ -549,13 +572,24 @@ def add_top_members_to_cluster_summary(
     summary = cluster_summary_df.copy()
     required_cols = {"period", "cluster_id", "filler", "count"}
 
-    if assignments_df is not None and not assignments_df.empty and required_cols.issubset(assignments_df.columns):
+    if (
+        assignments_df is not None
+        and not assignments_df.empty
+        and required_cols.issubset(assignments_df.columns)
+    ):
+        assignments = assignments_df.copy()
+        assignments["_period_order"] = assignments["period"].map(
+            _period_order_map(assignments["period"])
+        )
         top_members = (
-            assignments_df.copy()
-            .sort_values(["period", "cluster_id", "count"], ascending=[True, True, False])
-            .groupby(["period", "cluster_id"])
+            assignments
+            .sort_values(
+                ["_period_order", "cluster_id", "count"],
+                ascending=[True, True, False],
+            )
+            .groupby(["period", "cluster_id"], sort=False)
             .head(top_n)
-            .groupby(["period", "cluster_id"])["filler"]
+            .groupby(["period", "cluster_id"], sort=False)["filler"]
             .apply(lambda values: ", ".join(values.astype(str)))
             .reset_index(name="hover_members")
         )
@@ -591,15 +625,26 @@ def plot_cluster_sizes_interactive(
         assignments_df=assignments_df,
         top_n=top_n,
     )
+    period_order = _unique_in_order(plot_df["period"])
+    plot_df = plot_df.copy()
+    plot_df["period"] = pd.Categorical(
+        plot_df["period"],
+        categories=period_order,
+        ordered=True,
+    )
+    plot_df["cluster_label"] = plot_df["cluster_id"].astype(str)
+    plot_df = plot_df.sort_values(["cluster_id", "period"])
 
     fig = px.line(
         plot_df,
         x="period",
         y="total_count",
-        color="cluster_id",
+        color="cluster_label",
+        line_group="cluster_label",
         markers=True,
         custom_data=["cluster_id", "total_count", "hover_members", "n_fillers", "birth_period"],
         title=title or "Incremental filler clusters over time",
+        category_orders={"period": period_order},
     )
     fig.update_traces(
         hovertemplate=(
@@ -624,12 +669,24 @@ def plot_cluster_sizes_interactive(
     return fig
 
 
+def _unique_in_order(periods: pd.Series) -> list[object]:
+    return periods.dropna().drop_duplicates().tolist()
+
+
+def _period_order_map(periods: pd.Series) -> dict[object, int]:
+    return {period: index for index, period in enumerate(_unique_in_order(periods))}
+
+
 def detect_reassignments(assignments_df: pd.DataFrame) -> pd.DataFrame:
     """Return fillers whose assigned incremental cluster changes over time."""
     rows = []
+    assignments = assignments_df.copy()
+    assignments["_period_order"] = assignments["period"].map(
+        _period_order_map(assignments["period"])
+    )
 
-    for filler, sub in assignments_df.groupby("filler"):
-        sub = sub.sort_values("period")
+    for filler, sub in assignments.groupby("filler"):
+        sub = sub.sort_values("_period_order")
         previous_period = None
         previous_cluster = None
 

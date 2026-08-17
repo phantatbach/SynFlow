@@ -43,22 +43,26 @@ class HistWordsSlice:
         return self.vectors[self.word_to_idx[word]]
 
 
-def load_histwords_slice(base_dir: str | Path, year: int) -> HistWordsSlice:
-    """Load one HistWords slice from ``{year}-w.npy`` and ``{year}-vocab.pkl``."""
-    base_dir = Path(base_dir)
-    vectors = np.load(base_dir / f"{year}-w.npy")
-    vocab = load_pickle(base_dir / f"{year}-vocab.pkl")
+def load_histwords_slice(base_dir: str | Path, period: str | int) -> HistWordsSlice:
+    """Load one HistWords slice from ``base_dir/{period}/``."""
+    period_name = str(period)
+    period_dir = Path(base_dir) / period_name
+    vectors = np.load(period_dir / f"{period_name}-w.npy")
+    vocab = load_pickle(period_dir / f"{period_name}-vocab.pkl")
     return HistWordsSlice(vectors, vocab)
 
 
-def load_histwords_series(base_dir: str | Path, years: list[int]) -> dict[int, HistWordsSlice]:
-    """Load HistWords slices for the requested years."""
-    return {year: load_histwords_slice(base_dir, year) for year in years}
+def load_histwords_series(
+    base_dir: str | Path,
+    periods: list[str | int],
+) -> dict[str | int, HistWordsSlice]:
+    """Load HistWords slices for the requested periods."""
+    return {period: load_histwords_slice(base_dir, period) for period in periods}
 
 
 def load_gensim_slice(
     base_dir: str | Path,
-    year: int,
+    period: str | int,
     file_pattern: str | None = None,
     binary: bool | None = None,
     normalize: bool = True,
@@ -66,12 +70,13 @@ def load_gensim_slice(
     """Load one gensim embedding slice as a ``HistWordsSlice``.
 
     Args:
-        file_pattern: Optional pattern relative to ``base_dir``. It can include
-            ``{year}``, for example ``"{year}.model"`` or ``"{year}_vectors.bin"``.
+        file_pattern: Optional filename pattern relative to the period subfolder.
+            It can include ``{period}``, for example ``"{period}.model"`` or
+            ``"{period}_vectors.bin"``.
         binary: Whether word2vec-format files are binary. If omitted, ``.bin``
             files are treated as binary and text-like files are treated as text.
     """
-    path = _resolve_gensim_path(Path(base_dir), year, file_pattern)
+    path = _resolve_gensim_path(Path(base_dir), period, file_pattern)
     keyed_vectors = _load_gensim_keyed_vectors(path, binary=binary)
     return HistWordsSlice(
         keyed_vectors.vectors,
@@ -82,38 +87,45 @@ def load_gensim_slice(
 
 def load_gensim_series(
     base_dir: str | Path,
-    years: list[int],
+    periods: list[str | int],
     file_pattern: str | None = None,
     binary: bool | None = None,
     normalize: bool = True,
-) -> dict[int, HistWordsSlice]:
-    """Load gensim embedding slices for the requested years."""
+) -> dict[str | int, HistWordsSlice]:
+    """Load gensim embedding slices from one root folder with period subfolders."""
     return {
-        year: load_gensim_slice(
+        period: load_gensim_slice(
             base_dir=base_dir,
-            year=year,
+            period=period,
             file_pattern=file_pattern,
             binary=binary,
             normalize=normalize,
         )
-        for year in years
+        for period in periods
     }
 
 
-def _resolve_gensim_path(base_dir: Path, year: int, file_pattern: str | None) -> Path:
+def _resolve_gensim_path(
+    base_dir: Path,
+    period: str | int,
+    file_pattern: str | None,
+) -> Path:
+    period_name = str(period)
+    period_dir = base_dir / period_name
     if file_pattern is not None:
-        path = base_dir / file_pattern.format(year=year)
+        path = period_dir / file_pattern.format(period=period_name)
         if not path.exists():
             raise FileNotFoundError(f"Missing gensim embedding file: {path}")
         return path
 
     candidates = [
-        base_dir / f"{year}.model",
-        base_dir / f"{year}.kv",
-        base_dir / f"{year}_vectors.bin",
-        base_dir / f"{year}.bin",
-        base_dir / f"{year}.txt",
-        base_dir / f"{year}.vec",
+        period_dir / f"{period_name}.model",
+        period_dir / f"{period_name}.kv",
+        period_dir / f"{period_name}_vectors.bin",
+        period_dir / f"{period_name}.bin",
+        period_dir / f"{period_name}_vectors.txt",
+        period_dir / f"{period_name}.txt",
+        period_dir / f"{period_name}.vec",
     ]
     for path in candidates:
         if path.exists():
