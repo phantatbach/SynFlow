@@ -186,10 +186,14 @@ def build_sfiller_df(
         raise ValueError(f"filler_format must be one of: {valid_formats}")
     
     all_rows = []
+    skipped_non_subfolders: list[str] = []
 
     # Go through each subfolder in the corpus folder
     for subfolder in os.listdir(corpus_folder):
         subfolder_path = os.path.join(corpus_folder, subfolder)
+        if not os.path.isdir(subfolder_path):
+            skipped_non_subfolders.append(subfolder_path)
+            continue
 
         fnames    = [f for f in os.listdir(subfolder_path)
                 if f.endswith((".conllu", ".txt"))]
@@ -204,6 +208,9 @@ def build_sfiller_df(
         with Pool(num_procs) as pool:
             for rows in pool.imap_unordered(process_file, args, chunksize=10):
                 all_rows.extend(rows)
+
+    if skipped_non_subfolders:
+        print(f"Skipped non-subfolder entries: {skipped_non_subfolders}")
 
     # Build DataFrame   
     df = pd.DataFrame(all_rows).set_index("id", drop=True)
