@@ -532,6 +532,26 @@ def run_incremental_clustering(
     return clusters, assignments_df
 
 
+def cluster_inspect(clusters: dict[int, DiachronicCluster]) -> None:
+    """Print cluster members and counts by period for manual inspection."""
+    for cluster_id, cluster in sorted(clusters.items()):
+        print(f"\nCluster {cluster_id}")
+        print(f"Birth: {cluster.birth_period}")
+        print(f"Last active: {cluster.last_active_period}")
+
+        for period, words in cluster.members_by_period.items():
+            counts = cluster.counts_by_period.get(period, {})
+            words_with_counts = [
+                f"{word}({counts.get(word, 0)})"
+                for word in sorted(
+                    words,
+                    key=lambda word: counts.get(word, 0),
+                    reverse=True,
+                )
+            ]
+            print(f"  {period}: {', '.join(words_with_counts)}")
+
+
 def summarize_clusters(clusters: dict[int, DiachronicCluster]) -> pd.DataFrame:
     """Summarize incremental clusters by period."""
     rows = []
@@ -625,7 +645,15 @@ def plot_cluster_sizes_interactive(
         assignments_df=assignments_df,
         top_n=top_n,
     )
-    period_order = _unique_in_order(plot_df["period"])
+    if (
+        assignments_df is not None
+        and not assignments_df.empty
+        and "period" in assignments_df.columns
+    ):
+        period_order = _unique_in_order(assignments_df["period"])
+    else:
+        period_order = _unique_in_order(plot_df["period"])
+
     plot_df = plot_df.copy()
     plot_df["period"] = pd.Categorical(
         plot_df["period"],
@@ -664,6 +692,10 @@ def plot_cluster_sizes_interactive(
         hovermode="closest",
         width=1000,
         height=600,
+    )
+    fig.update_xaxes(
+        categoryorder="array",
+        categoryarray=period_order,
     )
     fig.show()
     return fig

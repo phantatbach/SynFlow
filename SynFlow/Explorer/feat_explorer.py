@@ -106,7 +106,6 @@ def feat_explorer(
     top_n: int = 20,
     num_processes: int | None = None,
     pattern: re.Pattern[str] | None = None,
-    plot: bool = True,
 ) -> dict[str, dict[str, int]]:
     """
     Count FEATS type distributions for target tokens in each corpus subfolder.
@@ -123,7 +122,6 @@ def feat_explorer(
         top_n: Number of top feature types to plot per subfolder.
         num_processes: Worker count. Defaults to CPU count minus one.
         pattern: Regex capturing token, lemma, POS, ID, HEAD, DEPREL, and FEATS.
-        plot: Whether to plot top feature types for each subfolder.
     """
     pattern = pattern or DEFAULT_PATTERN
     num_processes = num_processes or max(1, cpu_count() - 1)
@@ -160,8 +158,7 @@ def feat_explorer(
             f"{len(global_counter)} distinct types."
         )
 
-        if plot:
-            plot_dist(global_counter, target_lemma, target_pos, subfolder, top_n)
+        plot_dist(global_counter, target_lemma, target_pos, subfolder, top_n)
         all_results[subfolder] = dict(global_counter.most_common())
 
     Path(output_folder).mkdir(parents=True, exist_ok=True)

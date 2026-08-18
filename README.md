@@ -1,6 +1,6 @@
 # SynFlow
 
-SynFlow is an open-source Python toolkit for multidimensional diachronic
+SynFlow is an end-to-end open-source Python toolkit for multidimensional diachronic
 analysis of linguistic usage.
 
 Lexical semantic change is often modelled with vector-space representations or
@@ -18,24 +18,24 @@ values that drive them.
 
 The current public workflow is notebook-based. Users are expected to run the
 provided notebooks, configure paths and target words inside those notebooks, and
-use the existing SynFlow functions as they are. Core functions, parser constants,
-and corpus patterns are implementation details and should not be edited for
+use the existing SynFlow functions as they are. Core functions and internal
+pattern definitions are implementation details and should not be edited for
 normal use.
 
 ## Main Capabilities
 
 SynFlow supports multidimensional diachronic analysis through:
 
-- dependency-based co-occurrence dimensions, such as syntactic slots and their
-  lexical fillers;
-- constructional configurations extracted from parsed corpora;
-- morphological dimensions extracted from CoNLL-U style `FEATS`;
-- slot-filler distribution analysis across periods;
-- vector-based inspection and incremental clustering of lexical fillers;
-- cosine distance, Jensen-Shannon divergence, and total variation distance;
-- value-level contribution analysis for interpreting what changed;
-- support weighting and permutation testing for more careful historical-corpus
+- Stanza-based parsing of raw sentence files into SynFlow's parsed-corpus
+  format;
+- Tracking change in different linguistic dimensions, such as:
+    - Individual dependency slots and their lexical fillers;
+    - Constructional configurations;
+    - Morphological types and morphological features;
+- Value-level contribution analysis for interpreting what changed;
+- Support weighting and permutation testing for more careful historical-corpus
   analysis.
+- For lexical fillers, SynFlow further supports incremental clustering.
 
 SynFlow was developed by [Bach Phan-Tat](https://phantatbach.github.io/).
 
@@ -66,6 +66,7 @@ The dependency list is maintained in `requirements.txt`. It includes:
 - data handling: `pandas`, `numpy`;
 - statistics and distance measures: `scipy`, `statsmodels`, `scikit-learn`;
 - plotting: `matplotlib`, `plotly`, `seaborn`, `dash`;
+- corpus parsing: `stanza`, `tqdm`;
 - embedding and clustering support: `gensim`, `umap-learn`.
 
 Use this command whenever setting up a new environment:
@@ -79,37 +80,75 @@ python -m pip install -r requirements.txt
 The recommended entry points are in:
 
 ```text
-case_studies/SynFlow-test/
+notebooks/
 ```
 
 Use these notebooks:
 
-- `SynFlow_Slot_Level.ipynb`
-- `SynFlow_Construction_Level.ipynb`
-- `SynFlow_Feature_Level.ipynb`
-- `SynFlow_SFiller_Level.ipynb`
-- `embedding.ipynb`
+- `Stanza_Data_Prep.ipynb`
+- `SynFlow_Slot.ipynb`
+- `SynFlow_Constr.ipynb`
+- `SynFlow_Morph.ipynb`
+- `SynFlow_Qual_Insp.ipynb`
+- `SynFlow_DiaEmb.ipynb`
 
 Other notebooks and lower-level functions are not part of the recommended user
 workflow at the moment.
 
-### 1. Slot Level
+### 1. Stanza Data Prep
 
-Use `SynFlow_Slot_Level.ipynb` to inspect syntactic slot distributions around a
-target word across periods.
+Use `Stanza_Data_Prep.ipynb` to parse raw sentence files into SynFlow's
+seven-field parsed-token format.
+
+The raw input root should contain files inside subfolders:
+
+```text
+raw_root/
+  1995-2000/
+    file_001.txt
+    file_002.txt
+  2001-2005/
+    file_001.txt
+```
+
+Each non-empty line is treated as one raw sentence. Files directly inside the
+root folder are ignored. By default the parser reads `.txt`, `.conll`,
+`.conllu`, and `.json` files. The notebook requires the user to choose the
+Stanza language and model configuration explicitly, for example:
+
+```python
+language = "en"
+model = "ewt"
+processor_models = None
+```
+
+or:
+
+```python
+language = "de"
+model = None
+processor_models = {
+    "tokenize": "gsd",
+    "mwt": "gsd",
+    "pos": "hdt",
+    "lemma": "hdt",
+    "depparse": "hdt",
+}
+```
+
+### 2. Slot Level
+
+Use `SynFlow_Slot.ipynb` to inspect syntactic slots and slot fillers distributions.
 
 This notebook is for questions such as:
 
-- Which dependency contexts does a target word occur in?
 - Which slot types become more or less frequent over time?
-- Which periods show stronger changes in slot distribution?
+- The change in the internal structures of different slots over time?
+- Which periods show stronger changes in slot/slot-filler distribution?
 
-Typical outputs include slot-frequency tables, visualisations of frequent slots,
-and distribution-distance results across periods.
+### 3. Construction Level
 
-### 2. Construction Level
-
-Use `SynFlow_Construction_Level.ipynb` to analyse constructional configurations.
+Use `SynFlow_Constr.ipynb` to analyse constructional configurations.
 
 This notebook is for questions such as:
 
@@ -117,13 +156,9 @@ This notebook is for questions such as:
 - Which constructional patterns become more or less frequent?
 - How do construction-level distributions compare over time?
 
-It is useful when the relevant unit is not just one dependency relation, but a
-larger configuration such as a verb with subject and object branches.
+### 4. Morphology Level
 
-### 3. Feature Level
-
-Use `SynFlow_Feature_Level.ipynb` to analyse morphological features from the
-`FEATS` column of parsed corpora.
+Use `SynFlow_Morph.ipynb` to analyse morphological types and features.
 
 This notebook is for questions such as:
 
@@ -132,23 +167,27 @@ This notebook is for questions such as:
 - Are changes concentrated in dimensions such as `Degree`, `Number`, `Case`, or
   `Tense`?
 
-### 4. Slot-Filler Level
+### 5. Qualitative Inspection
 
-Use `SynFlow_SFiller_Level.ipynb` to analyse lexical fillers inside selected
-slots.
+Use `SynFlow_Qual_Insp.ipynb` to inspect which values or components drive a
+distributional change. This notebook can be used after any dimension-specific
+analysis, including slot, construction, morphology, feature-value, or
+slot-filler distributions.
 
 This notebook is for questions such as:
 
-- Which lexical fillers occur in a target slot?
-- Which fillers increase, decrease, appear, or disappear over time?
-- Which fillers contribute most to the distance between two periods?
+- Which values increase, decrease, appear, or disappear over time?
+- Which values contribute most to the distance between two periods?
+- Which components are responsible for the observed change in a selected
+  dimension?
 
-This is the main notebook for value-level interpretation of change.
+This is the main notebook for qualitative interpretation of change drivers.
 
-### 5. Embeddings
+### 6. Diachronic Embeddings
 
-Use `embedding.ipynb` to inspect lexical fillers with diachronic embedding
-models and clustering.
+Use `SynFlow_DiaEmb.ipynb` to prepare Word2Vec training data from parsed
+corpora, train period-specific Word2Vec models, align those models, and inspect
+slot fillers with diachronic embedding plots and clustering.
 
 This notebook is for questions such as:
 
@@ -157,30 +196,28 @@ This notebook is for questions such as:
 - How do filler clusters develop incrementally across periods?
 - Which fillers move between clusters?
 
-Embedding files are not included in this repository. The notebook expects the
-user to provide the relevant embedding model files and configure their local
-paths inside the notebook.
+Training data, models, and aligned models are written to user-configured local
+paths. Large embedding artifacts are not included in this repository.
 
 ## Expected Data Layout
 
-The notebooks expect a parsed corpus organised by period or another comparison
-group:
+The Stanza data-preparation notebook expects raw sentence files inside
+subfolders of an input root:
 
 ```text
-corpus_root/
-  1995/
+raw_root/
+  1995-2000/
     doc_001.txt
     doc_002.txt
-  2005/
+  2001-2005/
     doc_001.txt
-  2015/
-    doc_001.conllu
 ```
 
-Parsed files should use sentence boundaries like:
+The parser mirrors this structure into the output root and writes parsed files
+using sentence boundaries like:
 
 ```text
-<s id=sent-1>
+<s id=1995-2000_1>
 The	the	DET	1	2	det	Definite=Def|PronType=Art
 dog	dog	NOUN	2	3	nsubj	Number=Sing
 barks	bark	VERB	3	0	root	Mood=Ind|Tense=Pres|VerbForm=Fin
@@ -194,11 +231,36 @@ TOKEN    LEMMA    POS    ID    HEAD    DEPREL    FEATS
 ```
 
 Use parsed corpora that already follow this format. The notebooks and package
-functions assume this contract.
+functions for slot, construction, morphology, qualitative inspection, and
+embedding analysis assume this contract.
 
-## Conceptual Workflow
+## End-to-End Workflow
 
-SynFlow separates representation from temporal analysis:
+SynFlow supports an end-to-end workflow from raw sentences to temporal and
+embedding-based analysis:
+
+```text
+raw sentences
+  -> Stanza parse
+  -> SynFlow parsed corpus
+  -> working with different dimensions:
+       slot types/slot fillers
+       constructions
+       feature types/features
+```
+
+With slot-filler information, the workflow can continue into diachronic
+embeddings:
+
+```text
+slot fillers
+  -> W2V training data
+  -> W2V models
+  -> aligned embeddings
+  -> SynFlow diachronic embedding analysis
+```
+
+The temporal-analysis workflow is shared across dimensions:
 
 ```text
 target occurrences
@@ -207,15 +269,6 @@ target occurrences
   -> distance scores
   -> value-level explanations
 ```
-
-For example:
-
-- slot-level analysis compares distributions over dependency slots;
-- construction-level analysis compares distributions over constructional
-  configurations;
-- feature-level analysis compares distributions over morphological values;
-- slot-filler analysis compares distributions over lexical fillers;
-- embedding analysis groups fillers into broader thematic clusters.
 
 This makes it possible to compare different linguistic dimensions within a
 common workflow instead of maintaining separate analyses for every dimension.
@@ -248,22 +301,27 @@ Contribution labels mark direction:
 - Start with the notebooks listed above.
 - Edit notebook configuration cells for paths, target lemma/POS, periods, and
   output locations.
-- Do not edit SynFlow core functions, parser constants, or internal pattern
-  definitions for normal use.
+- Use `Stanza_Data_Prep.ipynb` when starting from raw sentence files; if you
+  already have a parsed corpus in SynFlow's seven-field format, start directly
+  with the dimension-specific notebooks.
+- Choose the Stanza language and model configuration in the notebook before
+  parsing raw data.
+- Do not edit SynFlow core functions or internal pattern definitions for normal
+  use.
 - Keep the corpus format consistent with the expected seven-field parsed-token
   layout.
 - For large corpora, notebook cells that extract observations may take time;
   increase worker counts only from notebook parameters when available.
 
 ## License
+This project is licensed under the MIT License.
 
-This project is licensed under the Creative Commons Attribution-NonCommercial
-4.0 International License (CC BY-NC 4.0).
+You are free to use, share, modify, and distribute this software for any purpose, including commercial use, provided that the original copyright notice and permission notice are included. 
 
-You may use, share, and adapt this code for academic and research purposes with
-proper attribution. Commercial use is not allowed.
+**Academic Citation:** If you use this code for academic research, you are requested to cite our paper as detailed in the Citation section below.
 
-[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
+[![License: MIT](https://shields.io)](https://opensource.org)
+
 
 ## Citation
 

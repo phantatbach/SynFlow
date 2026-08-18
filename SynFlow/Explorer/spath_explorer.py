@@ -9,7 +9,7 @@ import re
 from collections import Counter, deque
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Sequence
 
 from SynFlow.const import DEFAULT_PATTERN
 from SynFlow.utils import build_graph
@@ -266,15 +266,33 @@ def find_paths_from(
     return paths
 
 
-def _process_file_spath_combs(args: tuple[str, str, re.Pattern[str], str, str, int]) -> Counter[str]:
+def _trim_slot_path(path: str, trimmed_rels: set[str]) -> str | None:
+    """Trim one slot branch at the first excluded relation."""
+    parts = [part.strip() for part in path.split(">") if part.strip()]
+    kept_parts: list[str] = []
+
+    for part in parts:
+        if part in trimmed_rels:
+            break
+        kept_parts.append(part)
+
+    if not kept_parts:
+        return None
+    return " > ".join(kept_parts)
+
+
+def _process_file_spath_combs(
+    args: tuple[str, str, re.Pattern[str], str, str, int, tuple[str, ...]],
+) -> Counter[str]:
     """
     Count unique slot-path combinations around target lemma/POS tokens in one file.
 
     Args:
         args: Tuple of ``(fname, corpus_folder, pattern, target_lemma,
-            target_pos, max_length)``.
+            target_pos, max_length, trimmed_rels)``.
     """
-    fname, corpus_folder, pattern, target_lemma, target_pos, max_length = args
+    fname, corpus_folder, pattern, target_lemma, target_pos, max_length, trimmed_rels = args
+    trimmed_rels_set = set(trimmed_rels)
     counter: Counter[str] = Counter()
     path = os.path.join(corpus_folder, fname)
 
@@ -282,7 +300,15 @@ def _process_file_spath_combs(args: tuple[str, str, re.Pattern[str], str, str, i
         id2lemma_pos, graph, id2deprel = build_graph(sent_tokens, pattern)
         for target_id in _target_ids(id2lemma_pos, target_lemma, target_pos):
             paths = find_paths_from(graph, id2deprel, target_id, max_length)
+            if trimmed_rels_set:
+                paths = [
+                    trimmed_path
+                    for path in paths
+                    if (trimmed_path := _trim_slot_path(path, trimmed_rels_set)) is not None
+                ]
             unique_paths = sorted(set(paths))
+            if trimmed_rels_set and not unique_paths:
+                continue
             parts = [target_lemma] + ["> " + path for path in unique_paths]
             pattern_str = " & ".join(parts)
             counter[pattern_str] += 1
@@ -322,15 +348,22 @@ def spath_comb_explorer(
     top_n: int = 20,
     num_processes: int | None = None,
     pattern: re.Pattern[str] | None = None,
+    trimmed_rels: Sequence[str] | None = None,
 ) -> dict[str, Counter[str]]:
     """
     Count unique slot-path combinations around target tokens by subfolder.
+
+    Args:
+        trimmed_rels: Relations that trim a single slot branch at the first
+            match. If a branch starts with one of these relations, that branch is
+            removed from the combination.
 
     Writes a lowercase ``&``-delimited CSV with ``subfolder``, ``frequency``,
     ``target``, and ``slot...`` columns.
     """
     pattern = pattern or DEFAULT_PATTERN
     num_processes = num_processes or max(1, cpu_count() - 1)
+    trimmed_rels_tuple = tuple(trimmed_rels or ())
     all_totals: dict[str, Counter[str]] = {}
     csv_rows: list[tuple[str, int, str, list[str]]] = []
 
@@ -340,7 +373,15 @@ def spath_comb_explorer(
             continue
 
         file_args = [
-            (fname, subfolder_path, pattern, target_lemma, target_pos, max_length)
+            (
+                fname,
+                subfolder_path,
+                pattern,
+                target_lemma,
+                target_pos,
+                max_length,
+                trimmed_rels_tuple,
+            )
             for fname in _iter_corpus_files(subfolder_path)
         ]
 
