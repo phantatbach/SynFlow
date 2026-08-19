@@ -1,0 +1,1052 @@
+{
+  "1995-2000": [
+    {
+      "id": "1995-2000_node_1",
+      "slot_combs": [
+        "pa_amod"
+      ],
+      "frequency": 38,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_amod"
+          ],
+          "frequency": 38
+        }
+      ]
+    },
+    {
+      "id": "1995-2000_node_2",
+      "slot_combs": [
+        "chi_conj",
+        "pa_amod"
+      ],
+      "frequency": 4,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> pa_amod"
+          ],
+          "frequency": 4
+        }
+      ]
+    },
+    {
+      "id": "1995-2000_node_3",
+      "slot_combs": [
+        "pa_advmod"
+      ],
+      "frequency": 3,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_advmod"
+          ],
+          "frequency": 3
+        }
+      ]
+    },
+    {
+      "id": "1995-2000_node_4",
+      "slot_combs": [
+        "chi_case",
+        "chi_conj",
+        "chi_det",
+        "pa_obl"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_case",
+            "> chi_conj",
+            "> chi_det",
+            "> pa_obl"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "1995-2000_node_5",
+      "slot_combs": [
+        "chi_cc",
+        "pa_conj"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_cc",
+            "> pa_conj"
+          ],
+          "frequency": 1
+        }
+      ]
+    }
+  ],
+  "2001-2005": [
+    {
+      "id": "2001-2005_node_1",
+      "slot_combs": [
+        "pa_amod"
+      ],
+      "frequency": 26,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_amod"
+          ],
+          "frequency": 26
+        }
+      ]
+    },
+    {
+      "id": "2001-2005_node_2",
+      "slot_combs": [
+        "chi_cc",
+        "pa_conj"
+      ],
+      "frequency": 2,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_cc",
+            "> pa_conj"
+          ],
+          "frequency": 2
+        }
+      ]
+    },
+    {
+      "id": "2001-2005_node_3",
+      "slot_combs": [
+        "chi_advmod",
+        "pa_amod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> pa_amod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2001-2005_node_4",
+      "slot_combs": [
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    }
+  ],
+  "2006-2010": [
+    {
+      "id": "2006-2010_node_1",
+      "slot_combs": [
+        "pa_amod"
+      ],
+      "frequency": 98,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_amod"
+          ],
+          "frequency": 98
+        }
+      ]
+    },
+    {
+      "id": "2006-2010_node_2",
+      "slot_combs": [
+        "pa_advmod"
+      ],
+      "frequency": 6,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_advmod"
+          ],
+          "frequency": 6
+        }
+      ]
+    },
+    {
+      "id": "2006-2010_node_3",
+      "slot_combs": [
+        "chi_cc",
+        "pa_conj"
+      ],
+      "frequency": 2,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_cc",
+            "> pa_conj"
+          ],
+          "frequency": 2
+        }
+      ]
+    },
+    {
+      "id": "2006-2010_node_4",
+      "slot_combs": [
+        "chi_conj",
+        "pa_amod"
+      ],
+      "frequency": 2,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> pa_amod"
+          ],
+          "frequency": 2
+        }
+      ]
+    },
+    {
+      "id": "2006-2010_node_5",
+      "slot_combs": [
+        "chi_advcl",
+        "pa_amod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advcl",
+            "> pa_amod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2006-2010_node_6",
+      "slot_combs": [
+        "chi_cc",
+        "pa_amod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_cc",
+            "> pa_amod"
+          ],
+          "frequency": 1
+        }
+      ]
+    }
+  ],
+  "2011-2015": [
+    {
+      "id": "2011-2015_node_1",
+      "slot_combs": [
+        "pa_amod"
+      ],
+      "frequency": 133,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_amod"
+          ],
+          "frequency": 133
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_2",
+      "slot_combs": [
+        "pa_advmod"
+      ],
+      "frequency": 23,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_advmod"
+          ],
+          "frequency": 23
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_3",
+      "slot_combs": [
+        "chi_cc",
+        "pa_conj"
+      ],
+      "frequency": 2,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_cc",
+            "> pa_conj"
+          ],
+          "frequency": 2
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_4",
+      "slot_combs": [
+        "chi_advcl",
+        "chi_advmod",
+        "chi_conj"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advcl",
+            "> chi_advmod",
+            "> chi_conj"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_5",
+      "slot_combs": [
+        "chi_advmod",
+        "chi_conj",
+        "chi_cop",
+        "chi_nsubj"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> chi_conj",
+            "> chi_cop",
+            "> chi_nsubj"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_6",
+      "slot_combs": [
+        "chi_advmod",
+        "chi_conj",
+        "chi_cop",
+        "chi_nsubj",
+        "pa_parataxis"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> chi_conj",
+            "> chi_cop",
+            "> chi_nsubj",
+            "> pa_parataxis"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_7",
+      "slot_combs": [
+        "chi_advmod",
+        "chi_cop",
+        "chi_nsubj",
+        "pa_parataxis"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> chi_cop",
+            "> chi_nsubj",
+            "> pa_parataxis"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_8",
+      "slot_combs": [
+        "chi_advmod",
+        "chi_obl",
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> chi_obl",
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_9",
+      "slot_combs": [
+        "chi_advmod",
+        "pa_amod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> pa_amod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_10",
+      "slot_combs": [
+        "chi_appos",
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_appos",
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_11",
+      "slot_combs": [
+        "chi_conj",
+        "chi_cop",
+        "chi_nsubj",
+        "chi_obl"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> chi_cop",
+            "> chi_nsubj",
+            "> chi_obl"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_12",
+      "slot_combs": [
+        "chi_conj",
+        "chi_cop",
+        "chi_nsubj",
+        "chi_parataxis"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> chi_cop",
+            "> chi_nsubj",
+            "> chi_parataxis"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_13",
+      "slot_combs": [
+        "pa_appos"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_appos"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2011-2015_node_14",
+      "slot_combs": [
+        "pa_conj"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_conj"
+          ],
+          "frequency": 1
+        }
+      ]
+    }
+  ],
+  "2016-2020": [
+    {
+      "id": "2016-2020_node_1",
+      "slot_combs": [
+        "pa_amod"
+      ],
+      "frequency": 128,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_amod"
+          ],
+          "frequency": 128
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_2",
+      "slot_combs": [
+        "pa_advmod"
+      ],
+      "frequency": 122,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_advmod"
+          ],
+          "frequency": 122
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_3",
+      "slot_combs": [
+        "chi_advmod",
+        "pa_advmod"
+      ],
+      "frequency": 5,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> pa_advmod"
+          ],
+          "frequency": 5
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_4",
+      "slot_combs": [
+        "chi_conj",
+        "pa_amod"
+      ],
+      "frequency": 4,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> pa_amod"
+          ],
+          "frequency": 4
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_5",
+      "slot_combs": [
+        "chi_cc",
+        "pa_conj"
+      ],
+      "frequency": 3,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_cc",
+            "> pa_conj"
+          ],
+          "frequency": 3
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_6",
+      "slot_combs": [
+        "chi_advmod",
+        "pa_amod"
+      ],
+      "frequency": 2,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> pa_amod"
+          ],
+          "frequency": 2
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_7",
+      "slot_combs": [
+        "pa_conj"
+      ],
+      "frequency": 2,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_conj"
+          ],
+          "frequency": 2
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_8",
+      "slot_combs": [
+        "chi_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_9",
+      "slot_combs": [
+        "chi_case",
+        "chi_det",
+        "pa_nmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_case",
+            "> chi_det",
+            "> pa_nmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_10",
+      "slot_combs": [
+        "chi_case",
+        "chi_det",
+        "pa_obl"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_case",
+            "> chi_det",
+            "> pa_obl"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2016-2020_node_11",
+      "slot_combs": [
+        "chi_conj",
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    }
+  ],
+  "2021-2025": [
+    {
+      "id": "2021-2025_node_1",
+      "slot_combs": [
+        "pa_advmod"
+      ],
+      "frequency": 324,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_advmod"
+          ],
+          "frequency": 324
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_2",
+      "slot_combs": [
+        "pa_amod"
+      ],
+      "frequency": 203,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_amod"
+          ],
+          "frequency": 203
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_3",
+      "slot_combs": [
+        "chi_advmod",
+        "pa_advmod"
+      ],
+      "frequency": 10,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> pa_advmod"
+          ],
+          "frequency": 10
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_4",
+      "slot_combs": [
+        "chi_conj",
+        "pa_amod"
+      ],
+      "frequency": 7,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> pa_amod"
+          ],
+          "frequency": 7
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_5",
+      "slot_combs": [
+        "chi_cc",
+        "pa_conj"
+      ],
+      "frequency": 4,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_cc",
+            "> pa_conj"
+          ],
+          "frequency": 4
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_6",
+      "slot_combs": [
+        "chi_advmod",
+        "chi_cc",
+        "pa_conj"
+      ],
+      "frequency": 2,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> chi_cc",
+            "> pa_conj"
+          ],
+          "frequency": 2
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_7",
+      "slot_combs": [
+        "chi_advmod",
+        "pa_amod"
+      ],
+      "frequency": 2,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> pa_amod"
+          ],
+          "frequency": 2
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_8",
+      "slot_combs": [
+        "pa_conj"
+      ],
+      "frequency": 2,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_conj"
+          ],
+          "frequency": 2
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_9",
+      "slot_combs": [
+        "chi_acl",
+        "chi_det",
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_acl",
+            "> chi_det",
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_10",
+      "slot_combs": [
+        "chi_advmod",
+        "chi_case",
+        "chi_det",
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> chi_case",
+            "> chi_det",
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_11",
+      "slot_combs": [
+        "chi_advmod",
+        "chi_conj",
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_advmod",
+            "> chi_conj",
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_12",
+      "slot_combs": [
+        "chi_cc",
+        "chi_conj",
+        "chi_cop",
+        "chi_nsubj",
+        "pa_acl"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_cc",
+            "> chi_conj",
+            "> chi_cop",
+            "> chi_nsubj",
+            "> pa_acl"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_13",
+      "slot_combs": [
+        "chi_conj",
+        "chi_nsubj"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> chi_nsubj"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_14",
+      "slot_combs": [
+        "chi_conj",
+        "chi_obl",
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> chi_obl",
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_15",
+      "slot_combs": [
+        "chi_conj",
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_conj",
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_16",
+      "slot_combs": [
+        "chi_cop",
+        "chi_nsubj",
+        "chi_obl"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_cop",
+            "> chi_nsubj",
+            "> chi_obl"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_17",
+      "slot_combs": [
+        "chi_det",
+        "pa_advmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_det",
+            "> pa_advmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_18",
+      "slot_combs": [
+        "chi_det",
+        "pa_nmod"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_det",
+            "> pa_nmod"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_19",
+      "slot_combs": [
+        "chi_obl",
+        "pa_conj"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> chi_obl",
+            "> pa_conj"
+          ],
+          "frequency": 1
+        }
+      ]
+    },
+    {
+      "id": "2021-2025_node_20",
+      "slot_combs": [
+        "pa_advcl"
+      ],
+      "frequency": 1,
+      "specialisations": [
+        {
+          "specialisation": [
+            "> pa_advcl"
+          ],
+          "frequency": 1
+        }
+      ]
+    }
+  ]
+}
