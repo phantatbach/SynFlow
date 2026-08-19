@@ -318,10 +318,7 @@ This project is licensed under the MIT License.
 
 You are free to use, share, modify, and distribute this software for any purpose, including commercial use, provided that the original copyright notice and permission notice are included. 
 
-**Academic Citation:** If you use this code for academic research, you are requested to cite our paper as detailed in the Citation section below.
-
-[![License: MIT](https://shields.io)](https://opensource.org)
-
+**Academic Citation:** If you use this code for academic research, you are requested to cite the repo.
 
 ## Citation
 
