@@ -301,46 +301,6 @@ def _cell_to_filler_items(cell: Any) -> list[FillerItem]:
     return output
 
 
-#-------------------------------------------------------------------------------
-# Column Editing
-#-------------------------------------------------------------------------------
-def replace_in_sfiller_df_column(
-    sfiller_df_path: str,
-    column_name: str,
-    replacements: Mapping[str, str],
-    output_path: str,
-) -> None:
-    """
-    Replace slot-filler values in one CSV column and write the updated CSV.
-
-    The target column is expected to contain string representations of Python
-    lists of tuples, such as ``"[('big/A',), ('open/A',)]"`` or
-    ``"[('bark/NOUN', 'the/DET')]"``. Each tuple element is looked up in
-    ``replacements``; matching elements are replaced with their mapped value,
-    and unmatched elements are kept unchanged.
-
-    Args:
-        sfiller_df_path (str): Path to the input slot-filler DataFrame.
-        column_name (str): Name of the column whose list values should be
-            rewritten.
-        replacements (dict): Mapping from original filler values to replacement
-            values.
-        output_path (str): Path where the updated CSV should be saved.
-    """
-    sfiller_df = pd.read_csv(sfiller_df_path, encoding="utf-8")
-
-    def replace_list_str(cell: Any) -> str:
-        items = _cell_to_filler_items(cell)
-        replaced_items = [
-            tuple(replacements.get(element, element) for element in item)
-            for item in items
-        ]
-        return str(replaced_items)
-
-    sfiller_df[column_name] = sfiller_df[column_name].astype(str).map(replace_list_str)
-
-    sfiller_df.to_csv(output_path, index=False, encoding="utf-8")
-
 def merge_sfiller_df_columns(
     sfiller_df_path: str,
     merge_formula: Mapping[str, Sequence[str]] | Sequence[tuple[str, Sequence[str]]] | Sequence[dict],

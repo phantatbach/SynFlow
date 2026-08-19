@@ -29,7 +29,6 @@ from .sfiller_df import (
     build_sfiller_df,
     compute_saturating_support_from_sfiller_df,
     merge_sfiller_df_columns,
-    replace_in_sfiller_df_column,
 )
 
 from .construction_df import(
@@ -63,7 +62,6 @@ __all__ = [
     "build_sfiller_df",
     "compute_saturating_support_from_sfiller_df",
     "merge_sfiller_df_columns",
-    "replace_in_sfiller_df_column",
 
     "spath_to_constructiondf",
     

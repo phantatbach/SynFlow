@@ -292,7 +292,7 @@ def _progress_iter(iterable, *, total: int, enabled: bool):
     except ImportError:
         return iterable
 
-    return tqdm(iterable, total=total, desc="Training W2V", unit="period")
+    return tqdm(iterable, total=total, desc="Progress", unit="period")
 
 
 def _build_training_job(
@@ -523,7 +523,6 @@ def align_w2v_folder(
     model_filename: str = "{period}.model",
     save_formats: tuple[str, ...] = DEFAULT_SAVE_FORMATS,
     min_anchor_count: int | None = None,
-    show_progress: bool = True,
     overwrite: bool = False,
 ) -> list[W2VAlignmentResult]:
     """Sequentially align period Word2Vec models using orthogonal Procrustes.
@@ -565,7 +564,7 @@ def align_w2v_folder(
     previous_model: Word2Vec | None = None
     previous_period: str | int | None = None
 
-    iterator = _progress_iter(periods, total=len(periods), enabled=show_progress)
+    iterator = _progress_iter(periods, total=len(periods), enabled=True)
     for period in iterator:
         input_path = _resolve_period_model_path(input_root, period, model_filename)
         paths = _build_alignment_output_paths(output_root, period)

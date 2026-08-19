@@ -1,8 +1,652 @@
 sentence_id	sentence	sfillers	path
-1998_776908	Es besteht aus einem viralen und einem zellulären Transkriptionsfaktor sowie deren Bindestellen auf der DNA ( Abbildung 3 ) .	['ein/chi_det']	chi_det
-2019_910226	Vor Kurzem wurden Reddit - User in einem viralen gebeten , zu erzählen , welche belanglosen Dinge sie in den Wahnsinn treiben .	['ein/chi_det']	chi_det
-2020_329993	Die Forscher glauben , dass ihre Folgen für die Wissenschaft haben könnte : „ Das Yaravirus erweitert unser Wissen über die virale und stellt die aktuelle Klassifizierung von DNA - Viren in Frage “ , schreiben sie in ihrer Studie .	['der/chi_det']	chi_det
-2021_884361	Unter anderem war diese Woche ein viral gegangen , auf dem zu sehen ist , wie bei dem Leeren eines Mistkübels in einem Wagen der Müllabfuhr MA48 zahlreiche Ratten aus dem Kübel springen und flüchten .	['ein/chi_det']	chi_det
-2022_969975	""" Witcher "" - Schauspieler Henry Cavill mit dem Bau seines viral ."	['sein/chi_det']	chi_det
-2024_283936	Der Wirt des BULLDOGWirt in Straden , Österreich , ging mit seinem fast viral , der Post wurde über 1600 Mal geteilt ( Stand 8. Februar ) .	['sein/chi_det']	chi_det
-2024_448027	Eines der viral zeigt die Hauptdarstellerin ( 32 ) , wie sie eine Gruppe von Campern tanzend anführt .	['der/chi_det']	chi_det
+1995_164115	Die gentechnisch umprogrammierten viralen Gen - Taxis wurden Gruppen mit jeweils drei Kranken in vier unterschiedlichen Dosierungen als Aerosol in die Nase gesprüht .	['Gen/pa_amod']	pa_amod
+1995_256783	Diese Zytokine werden außerhalb des Gehirns auf das Kommando viraler oder bakterieller Pyrogene hin gebildet und gelangen über das Blut zu der Wärmesteuerungszentrale .	['unknown/pa_amod']	pa_amod
+1995_368117	Virale und viroide Systeme sind nicht eingeschlossen .	['System/pa_amod']	pa_amod
+1995_455269	S Andree , Christoph Freiburg Untersuchungen zu dem Einfluß des non - viralen Gentransfers von Wachstumsfaktoren in Keratinozytensuspensionen auf die Epithelialisierung und Wundheilung .	['Gentransfer/pa_amod']	pa_amod
+1995_489161	Allerdings messen viele Experten dem Einfluß von Umweltfaktoren , zu dem Beispiel viralen Infektionen in der Kindheit , eine noch größere Bedeutung zu als den Erbgutfaktoren .	['Infektion/pa_amod']	pa_amod
+1996_141988	"Bei dem ersten Projekt klärten Forscher der Ruhruniversität Bochum mit Hilfe von viralem und bakteriellem Erbmaterial , ob durch eine dreimonatige "" Dauerbeschallung "" Mutationen auftreten ."	['Erbmaterial/pa_amod']	pa_amod
+1996_190426	Das Immunsystem merkt sich die Struktur des viralen Kerneiweißes und schützt den Körper auch dann vor einer Infektion , wenn das Virus äußerlich in einem neuen Gewand auftritt .	['Ciße/pa_amod']	pa_amod
+1996_440601	Als Ursachen des Leidens werden außer Vererbung und Umwelteinflüssen auch virale Infekte diskutiert .	['Infekt/pa_amod']	pa_amod
+1996_565228	Die Muskelzellen nehmen den Bauplan auf und produzieren das entsprechende virale Protein .	['Protein/pa_amod']	pa_amod
+1996_609353	Das erste Enzym namens Reverse Transkriptase ( RT ) hat eine Übersetzerfunktion , es überträgt die virale Erbinformation RNA in DNA , jene chemische Sprachform , die das menschliche Erbgut versteht .	['Information/pa_amod']	pa_amod
+1996_706918	Er habe mit seinen Mitarbeitern den Wirkmechanismus der viralen Tumorentstehung weitgehend aufgeklärt und die Grundlagen dafür erarbeitet , daß inzwischen in aller Welt an der Entwicklung einer Impfung gegen Papillomviren gearbeitet werde .	['Ürmorentstehung/pa_amod']	pa_amod
+1996_790534	Sein genetisches Material besteht aus RNS ( Ribonukleinsäure ) , die in der Wirtszelle durch ein virales Enzym , die Reverse Transkriptase , in DNS ( Desoxyribonukleinsäure ) umgeschrieben wird .	['unknown/pa_amod']	pa_amod
+1996_839665	Die HNO - Ärztin sagt zwar , es sei eine virale Laryngitis , aber meiner Ansicht nach ist es Voodoo .	['unknown/pa_amod']	pa_amod
+1996_975578	Längst sind verschiedene ' virale Genfähren ' in dem Einsatz : Retroviren , aber auch Adeno - und Herpes Simplex Viren , der Aids - Erreger HIV , Epstein - Barr - und Polioviren , die alle von Natur aus ' wisse n' , wie sie in menschliche Zellen gelangen .	['Genfähren/pa_amod']	pa_amod
+1997_213395	Die Arbeitsgruppe um Felix Hoppe - Seyler sucht nach Substanzen , die virale Waffen stumpf machen .	['Waffe/pa_amod']	pa_amod
+1997_238626	Die virale Substanz ähnele bekannten Botenstoffen des Immunsystems , den sogenannten Chemokinen .	['Substanz/pa_amod']	pa_amod
+1997_566723	Schwermetalle , Smog , Zigarettenrauch , Alkohol , Pilze , virale und bakterielle Infektionen sowie Parasiten beeinflussen die Vorgänge in unserem Körper .	['Infektion/pa_amod']	pa_amod
+1997_633625	Gemeinhin , so erklärte ihr Arzt Ulrich Kübler an dem Wochenende , gelten virale Infektionen nach Auffassung deutscher und amerikanischer Mediziner als nicht heilbar , die Patienten als nicht mehr fähig , ihre individuellen Leistungsgrenzen zu erreichen .	['Infektion/pa_amod']	pa_amod
+1997_741320	Auch die Klimaerwärmung wird die Ausbreitung viraler hämorrhagischer Fieber in Zukunft begünstigen .	['Fieber/pa_amod']	pa_amod
+1997_883816	Einer der viralen Kniffe besteht darin , die natürliche Wächterfunktion sogenannter Tumorsuppressoren auszuschalten .	['Kniffe/pa_amod']	pa_amod
+1997_935128	Der direkte Schleimhautkontakt führt zu fatalen Übersprungshandlungen der viralen Übeltäter .	['Übeltäter/pa_amod']	pa_amod
+1998_71217	"Kürzlich gelang es , die in situ- PCR zu der Darstellung von Zellen mit viraler DNA an Paraffinschnitten auszuführen und die Methode mit Immunhistochemie zu verknüpfen ( "" PCR in situ double - label method "" ) ."	['unknown/pa_amod']	pa_amod
+1998_84905	Neben dem von Esiri und ihren Kollegen entdeckten Risiko durch eine virale Infektion werden genetische Dispositionen und Hirnverletzungen zu den Auslöserfaktoren gezählt .	['Infektion/pa_amod']	pa_amod
+1998_101926	Das Team um Prof. Stelzner arbeitet derzeit an einem Impfverfahren gegen virale Herzerkrankungen .	['Herkrankung/pa_amod']	pa_amod
+1998_247686	Das Institut für Virusdiagnostik betreibt angewandte ätiologische und pathogenetische Forschung mit dem Ziel der Erarbeitung moderner diagnostischer Verfahren und Methoden zu der Erkennung viraler Tierkrankheiten .	['Krankheit/pa_amod']	pa_amod
+1998_594043	Das Institut bearbeitet virale Erkrankungen bei Säugetieren , Geflügel und Fischen unter Einschluß der Ausarbeitung von Bekämpfungsstrategien bei Tierseuchen und der Entwicklung immunprophylaktischer Maßnahmen .	['Erkrankung/pa_amod']	pa_amod
+1998_664980	Hier soll die Möglichkeit erarbeitet werden , Gendefekte durch viralen Vektortransfer und Rekombination in allen , auch in ruhenden , Zellen zu korrigieren .	['Transfer/pa_amod']	pa_amod
+1998_764585	Tax aktiviert die Transkription von viralen Genen über das HTLV -I ' long terminal repeat ' ( LTR ) .	['Gen/pa_amod']	pa_amod
+1998_900482	"Letztere teilt sich wiederum in die Unterabteilungen "" Biologische Sicherheit "" , "" Neuartige virale Erreger "" und "" Pathogenesemechanismen "" auf ."	['Erreger/pa_amod']	pa_amod
+1998_943873	Die Forscher haben dabei einen anti - viralen Effekt des Insulins ausgeschlossen .	['Effekt/pa_amod']	pa_amod
+1999_74107	Oseltamivir wirkt nicht wie ein Impfstoff , sondern blockiert die Funktion des viralen Proteins Neuraminidase .	['Protein/pa_amod']	pa_amod
+1999_147721	Den inzwischen patentierten Ansatz will das Weizmann - Team jetzt für Impfstoffe gegen Tuberkulose und virale Infekte testen , auch ein Impfstoff für die Krebstherapie ist in der Planung , der das Immunsystem stimulieren würde , die Tumorzellen anzugreifen .	['Infekt/pa_amod']	pa_amod
+1999_173434	Wenn nun das tierische Abwehrsystem die viralen Oberflächenmoleküle bekämpft , dann richtet es seine Aggressivität zwangsläufig auch gegen eigene Organe .	['Moleküle/pa_amod']	pa_amod
+1999_321955	In einem Kommentar spricht er sich dafür aus , das Screening auch auf die Suche nach viraler DNA auszudehnen .	['unknown/pa_amod']	pa_amod
+1999_343842	Um die Gefahr zu minimieren haben sie die viralen Gene bis auf einen Rest von knapp 20 Prozent entfernt und das Konstrukt in eine Hülle gesteckt , die eigentlich nicht zu dem Aids - Virus gehört .	['Gen/pa_amod']	pa_amod
+1999_506102	Dieser ist gegen Zellen gerichtet , die sich dem Immunsystem durch Bestandteile von viralen Proteinen an der Zelloberfläche verraten .	['Protein/pa_amod']	pa_amod
+1999_623195	"Dieser für Menschen wenig pathogene Erreger wurde noch zusätzlich "" entschärft "" , indem die Forscher virale Gene herausschnitten und die Möglichkeit einer eigenständigen Vermehrung unterbanden ."	['Gen/pa_amod']	pa_amod
+1999_942889	Damit sich das Virus vermehren kann , müssen virale Gene einige biochemische Abläufe in der Zelle umprogrammieren ; dabei können auch genetische Schäden in der Zelle entstehen .	['Gen/pa_amod']	pa_amod
+2000_336604	"Die Integrase hat zu dem einen die Aufgabe , das virale Erbgut für den Einbau in die DNA der Wirtszelle "" zurechtzuschneiden , zu dem anderen lagert sie die beiden DNA - Typen zusammen und baut drittens diese Abschnitte in das Erbgut des Wirts ein ."	['Erbgut/pa_amod']	pa_amod
+2000_634970	"Inzwischen kennt man die viralen Übeltäter genauer : In der Hülle des Influenza - Virus stecken , wie Winnacker erläutert , zwei Arten von "" Stacheln "" ."	['Übeltäter/pa_amod']	pa_amod
+2000_748737	Obwohl vereinzelt noch weiterhin eingesetzt , hätten virale Genfähren kaum Aussicht auf Zulassung zu dem Medikament , schätzt Wittig ein .	['Genfähren/pa_amod']	pa_amod
+2000_880203	"Und weil sich die Werbebotschaft wie ein Virus verbreitet , gibt es dazu natürlich auch schon das passende Fachwort der Werber : "" Virales Marketing . """	['Marketing/pa_amod']	pa_amod
+2001_87132	""" Bei der viralen Meningitis ist keine intensivmedizinische Behandlung notwendig "" , klärte die Amtsärztin auf ."	['unknown/pa_amod']	pa_amod
+2001_268184	"Tee hat einen starken anti - viralen Effekt , er tötet zu dem Beispiel Herpes - Viren ab . """	['Effekt/pa_amod']	pa_amod
+2001_351617	"Das Beispiel zeigt , dass "" virales "" Marketing in dem Einzelfall funktionieren kann , die Offline - Medien aber nach wie vor immensen Einfluss ausüben ."	['Marketing/pa_amod']	pa_amod
+2001_826138	Das Immunsystem der Tiere reagiert auf die Impfung ähnlich wie auf eine Infektion : Das befallene Tier produziert zumeist Antikörper gegen so genannte Strukturproteine des Virus - zugleich jedoch auch gegen andere virale Eiweiße .	['Eiweiß/pa_amod']	pa_amod
+2002_979276	Es trägt die Information für ein Enzym , das virale Erbsubstanz angreift und so die Entwicklung des Virus stoppt .	['Stanz/pa_amod']	pa_amod
+2003_31503	Der Grund sind häufige Kopierfehler bei dem Vermehren des viralen Erbguts .	['Erbgut/pa_amod']	pa_amod
+2003_267456	Dadurch werde unter Umständen der Eintritt von viralen Giftstoffen ( Toxinen ) oder bestimmten Bakterien in den Körper ermöglicht .	['Stoff/pa_amod']	pa_amod
+2003_498554	"Nicholas Negroponte , Vater des berühmten Media Lab an dem Massachusetts Institute of Technology , kündigt gar das Erblühen einer "" viralen Telekommunikation "" auf Basis von WLAN an ."	['Telekommunikation/pa_amod']	pa_amod
+2003_617436	Kay und Kollegen glauben , dass dieses Verfahren auch andere virale Infektionskrankheiten erfolgreich bekämpfen könnte .	['Krankheit/pa_amod']	pa_amod
+2003_738124	Auch für die Entwicklung eines Impfstoffs ist die Sequenzierung des viralen Genoms eventuell ein Meilenstein .	['unknown/pa_amod']	pa_amod
+2003_810913	Wirksame Medikamente gegen die Grippe existieren : Sie hemmen das virale Enzym Neuraminidase , das für die Ausbreitung des Virus nötig ist .	['unknown/pa_amod']	pa_amod
+2004_61588	"Mit der Zahl der Raubkopien multiplizieren sich die Werbeimpulse , der Fachbegriff heißt "" virales Marketing "" ."	['Marketing/pa_amod']	pa_amod
+2004_107488	In diesen Tagen , wo unsere lieben Mitmenschen von viralen Infektionen niedergestreckt werden , von Husten , Schnupfen und auch Heiserkeit , erweist sich die Gesundheitsreform als wahrer Segen .	['Infektion/pa_amod']	pa_amod
+2004_233514	Dort bilden sich die viralen Mischlinge durch Gen - Austausch in dem Körper von südostasiatischen Hausschweinen , die für Menscheninfluenza ebenso gut empfänglich sind wie für die Vogelgrippe .	['Mischling/pa_amod']	pa_amod
+2004_265917	Bei Hepatitis C , einer sehr stark zu chronischer Ausprägung neigenden Form viraler Leberentzündung , rechnet Zeuzem auf absehbare Zeit nicht mit einem vorbeugenden Impfstoff .	['Dung/pa_amod']	pa_amod
+2004_316064	Der Papa steckte sich an und leidet nun an den Folgen einer viralen Meningitis ( Hirnhautentzündung ) , die ihn außer Gefecht setzt .	['unknown/pa_amod']	pa_amod
+2004_793780	""" Wir wollen die Seite durch virales Marketing in das Gespräch bringen . """	['Marketing/pa_amod']	pa_amod
+2005_63264	Seinen Namen verdankt das Viral oder eingedeutscht virale Marketing seinem Ziel : Die Werbebotschaft soll sich so schnell und unkontrolliert wie ein aggressiver Virus verbreiten .	['Marketing/pa_amod']	pa_amod
+2005_207831	Drei von vier Befragten würden neuen Werbeformen wie dem Guerilla Marketing ( über 50 Prozent ) und dem Viralen Marketing ( 35,5 Prozent ) eine Chance geben - sie verweisen jedoch auch auf mangelnde Erfahrungswerte .	['Marketing/pa_amod']	pa_amod
+2005_212177	Dass HIV - Infizierte heute etwa eine Überlebenszeit von 20 Jahren haben , das sei der Forschung und der anti - viralen Therapie zu verdanken .	['Therapie/pa_amod']	pa_amod
+2005_385277	Die in dem allgemeinen ungefährliche virale Meningitis kommt häufiger vor .	['unknown/pa_amod']	pa_amod
+2005_488063	Es handle sich dabei um eine virale Meningitis , glücklicherweise nur um eine leichte Form . Eventuell infizierte er sich in Äthiopien , wo er kürzlich mit seiner Kollegin - und angeblichen neuen Liebe - Angelina Jolie deren zweites Adoptivkind abholte .	['unknown/pa_amod']	pa_amod
+2005_520057	""" Ungewöhnlich ist sicher die Kombination von Resistenzen , viraler "" Infektionsfitneß "" , schnellem Ausbruch und die frühe Beobachtung von Merkmalen , die eher später auftreten . """	['Sfitneß/pa_amod']	pa_amod
+2005_571418	So sollen die Mitgliedstaaten , wie von der Welthandelsorganisation WTO angeraten , möglichst große Lagerbestände an anti - viralem Impfstoff bereithalten .	['Impfstoff/pa_amod']	pa_amod
+2005_668250	Banker wissen : Guter Service ist eine Bank 23 . Sep. Studie ermittelt die schönsten Einkaufsstraßen der Welt 22 . Sep . Wie beliebt sind Guerilla Marketing und Virales Marketing ?	['Marketing/pa_amod']	pa_amod
+2005_775531	""" Diese Testsysteme können bereits geringe Mengen der viralen Erbsubstanz in Blut oder anderen Körperflüssigkeiten aufspüren "" , sagt der Wissenschaftler , der an dem Universitätsklinikum Hamburg - Eppendorf ( UKE ) tätig ist ."	['Stanz/pa_amod']	pa_amod
+2005_958405	"HIV , der trickreichste aller bislang bekannten viralen Erreger , reagiert auf die "" Bedrohung "" durch neutralisierende Antikörper mit der Bildung von neuen Virusvarianten ."	['Erreger/pa_amod']	pa_amod
+2006_170417	Ibrahim R. soll in Deutschland eine Art virales Marketing für Al Kaida betrieben haben .	['Marketing/pa_amod']	pa_amod
+2006_204190	"Voller Serien - Klischees der achtziger Jahre , schlechter Punchlines und kitschiger Bilder ist "" Heat Vision and Jack "" schmerzhaft lustig - wenn man sich nur sicher sein könnte , dass das keine brillant gemachte virale Werbung ist ."	['Werbung/pa_amod']	pa_amod
+2006_343860	Hund des Handy - Diebes : Tierischer Zeuge oder Werkzeug einer viralen Werbekampagne ?	['Kampagne/pa_amod']	pa_amod
+2006_349437	Agenturen für Virales Marketing versuchen längst , auch Weblogs als kostengünstige Multiplikatoren für ihre Kampagnen einzuspannen - und ernten heftige Kritik .	['Marketing/pa_amod']	pa_amod
+2006_433885	"Stunden wöchentlich in ihrer virtuellen Welt "" leben "" . viralen Kampagnen zielgruppenkonform beworben und promotet . sind in ihrem jeweiligen Genre technologisch und qualitativ führend . lokalisiert und auf den jeweiligen Märkten eingeführt ."	['Kampagne/pa_amod']	pa_amod
+2006_700265	"Angelehnt an die Methoden des viralen Guerilla - Marketings aus dem Internet sind die Bilder der Dachkampagne "" Joga Bonito "" - zu deutsch : "" Spiele schön "" - unscharf und verwackelt wie bei Filmchen auf Youtube.com ."	['Guerilla/pa_amod']	pa_amod
+2006_857852	Für virale Kampagnen eignen sich internetbasierende Techniken ( Videoclips , Einträge in virtuellen Communities ) genauso wie Mundpropaganda ( Buzz - Marketing ) .	['Kampagne/pa_amod']	pa_amod
+2006_912525	"Thomas Zorbach fügt hinzu : "" Die klassischen Marketingstrategien werden in letzter Zeit immer lauter und schriller - das virale Marketing kommt dagegen eher leise und subversiv daher . """	['Marketing/pa_amod']	pa_amod
+2006_977734	Das dient natürlich auch der Abwehr von interessengeleiteten Falsch - Anmeldungen , zu dem Beispiel von viralen Vermarktern , die in dem Netzwerk ihre Produkte mit der Credibility der studentischen Nutzergruppe verknüpfen wollen könnten .	['Vermarkter/pa_amod']	pa_amod
+2007_18003	In absehbarer Zeit werden wir wesentlich mehr Leute hinzulassen , so dass die virale Verbreitung beginnen kann .	['Verbreitung/pa_amod']	pa_amod
+2007_46975	Bei weniger als ein Prozent aller Streifen , die in das Netz gestellt werden , heißt es , funktioniert die virale Expansion .	['Expansion/pa_amod']	pa_amod
+2007_56077	In einer vorangegangenen Studie hatten die Augsburger Forscher 44 Mobile - Marketing - Experten befragt , von denen fast 70 Prozent mobiles virales Marketing als wichtiges zukünftiges Marketinginstrument identifiziert haben .	['Marketing/pa_amod']	pa_amod
+2007_68682	Darüber hinaus erlauben es diese Tools , die virale Verbreitung eines Videos außerhalb von Youtube auf anderen Social - Media - Sites und Blogs zu verfolgen .	['Verbreitung/pa_amod']	pa_amod
+2007_79951	Die Geschichte von Bree fügte sich damit in die Reihe der anderen erfundenen Internetmythen ein , virales Marketing in dem Web .	['Marketing/pa_amod']	pa_amod
+2007_113736	""" Wenn Sie sich eine menschliche , eine bakterielle oder eine virale Zelle anschauen , dann sehen Sie auf der Oberfläche viele Zuckermoleküle ."	['Zelle/pa_amod']	pa_amod
+2007_134216	Virales Marketing lässt sich dennoch nicht allein auf das Internet beschränken , denn letztendlich spielt es keine Rolle welches Medium die Botschaft trägt .	['Marketing/pa_amod']	pa_amod
+2007_195148	Renault verkauft den Russen koreanische Edelautos , der Audi TT wird zu dem Pickup und Nissan startet eine virale Marketing - Kampagne für den Qashqai .	['Marketing/pa_amod']	pa_amod
+2007_245318	Piczo will in Asien - wie zuvor - ausschließlich auf virales Marketing setzen .	['Marketing/pa_amod']	pa_amod
+2007_251847	Ärztliche Befunde haben ergeben , dass die erfolgreichste Mountainbikerin aller Zeiten vor wenigen Wochen an einer viralen Infektion erkrankt ist .	['Infektion/pa_amod']	pa_amod
+2007_268271	""" Bei dem viralen Marketing muss man Erfahrung in dem Online - Bereich haben "" , sagt Martin Dräger von der Agentur Dialog - Solutions in Hamburg , die sich auf Virales Marketing spezialisiert hat und für die Verbreitung des Parkour - Clips verantwortlich ist ."	['Marketing/pa_amod']	pa_amod
+2007_268271	""" Bei dem viralen Marketing muss man Erfahrung in dem Online - Bereich haben "" , sagt Martin Dräger von der Agentur Dialog - Solutions in Hamburg , die sich auf Virales Marketing spezialisiert hat und für die Verbreitung des Parkour - Clips verantwortlich ist ."	['Marketing/pa_amod']	pa_amod
+2007_513647	Vielleicht geht es mit anderen viralen Systemen , die sich nicht integrieren oder die nachher nicht mehr in den Zellen vorhanden sind .	['System/pa_amod']	pa_amod
+2007_542320	"Der Dreiklang aus "" ansteckendem Produkt "" , "" ansteckender Beziehungspflege "" und "" ansteckender Werbung "" ist einer der Eckpfeiler meiner Arbeit , wenn ich einen ganzheitlichen Ansatz von viralem Marketing erkläre ."	['Marketing/pa_amod']	pa_amod
+2007_591944	Denn das wäre dann ein Beispiel für wirklich geplantes virales Marketing in dem umfassenden Sinne .	['Marketing/pa_amod']	pa_amod
+2007_685416	Fitness - Bildschirmschoner , Podcasts , schmierige Coversongs : Die viralen Kampagnen deutscher Politiker geben viel Anlass zu dem Fremdschämen .	['Kampagne/pa_amod']	pa_amod
+2007_724924	Zudem ist erwähnenswert , dass ein wichtiger Faktor der Wirtszelle als Zielstruktur dient und nicht , wie sonst üblich , ein virales Protein .	['Protein/pa_amod']	pa_amod
+2007_812713	Da werde ich als Träger der viralen Nachricht leider - aus Mangel an Belustigung - nur bedingt funktionieren , aber auch hier bin ich sicher , dass ich Kandidaten finden .	['Nachricht/pa_amod']	pa_amod
+2007_865144	"Doch bislang wird wohl eher das "" virale Marketing "" ( die elektronische Mundpropaganda ) genutzt : Treue Fans ? wie etwa die Herausgeber der wöchentlichen "" CSU - Newsletter "" in dem Internet ? verweisen regelmäßig auf das "" Video - Statement "" des Oberbürgermeisters ."	['Marketing/pa_amod']	pa_amod
+2007_883780	Wer extensiv surft , dürfte andere Probleme als Leichtgläubigkeit bei viralen Kampagnen haben .	['Kampagne/pa_amod']	pa_amod
+2007_925716	Restriktive DRM ( Digital Rights Management ) - Lösungen verhindern beispielsweise das Weiterreichen einzelner Videoclips , was die virale Verbreitung unterbindet .	['Verbreitung/pa_amod']	pa_amod
+2007_954690	"Die Wissenschaftlerin untersuchte die Rolle von viralen Faktoren und Wirtsfaktoren bei dem intrazellulären Transport des humanen Infektionserregers "" Herpes - simplex - Virus Typ 1 "" ."	['Faktor/pa_amod']	pa_amod
+2008_31720	Der japanische Elektronikkonzern hat eine Website gebastelt , auf der genau das möglich ist - und damit wieder die Erfolgsprinzipien erfolgreicher viraler Kampagnen praktiziert : Machen Sie 's einfach und persönlich !	['Kampagne/pa_amod']	pa_amod
+2008_81009	Der neue virale Sport : Ausdaueranimationen .	['Sport/pa_amod']	pa_amod
+2008_87476	Dabei werden  wie nach einer natürlichen viralen Infektion  die Bruchstücke des viralen Hüllproteins auf der Oberfläche der Zellen von bereits vorhandenen Killerzellen erkannt .	['Infektion/pa_amod']	pa_amod
+2008_87476	Dabei werden  wie nach einer natürlichen viralen Infektion  die Bruchstücke des viralen Hüllproteins auf der Oberfläche der Zellen von bereits vorhandenen Killerzellen erkannt .	['Protein/pa_amod']	pa_amod
+2008_107884	"Denn Pomegranate ( "" Granatapfel "" ) ist eine virale Werbekampagne ."	['Kampagne/pa_amod']	pa_amod
+2008_130858	Dazu nutzt Go - Yellow Media die eigenen Websites GoYellow.de und PeterZahlt.de sowie virale Verbreitungswege wie Video - Plattformen .	['Weg/pa_amod']	pa_amod
+2008_229915	Der Verdacht , es handelt sich um eine virale Marketing - oder PR - Aktion , liegt nahe - allerdings vermerkt der Blogbetreiber ausdrücklich , dass er nicht für Electronic Arts arbeitet .	['Marketing/pa_amod']	pa_amod
+2008_238819	"Auf Zullas Nachfrage gab die Agentur die Werbung durchaus zu und verwies auf "" virales Marketing "" ."	['Marketing/pa_amod']	pa_amod
+2008_276609	Bei Gen - basierten Impfstoffen wird nicht das virale Protein verabreicht , gegen das geimpft werden soll , sondern ein Gen , das die Bildung dieses Proteins nach der Impfung ermöglicht .	['Protein/pa_amod']	pa_amod
+2008_311791	"Clinton ist "" so hart wie die Steinkohle hier "" Die junge Mannschaft um Barack Obama setzt so konsequent wie nie zuvor auf die virale Kraft des Internets und die Macht des innovativen Dialogmarketings ."	['Kraft/pa_amod']	pa_amod
+2008_354355	"Der Brausehersteller Pepsi etwa ließ seine blauen Getränkedosen für eine Weile rot färben und lancierte eine virale "" Love China "" - Kampagne ."	['Love/pa_amod']	pa_amod
+2008_432389	Dazu sind die ansonsten guten viralen Effekte von Twitter viel zu schnelllebig und flüchtig .	['Effekt/pa_amod']	pa_amod
+2008_444121	Die Antikörper wiederum sind mit den durch Gen - basierte Impfstoffe gebildeten viralen Proteinen beladen .	['Protein/pa_amod']	pa_amod
+2008_465204	Das hat das Videoportal nicht nur zu einem beliebten Tool für virales Marketing gemacht , sondern auch die klassischen TV - Unternehmen aufhorchen lassen .	['Marketing/pa_amod']	pa_amod
+2008_491176	Auch internationale Kampagnen sind möglich .Die zweite Unit dot - seeds ist für die Verbreitung viraler Kampagnen zuständig .	['Kampagne/pa_amod']	pa_amod
+2008_557446	Auch bei diesen dachte man zuerst , dass das Problem viraler Infektionen unter Kontrolle sei .	['Infektion/pa_amod']	pa_amod
+2008_565019	Der Vorteil für die Kunden liegt auf der Hand : Je schneller und je grösser die virale Verbreitung , umso besser .	['Verbreitung/pa_amod']	pa_amod
+2008_586314	'Die ViroLogik GmbH hat sich der Bekämpfung viraler Infektionskrankheiten verschrieben und ist aus unserer Sicht damit der perfekte Partner in diesem Bereich . '	['Krankheit/pa_amod']	pa_amod
+2008_609246	Die Blauzungenkrankheit ist eine virale Infektionskrankheit von Wiederkäuern wie z. B. Schafen , Rindern und Ziegen .	['Krankheit/pa_amod']	pa_amod
+2008_626959	Auch Microsoft bedient sich oft und gerne der Mittel des viralen Marketings .	['Marketing/pa_amod']	pa_amod
+2008_670362	Der Fernsehredakteur Dirk Finger hat mit seinem jungen Unternehmen form - art.tv die Welt des viralen Marketings in das Visier genommen .	['Marketing/pa_amod']	pa_amod
+2008_691508	Damit sei ein Anti-HI - viraler Mechanismus der Typ-1 - Interferone aufgedeckt , so Barr .	['Mechanismus/pa_amod']	pa_amod
+2008_718506	Bei der Werbung für seine Spiele will Perry zukünftig verstärkt auf virale Kampagnen setzen , die innerhalb von kürzester Zeit neue Titel bekannt machen können .	['Kampagne/pa_amod']	pa_amod
+2008_783003	Bislang ist es nur wenigen Forschergruppen in Europa gelungen , die virale Vektortechnologie weiterzuentwickeln , um deren klinischen Einsatz an dem Menschen in der Zukunft wieder in optimaler Weise möglich zu machen .	['Technologie/pa_amod']	pa_amod
+2008_784357	Bisher ist der Siegeszug des viralen Marketings aber ausgeblieben .	['Marketing/pa_amod']	pa_amod
+2008_895375	Auch Youtube - Videos sind beliebte Medien für virales Marketing .	['Marketing/pa_amod']	pa_amod
+2008_954641	Außerdem wird in dem Internet mit viralen Commercials gearbeitet .	['Commercial/pa_amod']	pa_amod
+2009_166470	Allerdings sei die virale Ansprechrate nicht so stark wie erhofft , was für ärztliche Verschreibungen einen sehr wichtiger Aspekt darstelle .	['Rate/pa_amod']	pa_amod
+2009_301715	Als bestes Beispiel für Online - Bewegtbild - Kommunikation nannte er ein virales Filmformat , das Wasserproduzent Evian als Teaser in das Internet gestellt hätte .	['Format/pa_amod']	pa_amod
+2009_390395	Besonders Eltern sorgen sich um ihre Kinder , die in diesen Wochen nach und nach aus den Ferien in die Schulen zurückkehren und sich dort mit viralen Souvenirs aus dem Urlaub der anderen anstecken könnten .	['Souvenirs/pa_amod']	pa_amod
+2009_451715	""" Virale Kommunikation ist ein dynamischer Prozess "" , meint Königs dazu ."	['Kommunikation/pa_amod']	pa_amod
+2009_453652	"Dann heißen sie "" virale Spots "" ."	['Spot/pa_amod']	pa_amod
+2009_467095	"Das Marketing bekommt sofort und ungefiltert Feedback auf Werbekampagnen und kann sich die sogenannten "" viralen Effekte "" in der Internet - Gemeinde zunutze machen ."	['Effekt/pa_amod']	pa_amod
+2009_472024	Allyve beginnt jetzt eine virale Marketingkampagne .	['Kampagne/pa_amod']	pa_amod
+2009_602394	"Dahinter folgen bereits die kleineren Produktionen "" District 9 "" und "" Paranormal Activity "" , deren überraschende Einspielerfolge wohl auch dem geschickten viralen Marketing zu verdanken sind ."	['Marketing/pa_amod']	pa_amod
+2009_657152	Der Viral Video Award ist der erste Wettbewerb für virale Filme auf einem Filmfestival in Deutschland .	['Film/pa_amod']	pa_amod
+2009_705417	Auch außerhalb des Netzwerks von Sevenload.com würden durch zusätzliches Seeding in YouTube , Facebook oder MySpace weitere virale Effekte für die gesamte Kampagne erreicht , unterstreicht das Unternehmen .	['Effekt/pa_amod']	pa_amod
+2009_718344	Bei diesen Patienten kommt es zu einer viralen Pneumonie , die eine Beatmung über mehrere Wochen erfordern kann , berichtete Kumar bei einer Veranstaltung des Unternehmens Hoffmann - La Roche in Basel .	['Pneumonie/pa_amod']	pa_amod
+2009_723336	Aufgrund einer viralen Infektion wird der Publikumsliebling nicht an den Start gehen können .	['Infektion/pa_amod']	pa_amod
+2009_785369	Der Nachweis von Virusmaterial allein beweist allerdings nicht eine virale Ätiologie .	['Ätiologie/pa_amod']	pa_amod
+2009_798858	AMD hat es verstanden , seinen neuen Superprozessor AMD Phenom™ II X4 965 Black Edition in der Overclocker - und Computerspiele - Szene mit viralem Marketing bekanntzumachen , bevor er offiziell produziert wurde .	['Marketing/pa_amod']	pa_amod
+2009_846683	An die Entwicklung eines Impfstoffes wie bei dem Zervixkarzinom ist vorerst nicht zu denken.Forscher schätzen , dass 20 bis 25 Prozent aller Krebserkrankungen eine virale Ätiologie haben .	['Ätiologie/pa_amod']	pa_amod
+2009_849221	Da Vitamin D wiederum für die T- und B - Zell - Regulation wichtig ist , scheint ein Zusammenhang mit einer fehlgeleiteten Immunantwort auf virale Infektionen naheliegend .	['Infektion/pa_amod']	pa_amod
+2009_876867	Überraschenderweise fanden sie , dass SIVcpz nicht Vpu sondern ein anderes virales Eiweiß benutzt , das Nef - Protein , um Schimpansen - Tetherin auszuschalten .	['Eiweiß/pa_amod']	pa_amod
+2009_877618	Das Beispiel zeigt : Viele virale Aktionen brauchen klassische Unterstützung , um einen nachhaltigen Effekt zu erzielen .	['Aktion/pa_amod']	pa_amod
+2009_972103	Auch wenn die Neue Grippe meist leicht verläuft , sind allgemeine Maßnahmen sinnvoll , die das virale Ansteckungsrisiko vermindern , stellt Sieglinde Rudholzner von dem Landratsamt fest .	['Risiko/pa_amod']	pa_amod
+2010_37272	Wenn Viren genutzt werden , um die Doping - Gene in die Zellen zu bringen , in denen sie aktiv werden sollen , dann ließe sich Gendoping möglicherweise nachweisen , indem der virale Vektor nachgewiesen wird .	['Vektor/pa_amod']	pa_amod
+2010_91619	Auf 8,2 Kilo abgemagert und ausgetrocknet starb Lea in dem März , sechs Wochen vor ihrem dritten Geburtstag , an den Folgen einer viralen Lungenentzündung .	['Ründung/pa_amod']	pa_amod
+2010_99946	Diese konfrontierten sie mit verschiedenen Stimulanzien ( darunter Allergene von Staub und Kakerlaken , virale und bakterielle Erreger ) .	['Erreger/pa_amod']	pa_amod
+2010_127202	"Das gilt erst recht für die viralen Videos , mit denen Procter & Gamble seiner 73 Jahre alten Marke "" Old Spice "" neuen Anschub verschaffen wollte ."	['Video/pa_amod']	pa_amod
+2010_154725	Der größte Coup kommt kurz vor Schluss , als der virale Videoportal - Hit ' Sponsored by Destiny ' bei kreischender Euphorie seitens der Publikums abgefeiert wird .	['Videoportal/pa_amod']	pa_amod
+2010_223509	"Wir verbreiten das virale Potential der Videos unter den Nutzern somit selbst , während virale Effekte in den Hintergrund treten "" , erklärt Andreas Heyden , Geschäftsführer ( COO ) von sevenload , die Vorteile von Viral Seeding ."	['Potential/pa_amod']	pa_amod
+2010_223509	"Wir verbreiten das virale Potential der Videos unter den Nutzern somit selbst , während virale Effekte in den Hintergrund treten "" , erklärt Andreas Heyden , Geschäftsführer ( COO ) von sevenload , die Vorteile von Viral Seeding ."	['Effekt/pa_amod']	pa_amod
+2010_241593	Virus - ähnliches Partikel : eine gentechnisch hergestellte sphärische Proteinhülle , die von einem Virus abgeleitet ist , jedoch kein virales genetisches Material enthält und daher nicht infektiös ist und nicht replizieren kann .	['Material/pa_amod']	pa_amod
+2010_299028	Das ist bislang eine aufwändige Prozedur , für die man sich viraler Vektoren bedient , um neue Gene in die Stammzellen zu bringen .	['Tor/pa_amod']	pa_amod
+2010_384127	Als zweiter Trend gelten virale Videos , weil Werbetreibende den gestiegenen Videokonsum als Indiz dafür werten , dass diese das Interesse der Zielgruppe für Kampagnen begünstigen .	['Video/pa_amod']	pa_amod
+2010_388035	Die Wissenschaftler schleusten über eine virale Genfähre ein bestimmtes Enzym , die Cre - Rekombinase , direkt in die Nervenzellen des Riechkolbens junger Mäuse ein .	['Genfähr/pa_amod']	pa_amod
+2010_405117	ORF.at in dem Überblick Diagnose Gehirnhautentzündung bei Rapids Heikkinen Rapids defensiver Mittelfeldspieler Markus Heikkinen hat eine virale Meningitis ( Gehirnhautentzündung ) .	['unknown/pa_amod']	pa_amod
+2010_408978	Tipp - Ex® ist es mit der Agentur Buzzman vor allem gelungen , die Mini Pocket Mouse sowie die Marke rasch und revolutionär in Erinnerung zu rufen und durch den viralen wie medialen Hype radikal zu verjüngen .	['Hype/pa_amod']	pa_amod
+2010_473482	""" HPV Tests die auf dem Nachweis der viralen DNA beruhen wie z.B. der HC2 - Test können nicht zwischen dem Vorhandensein von bloßen Viruspartikeln in dem zellulären Abstrich oder einer tatsächlichen Infektion von Zellen mit Papillomviren unterscheiden ."	['unknown/pa_amod']	pa_amod
+2010_505374	"Und jetzt spielen Dienste wie Twitter eine riesige Rolle , besonders der Twitterstrom von Richard Morse , dem Besitzer des von Graham Greene berühmt gemachten Oloffson - Hotels : "" Die virale News - Verbreitung von Twitter und Facebook ist in dem Kern demokratisch ."	['News/pa_amod']	pa_amod
+2010_739194	Wenig überraschend konsumiert vor allem die jüngere Zielgruppe virale Videos .	['Video/pa_amod']	pa_amod
+2010_807168	Die Logik dieses technologischen Horrors funktioniert immer nach dem Prinzip der Ansteckung : Wer einmal mit dem viralen Medium in Berührung kommt , kann in der Regel dem Tod nicht entkommen .	['Medium/pa_amod']	pa_amod
+2010_864878	"Es ist das virale EiweiÃ Vpu , das verschiedene Schutzmechanismen des menschlichen Immunsystems Ã¼berwinden kann "" , erklÃ¤rt Michael Schindler von dem Heinrich - Pette - Institut ."	['EiweiÃ\x9f/pa_amod']	pa_amod
+2010_903310	""" Virale Videos und Blog - Einträge sind der Samisdat der heutigen Zeit "" - eine Anspielung auf die in dem Selbstverlag verbreiteten Dissidenten - Schriften in sozialistischen Staaten ."	['Video/pa_amod']	pa_amod
+2010_919770	Helden des viralen Marketings OK Go wurden 2006 zu Helden des viralen Marketings .	['Marketing/pa_amod']	pa_amod
+2010_919770	Helden des viralen Marketings OK Go wurden 2006 zu Helden des viralen Marketings .	['Marketing/pa_amod']	pa_amod
+2010_947565	Zu diesem Ergebnis ist eine Jury der Mediadesign Hochschule in Berlin , München und Düsseldorf gekommen , die zu dem ersten Mal den besten viralen Werbespot prämiert hat .	['Werbespot/pa_amod']	pa_amod
+2010_955999	Die Integration ist besonders für das organische Wachstum der E - Mail - Adresslisten wichtig , da der Inhalt auf virale Art und Weise verbreitet wird .	['Art/pa_amod']	pa_amod
+2010_964513	Durch professionelles Viral Seeding erzielten einzelne virale Werbespots innerhalb kürzester Zeit Abrufe in dem sechsstelligen Bereich und höher .	['Werbespot/pa_amod']	pa_amod
+2010_971086	Und daher kommen auch wir nicht an diesem viralen oder senilen Phänomen vorbei : bitteschön .	['Phänomen/pa_amod']	pa_amod
+2011_74694	Auch sie kamen zu dem Schluss , dass Tamiflu grundsätzlich nützt , um die eigentliche virale Grippeerkrankung abzukürzen .	['unknown/pa_amod']	pa_amod
+2011_200039	Das sei eine virale Krankheit , die Ansteckung geschehe über die Luft oder den direkten Kontakt .	['Krankheit/pa_amod']	pa_amod
+2011_237938	Der Anstieg in dem Herbst , der auf Erkältungen und virale Infektionen zurückzuführen ist , die Asthmaattacken triggern können , fiel vollständig aus , berichtet Busse .	['Infektion/pa_amod']	pa_amod
+2011_284506	Der Vorgang ist ein Import aus der Ökonomie ; dort heißt die Sache „ virales Marketing “ : Dissemination von Laune und Gerücht als Werbemittel .	['Marketing/pa_amod']	pa_amod
+2011_420468	Dort sollen Sie und ihre Mitstreiter nach Beweisen für eine virale Verseuchung aufspüren .	['Verseuchung/pa_amod']	pa_amod
+2011_623891	In einer typischen trnd - Kampagne rechnen wir damit , dass jeder Multiplikator insgesamt mindestens 120 direkte und indirekte Konversationen anregt ( „ viraler Effekt “ ) .	['Effekt/pa_amod']	pa_amod
+2011_670269	"Laut Medienberichten handelt es sich dabei um die in Toronto ansässige Firma "" VVO Media "" , die unter anderem für virale Werbe - Kampagnen in dem Netz zuständig ist ."	['Werb/pa_amod']	pa_amod
+2011_682242	""" Man kann die Form nicht herbeizaubern "" , bemerkte der Saalfeldener , der vor Saisonbeginn von einem viralen Infekt gebremst worden war ."	['Infekt/pa_amod']	pa_amod
+2011_778800	Rotaviren sind die häufigste Ursache viraler Darminfektionen bei Kindern .	['Infektion/pa_amod']	pa_amod
+2011_811412	Sie könnten von einem Effekt profitieren , den Experten virales Marketing nennen .	['Marketing/pa_amod']	pa_amod
+2011_855661	Tunesien – einem halbwegs offenes Land – war es unmöglich , diese Formen der viralen Kommunikation zu kontrollieren .	['Kommunikation/pa_amod']	pa_amod
+2011_888236	Unterscheidung zwischen Agentur und Plattform , zwischen viraler Werbung und Mundpropaganda .	['Werbung/pa_amod']	pa_amod
+2011_902259	Von daher tauchen die eigenen Posts auch nicht in dem TOP-NEWS-FEED des Fans auf ( dies ist nämlich der zweite entscheidende Punkt für Facebook Marketing ) und jedlicher viraler Effekt geht verloren , da Ihre Massage untergeht und gar nicht gesehen wird .	['Effekt/pa_amod']	pa_amod
+2011_924882	Was zunächst wie ein viraler Spot wirkt , lässt in der zweiten Hälfte das Grauen folgen .	['Spot/pa_amod']	pa_amod
+2011_927282	Weil die Mitarbeiter den Anspruch haben , das virale Web in Echtzeit abzubilden , finden sich tatsächlich alle große Web - Trends auf BuzzFeed - zumindest , was das englischsprachige Internet aus Sicht der Amerikaner angeht .	['Web/pa_amod']	pa_amod
+2012_37888	Virales Marketing für maximale Glaubwürdigkeit in der Zielgruppe jünger als 40 Jahre ( U40 ) ! 74.137	['Marketing/pa_amod']	pa_amod
+2012_69763	Das VBS lies in seiner Mitteilung verlauten , dass bei einer tatsächlich viralen Erkrankung bei einem normalen Verlauf die Rekruten nach wenigen Tagen wieder gesund seien . 7.939	['Erkrankung/pa_amod']	pa_amod
+2012_163619	"Bereits die virale Kampagne "" A hunter shoots a bear "" von 2010 begeisterte Zuschauer und Werbewelt gleichermaßen - 50 Millionen Klicks und über 20 Auszeichnungen sprechen für sich . Und auch dieses Mal dürfen die Zuschauer gespannt sein , was sie erwartet . 69.9261"	['Kampagne/pa_amod']	pa_amod
+2012_210822	Gute Social - Games entstehen durch gute Unterhaltung und nicht durch virales Marketing oder dadurch , die Leute in der eigenen Facebook - Freundeliste um Dachschindeln anzubetteln . 41.2346	['Marketing/pa_amod']	pa_amod
+2012_226068	Abwehrspieler Robert Huth hat sich nach seiner Rückkehr auf den Fußballplatz erstmals öffentlich zu seiner Erkrankung an viraler Meningitis geäußert . 34.704	['unknown/pa_amod']	pa_amod
+2012_248931	Damit bremst es die Vermehrung von HIV , denn das Virus findet nicht mehr genügend Material , um seine virale DNA zusammenzubauen . 15.9555	['unknown/pa_amod']	pa_amod
+2012_294887	Auf der Basis der Analyse des viralen Genoms lassen sich computergestützt Resistenzen erkennen und Therapien optimieren . 28.1039	['unknown/pa_amod']	pa_amod
+2012_314370	Von dem her überrascht es nicht , dass es sich bei den Fotos tatsächlich um eine virale Marketingkampagne für den Zürcher Buchladen handelt . 13.9167	['Kampagne/pa_amod']	pa_amod
+2012_325283	Dazu haben wir besonders auf die viralen Effekte geachtet , so dass sich der Benutzer mit der Kampagne emotional identifizieren kann . 6.5518	['Effekt/pa_amod']	pa_amod
+2012_367632	Jetzt ist es der erfolgreichste virale Werbefilm , den wir je gemacht haben – und Mercedes plant , mehr aus dieser Idee zu machen . 6.6151	['Film/pa_amod']	pa_amod
+2012_369531	Während Empfehlungsmarketing noch von einem Viertel der befragten Marketingverantwortlichen eingesetzt wird , hat nur noch jeder zehnte bereits Erfahrungen mit Guerilla - Marketing oder viralen Konzepten gesammelt . 31.0287	['Konzept/pa_amod']	pa_amod
+2012_474687	Die Wechselwirkung von viralen Proteinen mit der Faltungsmaschinerie der Wirtszelle ist von zentraler Bedeutung für den Infektionszyklus an Cialis Online Buy Cialis Online . 33.2874	['Protein/pa_amod']	pa_amod
+2012_475662	Mehr als vier Millionen Menschen haben sich das virale YouTube - Video , in dem der Menschheitstraum von dem Fliegen wie ein Vogel wahr zu werden scheint , bisher angesehen . 28.6678	['YouTube/pa_amod']	pa_amod
+2012_479435	Die Münchner Werber wurden vielfach ausgezeichnet und gehören zu den führenden Agenturen in Deutschland für Virale Kampagnen , Social - Media - Aktivitäten , Guerilla - , Word - of - Mouth - , Ambient - und Mobile Marketing , sowie für Blog - und Website - Konzepte . 48.7221	['Kampagne/pa_amod']	pa_amod
+2012_496434	Dort diagnostizierten die Ärzte eine Hirnhautentzündung ( virale Meningitis ) bei dem 96 - Zugang , der an dem Sonntagmorgen auch Fieber hatte . 46.6469	['unknown/pa_amod']	pa_amod
+2012_521497	Ziel der Kampagnen sind dabei die virale Verbreitung der Services , die Motivierung der Nutzer zu vermehrten Transaktionen oder zu dem Testen anderer Mobile Money Services . 17.3785	['Verbreitung/pa_amod']	pa_amod
+2012_719293	Direkt nebenan in dem Genom fanden die Forscher den Code für ein Protein , das ringförmige virale DNA verarbeitet und für reine DNA - Viren wie Circoviren typisch ist . 31.8253	['unknown/pa_amod']	pa_amod
+2012_858997	Vor zwei Jahren beauftragte Tipp - Ex die Werbe - Agentur Buzzman mit einer viralen Marketing - Kampagne für seine bekannten Büro - Produkte . 44.9509	['Marketing/pa_amod']	pa_amod
+2012_879812	So funktioniert virales Marketing . 32.7665	['Marketing/pa_amod']	pa_amod
+2012_958788	Fast jeder erlebt sie immer wieder und ist deshalb geneigt , sie als harmlose virale Infekte abzutun . 15.1875	['Infekt/pa_amod']	pa_amod
+2012_968021	Gegen virale Erreger an sich gibt es meist keine Medikamente , hier muss sich der Körper selbst helfen , das ist bei Mensch und Tier gleich . 8.6943	['Erreger/pa_amod']	pa_amod
+2013_5846	"3 . "" Der Herr der Zehntausend Fliegen : Gespräch mit Jens Schröder über virales Publizieren """	['Publizieren/pa_amod']	pa_amod
+2013_104697	Beide signalisierten bereits eine Sonderbehandlung für den an einem viralen Infekt erkrankten Star der Schwimmszene .	['Infekt/pa_amod']	pa_amod
+2013_145714	"Dafür hat es aber das Video des kurzen Auftritts just in die virale "" Hall of Fame "" geschafft ."	['Hall/pa_amod']	pa_amod
+2013_249710	Der deutsche HipHop - und Soul - Funk - Star landete mit einem Foto unter Hunderten Metal - Fans einen viralen Hit .	['Hit/pa_amod']	pa_amod
+2013_315098	""" Die CloudnShare - Anwendung ist für eine "" virale "" Verbreitung ausgelegt ."	['Verbreitung/pa_amod']	pa_amod
+2013_456659	Ein viraler Erfolg – wie etwa der Bahn - Song – wurde das Video allerdings nicht : In dem YouTube - Kanal des Zentralverbands hat es nur etwas mehr als 7000 Aufrufe .	['Erfolg/pa_amod']	pa_amod
+2013_513626	Fragezeichen stehen auch hinter Torhüter Roman Weidenfeller ( grippaler Infekt ) , Marco Reus ( Adduktorenzerrung ) , Mario Götze ( viraler Infekt ) und Lukasz Piszczek , die wie Schmelzer zuletzt in dem Training fehlten .	['Infekt/pa_amod']	pa_amod
+2013_536607	"Genau darum geht es in dem viralen YouTube - Video "" I Forgot My Phone "" ."	['YouTube/pa_amod']	pa_amod
+2013_537111	Genau in dieser Zeit stellt die Amadeu - Antonio - Stiftung nun ihre Broschüre mit dem Titel „ Viraler Hass “ vor , die sich mit „ rechtsextremen Kommunikationsstrategien in dem Web 2.0 “ befasst .	['Haß/pa_amod']	pa_amod
+2013_563264	Hierzu bedurfte es der Entwicklung einer allumfassenden neuartigen viralen Vektorplattform .	['Plattform/pa_amod']	pa_amod
+2013_617810	In Deutschland setzen die Parteien in diesem Bundestagswahlkampf ebenfalls verstärkt auf virale Kampagnen in den sozialen Medien .	['Kampagne/pa_amod']	pa_amod
+2013_619205	In diesen Applikationen stimmen sie für etwas , dass ihnen gefehlt , sie posten ihre Gedanken , Vorschläge , senden E - Mails an Freunde und andere effektive virale Einladungen .	['Einladung/pa_amod']	pa_amod
+2013_644045	Je mehr Social - Media Aktivität und virale Verbreitung Du für deine Inhalte ( Webseiten , Artikel ) bekommst , desto bessere Rankings erreichst Du in den Suchergebnissen .	['Verbreitung/pa_amod']	pa_amod
+2013_833165	"So werden diese zwei Füchse - in dem wörtlichen und übertragenen Sinn - aller Wahrscheinlichkeit nach in die Fußstapfen des viralen Phänomens Psy und seinem "" Gangnam Style "" treten ."	['Phänomen/pa_amod']	pa_amod
+2013_856509	Über dem Artikel sollte daher ehrlicherweise folgende Überschrift stehen : Die PR - Abteilung der Deutschen Bank kann auch Virales Marketung .	['Marketung/pa_amod']	pa_amod
+2013_900513	Virale Videos müssen Emotionen auslösen , heißt es oft .	['Video/pa_amod']	pa_amod
+2014_18524	Abgesehen davon , dass Antibiotika oft falsch verschrieben werden : gegen virale Infekte richten sie leider nicht viel aus .	['Infekt/pa_amod']	pa_amod
+2014_36829	"Als ob die US - Regierung einen erfolgreichen US - Konzern gegen die "" bösen Japaner "" ( Sony ) strafen würde :-) Nennt sich virales Marketing ."	['Marketing/pa_amod']	pa_amod
+2014_201092	Das sind die wahren Marketing - Könige Eine Liste mit den viralsten Werbeclips in dem Netz zeigt : Die Fussball - Weltmeisterschaft dominiert in diesem Jahr die Marketing - Welt .	['Werbeclip/pa_amod']	pa_amod
+2014_207371	Das Unternehmen wird sich mit der Entwicklung von Tipifarnib zu der Behandlung von Hepatitis Delta Virus ( HDV ) , der schwersten Form viraler Hepatitis , befassen .	['unknown/pa_amod']	pa_amod
+2014_239032	Der Besuch der Stadt Stolberg soll einen Erlebnischarakter bekommen und eine virale Wirkung entfalten .	['Wirkung/pa_amod']	pa_amod
+2014_241571	Der Clip mit Nemo ist dabei nicht der erste Spot , mit dem Greenpeace Umweltzerstörung per viralem Hit anprangert .	['Hit/pa_amod']	pa_amod
+2014_269589	Der Sprengelarzt , der die Totenbeschau durchgeführt hat , habe eine virale Infektion als Todesursache in Betracht gezogen , berichtete Landessanitätsdirektor Franz Katzgraber .	['Infektion/pa_amod']	pa_amod
+2014_275780	Der virale Erfolg des Videospots ist ohne das Internet nicht denkbar , und Ikea selbst bettet die Werbung für das “ Buchbuch ” mit interaktiven Angeboten auch auf seinen Webseiten in Singapur und Malaysia ein .	['Erfolg/pa_amod']	pa_amod
+2014_276461	Der Vorstand der GEK kündigt Erhöhungen an . Das Einsparpotential müßte genutzt werden , z.B. keine Antibiotika gegen virale Grippe , Ich hab zwar ein Kündigungsrecht , aber bundesweit ist das Angebot fast identisch .	['Grippe/pa_amod']	pa_amod
+2014_279728	Der zu diesem Zweck produzierte Videoclip wurde zu einem Selbstläufer auf den sozialen Plattformen in dem Internet – innert eines Tages 20 Millionen mal auf Youtube angesehen – ein Paradebeispiel für erfolgreiches virales Marketing .	['Marketing/pa_amod']	pa_amod
+2014_323768	Die Ice Bucket Challenge ist eine virale Spendenaktion , bei der sich Menschen eiskaltes Wasser über den Kopf schütten .	['Aktion/pa_amod']	pa_amod
+2014_380462	Die viralsten Werbevideos des Jahres 2014 hat der Technologie - Anbieter Unruly ermittelt .	['Video/pa_amod']	pa_amod
+2014_390332	Doch das Viehrale Marketing hat durchaus mehr zu bieten , als eine Wortverwandtschaft zu dem Viralen Marketing .	['Marketing/pa_amod']	pa_amod
+2014_415083	Ein einfaches virales Rechenmodell , selbst mit einem sehr geringen Koeffizienten , genügt .	['Modell/pa_amod']	pa_amod
+2014_432847	Ein Video von Solar Roadways wurde außerdem zu dem viralen Internet - Hit : Bis heute haben es knapp 15,9 Millionen Nutzer gesehen .	['Internet/pa_amod']	pa_amod
+2014_450733	Er soll die Geschichte einer jungen Frau in ihren 20ern erzählen , die aufgrund eines viralen Videos von der peinlichen Trennung von ihrem Ex - Freund über Nacht unzählige Follower in sozialen Netzwerken hat .	['Video/pa_amod']	pa_amod
+2014_462427	""" Es gibt einen wachsenden Bedarf an der Entwicklung neuer Medikamente und Behandlungsformen gegen virale Infektionskrankheiten ."	['Krankheit/pa_amod']	pa_amod
+2014_466525	« Es ist eine einfache virale Infektion .	['Infektion/pa_amod']	pa_amod
+2014_504498	Für Einheimische ist das Gebäude in der Bucknail Street dank der viralen Videos jedenfalls schon zu einem Hotspot geworden .	['Video/pa_amod']	pa_amod
+2014_522777	Gleichzeitig wurde amerikanischen Diplomaten von dem Außenministerium verboten , an viralen Spendenaktionen teilzunehmen .	['Aktion/pa_amod']	pa_amod
+2014_537489	Hier braucht es ein stärkeres Bewusstsein dafür , dass Antibiotika nur bei bakteriellen , nicht aber bei viralen Infekten wie bei grippalen Infekten helfen .	['Infekt/pa_amod']	pa_amod
+2014_554071	Ich komme von Unruly Media , einem Unternehmen in London , dass virales „ seeding “ ( Verbreitung ) von Videos in dem Internet betreibt .	['seeding/pa_amod']	pa_amod
+2014_554672	"Ich meine nicht rein von der Conversion her gesehen , aber ist das nun "" nur eine Trailershow "" , die vorab auf Werbung neugierig machen soll oder sollte sowas auch auf dem "" klassischen viralen Weg "" funktionieren ?"	['Weg/pa_amod']	pa_amod
+2014_565155	In dem Ergebnis sind jetzt auch physiologische Zellmodelle mit primären Zellen zugänglich ; ebenso rekombinante virale Vektoren für gentherapeutische und Impfstoffanwendungen .	['Tor/pa_amod']	pa_amod
+2014_593364	In einer Serie W&V - Viralogie kommen die Macher von viralen Hits zu Wort .	['Hit/pa_amod']	pa_amod
+2014_627197	Klicken Sie HIER für mehr Informationen und den Download Seine viralen Freunde nehmen die Aktion überwiegend positiv auf .	['Freund/pa_amod']	pa_amod
+2014_660282	Mehr , schneller , weiter , Zielgruppe , virales Marketing .	['Marketing/pa_amod']	pa_amod
+2014_664465	MERS - CoV - Erkrankungen können eine virale Entzündung der unteren Atemwege ( Bronchiolitis ) und in der Folge akutes Lungenversagen ( ARDS ) auslösen .	['Dung/pa_amod']	pa_amod
+2014_704514	Ng hat es geschafft , das virale Potenzial der guten alten Freundschaftsbändchen mit einem - mittlerweile in den USA sogar patentierten - Produkt zu verbinden . 100 Millionen Dollar soll seine Firma inzwischen wert sein .	['Potenzial/pa_amod']	pa_amod
+2014_714465	Nun wird ein Video zu dem viralen Online - Hit .	['unknown/pa_amod']	pa_amod
+2014_767007	Sein Sohn war von der Idee begeistert und stellte ein Bild des Ausdrucks auf Reddit und landete damit einen viralen Hit .	['Hit/pa_amod']	pa_amod
+2014_805281	Sozusagen unendliche Multiplikation viraler Loops , die sich alle ineinander verschränken und einen gemeinsamen Schnittpunkt haben , nämlich die Landingpage mit dem Einstiegspunkt in den viralen Loop .	['Loop/pa_amod']	pa_amod
+2014_805281	Sozusagen unendliche Multiplikation viraler Loops , die sich alle ineinander verschränken und einen gemeinsamen Schnittpunkt haben , nämlich die Landingpage mit dem Einstiegspunkt in den viralen Loop .	['Loop/pa_amod']	pa_amod
+2014_815560	""" Supergeil "" und "" First Kiss "" zeigen , wie gutes virales Marketing auf Youtube funktioniert ."	['Marketing/pa_amod']	pa_amod
+2014_867814	Video : So wird Ihr Video zu dem Internet - Hit FOCUS Online So wird ihr Video zu dem viralen Hit : YouTube - Stars lüften das Geheimnis ihres Erfolges Wählen Sie die Themen ( 4 ) aus , die Sie weiter verfolgen wollen .	['Hit/pa_amod']	pa_amod
+2014_872960	"Virales "" Toiletten - Gate "" Die Beschaffenheit von Badezimmern hatte zuvor bereits für den ersten Mini - Skandal bei den Olympischen Spielen gesorgt ."	['Toilette/pa_amod']	pa_amod
+2014_878364	"Von Jan Küveler Jan Küveler Biografie und alle Artikel des Autors Facebook Twitter Feuilletonredakteur Es gilt als das erste virale Internetvideo : der "" Numa Guy "" ."	['Retvideo/pa_amod']	pa_amod
+2014_913557	Werbung , die da auftritt wo , und in der Form in der man sie erwartet , hat oftmals nicht den nötigen Überraschungseffekt und kann auch keine virale Dynamik entwickeln ( ein häufiger positiver Nebeneffekt von Guerilla - Marketing ) .	['Dynamik/pa_amod']	pa_amod
+2014_929713	"! "" , wird es an der Zeit , sich vielleicht auch über digital - virale Epidemien Gedanken zu machen ."	['Epidemie/pa_amod']	pa_amod
+2014_943977	Wo soziale Medien an dem intensivsten benutzt werden , liegt logischerweise auch das größte virale Verbreitungspotential .	['Potential/pa_amod']	pa_amod
+2014_945486	YouTube : Die 11 viralsten Weihnachtshits 2014 Alle Geschenke unter den Baum gepackt ?	['Hit/pa_amod']	pa_amod
+2014_946081	Zap2It berichtet , dass ein Anlass zu Williams ' Tweet ein virales Foto war , das zwei junge Männer zeigt ( die beiden sind Anfang/Mitte Zwanzig ) , die sich als Trayvon Martin und sein Mörder George Zimmerman verkleidet haben .	['Foto/pa_amod']	pa_amod
+2015_21193	Adams inszenierte das Video als Teil ihrer Abschluss - Arbeit in dem Studiengang Medienproduktion , um zu zeigen , wie sich virale Videos in dem Netz verbreiten , erklärt sie auf moviepilot.com . Mit Erfolg .	['Video/pa_amod']	pa_amod
+2015_23979	Aktuelle Beiträge aus dem Wissen - Ressort Gegen Schnupfen wird man nie immun Ob die Resultate auf andere virale Erreger von Atemwegsinfektionen übertragbar sind , ist noch nicht geklärt .	['Erreger/pa_amod']	pa_amod
+2015_45618	An dem häufigsten ist der Gebrauch bei der Produktion von sogenannten Advanced Therapy Medicinal Products , wie Zelltherapeutika oder viralen Gentransfervektoren .	['Vervektor/pa_amod']	pa_amod
+2015_57233	An Reichweite einbüsen dürften durch die aktuelle Anpassung vor allem Seiten , die auf erzwungene Handlungen zu dem kommentieren und „ liken “ setzen – ihnen wird der virale Faktor entzogen .	['Faktor/pa_amod']	pa_amod
+2015_64011	Apple hat ein Patent für eine Tracking - Technik rund um virale Werbekampagnen erhalten .	['Kampagne/pa_amod']	pa_amod
+2015_85134	Auf Facebook und Co. wurde der Automat über Nacht zu dem viralen Hit - viele User zeigen sich unglaublich begeistert , einige halten den Automaten gar für die sinnvollste Erfindung seit Jahren .	['Hit/pa_amod']	pa_amod
+2015_207954	Das virale Video hat sich jetzt als Fake entpuppt .	['Video/pa_amod']	pa_amod
+2015_251653	Der Held hinter dem viralen Hit ist Rüdiger Kirschbaum .	['Hit/pa_amod']	pa_amod
+2015_319559	Die Gruppierung möchte mithilfe einer viralen Kampagne sowie einer Petition SEGA davon überzeugen , wieder in das Hardware - Geschäft einzusteigen und eine Dreamcast 2 beziehungsweise ein neues Modell zu entwickeln .	['Kampagne/pa_amod']	pa_amod
+2015_344239	Die Quellenlage ist dünn - dennoch fand die Nachricht von dem Mossad - Delfin an dem Donnerstag ein internationales Medienecho , verstärkt durch die virale Verbreitung in den sozialen Netzwerken .	['Verbreitung/pa_amod']	pa_amod
+2015_344664	Die Reaktionen auf diese ( virale ) Marketing - Kampagne fallen jedenfalls ziemlich gemischt aus - gerade in Hinblick auf den verantwortungslosen Umgang mit Terror - Nachrichten .	['Marketing/pa_amod']	pa_amod
+2015_359282	Diese Steilvorlage ließen sich die Beamten nicht entgehen und zettelten einen viralen Schusswechsel an – mit Erfolg .	['Wechsel/pa_amod']	pa_amod
+2015_361663	Dies hat jedoch in unserer globalen Welt in dem besten Sinne eines viralen Marketings eine Sogwirkung ausgelöst , die Frau Dr. Merkel allenfalls noch verstärkt hat .	['Marketing/pa_amod']	pa_amod
+2015_362450	""" Dies ist eine neue Kampagne in einem neuen Jahrhundert , in der viraler Populismus der Motor der republikanischen Politik ist "" , so Ross Baker von der Rutgers Universität ."	['Populismus/pa_amod']	pa_amod
+2015_406617	Ein Arzt hatte aber lediglich einen viralen Infekt bei der Sportlerin festgestellt .	['Infekt/pa_amod']	pa_amod
+2015_418842	Eine virale Verbreitung , die kritische Fragen aufwirft .	['Verbreitung/pa_amod']	pa_amod
+2015_477184	FacebookTwitterInstagramSkype Thomas Stipsits landet mit Protestsong Facebook - Hit Kabarettist und Schauspieler Thomas Stipsits singt in einem kurzen Video auf seiner Facebook - Seite gegen die Asylpolitik an - und hat damit einen ein viralen Hit gelandet .	['Hit/pa_amod']	pa_amod
+2015_499381	Für ein virales Video braucht es manchmal nur ein Auto , drei Frauen - und einen Queen - Song .	['Video/pa_amod']	pa_amod
+2015_504293	Ganz ähnlich verhielt es sich vor gar nicht langer Zeit mit einer Eule , die auf YouTube wegen ihrer Gelassenheit zu dem viralen Hit wurde .	['Hit/pa_amod']	pa_amod
+2015_512562	Gérard Depardieus irre Suff - Beichte Sommer - Selfies Urlaubsgrüße von den Knips - VIPs Schwarze Schäfchen Die Chaos - Kids der Superstars Das Chablis - Foto ist ein viraler Hit , wird allerdings auch vielfach als „ taktlos “ kritisiert .	['Hit/pa_amod']	pa_amod
+2015_587875	In einer typischen trnd - Kampagne rechnen wir damit , dass jeder Multiplikator insgesamt mindestens 120 direkte und indirekte Konversationen anregt ( „ viraler Effekt “ ) .	['Effekt/pa_amod']	pa_amod
+2015_663770	"Mit dem Video "" Twelve days in Oman "" landete Roth einen viralen Hit , kein Wunder , der Clip beinhaltet , alles , was sich der Zuschauer wünschen kann ."	['Hit/pa_amod']	pa_amod
+2015_688487	Nadine Jungbluth kam 2010 zu der gofeminin GmbH und ist seit diesem Jahr auch für die virale Strategie der redaktionellen Inhalte verantwortlich .	['Strategie/pa_amod']	pa_amod
+2015_703531	Nukleinsäure - basierte Tests ermöglichen eine frühzeitigere Erkennung von aktiven viralen Infektionen als herkömmliche Antikörper - oder Antigen - Testverfahren .	['Infektion/pa_amod']	pa_amod
+2015_706388	Nun wird ein Video zu dem viralen Online - Hit .	['unknown/pa_amod']	pa_amod
+2015_764518	Sethis bisher grösster Coup war ein viraler Blogeintrag , in dem er beschrieb , wie er eine Frau dafür bezahlte , ihn zu ohrfeigen , sobald er während der Arbeit Facebook benutzt .	['Blogeintrag/pa_amod']	pa_amod
+2015_776946	Sie teilte mit , dass sie sich bei etlichen viralen Projekten beteiligt , jedoch nicht gedacht hätte , dass das Video tatsächlich ein viraler Erfolg werden würde .	['Projekt/pa_amod']	pa_amod
+2015_776946	Sie teilte mit , dass sie sich bei etlichen viralen Projekten beteiligt , jedoch nicht gedacht hätte , dass das Video tatsächlich ein viraler Erfolg werden würde .	['Erfolg/pa_amod']	pa_amod
+2015_795819	Soziale Medien spricht nur die Affinen an Der Dialog auf den Online - Kanälen selbst spielt überraschenderweise eine untergeordnete Rolle in dem Projekt , in dem Gegensatz zu der Durchführung in dem Jahr 2011 , in der eine virale Social - Media - Kampagne in dem Fokus stand .	['Social/pa_amod']	pa_amod
+2015_796604	"Später schreibt Walsh auf einer eigens für die Suche nach Joe und Jenny eingerichteten Facebook - Seite : "" Hätte ich gewusst , dass das ein viraler Hit wird , hätte ich eine bessere Schriftart verwendet "" ."	['Hit/pa_amod']	pa_amod
+2015_814275	Top 5 Spots Die viralsten Videos in dem Mai 2015 Die Top 5 der Viral - Spots haben Experten der Branded - Entertainment - Plattform Be On ermittelt .	['Video/pa_amod']	pa_amod
+2015_822867	Über Printkampagnen , Social Media und virale Marketingaktionen und mit viel persönlichem Engagement klärt die Rote Hose über Darmkrebs und die Bedeutung der Vorsorge auf .	['Aktion/pa_amod']	pa_amod
+2015_853574	"Verantwortlich für dieses Verwirrspiel sind nicht etwa widersprüchliche Daten in den Filmen selbst . Die virale Variante von "" Und täglich grüßt das Murmeltier "" will eine einzige Person ausgelöst haben ."	['Variante/pa_amod']	pa_amod
+2015_858588	Video zu dem Thema Die besten viralen Heiratsanträge in 2 ½ Minuten Diese Videos könnten Sie auch interessieren Die besten viralen Heiratsanträge in 2 ½ Minuten Dieses Video zeigt die besten viralen Heiratsanträge in 2 ½ Minuten .	['Heiratsantrag/pa_amod']	pa_amod
+2015_858588	Video zu dem Thema Die besten viralen Heiratsanträge in 2 ½ Minuten Diese Videos könnten Sie auch interessieren Die besten viralen Heiratsanträge in 2 ½ Minuten Dieses Video zeigt die besten viralen Heiratsanträge in 2 ½ Minuten .	['Heiratsantrag/pa_amod']	pa_amod
+2015_858588	Video zu dem Thema Die besten viralen Heiratsanträge in 2 ½ Minuten Diese Videos könnten Sie auch interessieren Die besten viralen Heiratsanträge in 2 ½ Minuten Dieses Video zeigt die besten viralen Heiratsanträge in 2 ½ Minuten .	['Heiratsantrag/pa_amod']	pa_amod
+2015_884499	Was das Video für die Marken leisten muss , ist klar : für virale Weiterverbreitung sorgen .	['Weiterverbreitung/pa_amod']	pa_amod
+2015_903585	"Wenn Sie den Artikel aufmerksam gelesen hätten , wäre Ihnen aufgefallen , daß "" grippale Infekte "" und "" banale Erkältungen "" nicht identisch sind sondern durch unterschiedliche virale Erreger verursacht werden ."	['Erreger/pa_amod']	pa_amod
+2015_904046	Wenn Sie Spaß an dem Knobeln haben , haben wir bei CHIP noch mehr für Sie : Ein virales Logik - Rätsel aus Singapur , eine Knobelaufgabe , die chinesische Grundschüler lösen , ein verflixtes Bilderrätsel oder den ultimativen IQ - Test .	['Logik/pa_amod']	pa_amod
+2015_942490	Zudem fehlte Carl Klaus wegen eines viralen Infekts .	['Infekt/pa_amod']	pa_amod
+2016_12578	ABIVAX ist ein innovatives Biotechnologie - Unternehmen , das sich auf die Stimulation des Immunsystems zu der vollständigen Beseitigung lebensbedrohlicher viraler Erkrankungen fokussiert hat .	['Erkrankung/pa_amod']	pa_amod
+2016_14576	Afrikanische Pelargonie : Dem Pelargonium wird zugeschrieben , es könne das Immunsystem aktivieren und so vor viralen Infekten wie Erkältungen schützen .	['Infekt/pa_amod']	pa_amod
+2016_26054	Als die Firma Gilead in dem Dezember 2013 ihr neues Arzneimittel – Sovaldi – zu der Behandlung viraler Hepatitis C für 84 000 Dollar auf den amerikanischen Markt brachte , löste dies einen Sturm der Entrüstung aus .	['unknown/pa_amod']	pa_amod
+2016_77063	""" Aufgrund des viralen Erfolgs "" der via Youtube ausgestrahlten Reality - Doku , deren Produktion knapp 1,7 Millionen Euro gekostet hat , werde nun "" rund ein Drittel des vorgesehenen Werbebudgets für Social Media "" eingespart , heißt es in der Mitteilung ."	['Erfolg/pa_amod']	pa_amod
+2016_79089	Auf welche weiteren Daten diese kleine Information schließen lässt , zeigt das virale Video .	['Video/pa_amod']	pa_amod
+2016_118926	Bleibt das Kind aber in diesem Ungleichgewicht , ist es ständigem Stress ausgesetzt , was beispielsweise zu gehäuften Erkrankungen des viralen Spektrums führen kann .	['Spektrum/pa_amod']	pa_amod
+2016_131821	Dabei kopierten sie den viralen Hit von Kylie Jenners ( 19 ) heißem Post .	['Hit/pa_amod']	pa_amod
+2016_146213	Damit will Facebook den viralen Effekt der Teenie - App verstärken .	['Effekt/pa_amod']	pa_amod
+2016_167105	Das Foto wurde zu dem viralen Hit : Innerhalb von nur 14 Stunden wurde der Facebook - Post fast 67.000 Mal geteilt , nahezu 35.000 Menschen kommentierten das Foto .	['Hit/pa_amod']	pa_amod
+2016_203149	Das Video wird zu dem viralen Hit .	['Hit/pa_amod']	pa_amod
+2016_220405	Denn das Internet der 90er Jahre kennt weder virale Guerilla - Marketing - Aktionen noch reizüberflutete Digital - Natives , die solche Hoaxes durchschauen .	['Guerilla/pa_amod']	pa_amod
+2016_236205	Der Betreiber lässt den Strom abstellen , aber da ist der Film schon längst ein viraler Hit .	['Hit/pa_amod']	pa_amod
+2016_280382	Der WM - Finaltorschütze ist der wohl an dem massivsten vermarktete Star des deutschen Fußballs : ein viraler Post hier , ein Selfie dort , eigene App , eigenes Logo - ein G mit Pfeil nach oben .	['Post/pa_amod']	pa_amod
+2016_281586	""" Derzeit wird intensiv erforscht , wie man die Gen - Schere CRISPR/Cas9 auch dafür nutzen kann , krankmachende virale DNA aus menschlichen Zellen zu entfernen ."	['unknown/pa_amod']	pa_amod
+2016_343480	Die meisten viralen Erkrankungen sind Erkrankungen die von alleine wieder weggehen ohne das man groß Medikamente benötigt oder einen Arzt konsultieren muss .	['Erkrankung/pa_amod']	pa_amod
+2016_374912	Dies in dem Gegensatz zu anderen viralen Leberentzündungen wie der Hepatitis A , die nicht chronisch verläuft , oder der Hepatitis B , bei der Probleme ausserhalb der Leber seltener sind .	['Ründung/pa_amod']	pa_amod
+2016_378557	Dies scheint der Markenbotschaft gut zu tun , das Produkt kommt besser an , auch wenn die fehlende Dynamik und Abwechslung das Video selbst nicht zu einem viralen Hit machen .	['Hit/pa_amod']	pa_amod
+2016_449909	Ein virales Video zu Independence Day 2 : Wiederkehr klärt uns darüber auf , wie der von Brent Spiner gespielte Astrophysiker Dr. Brackish Okun die Ereignisse aus Independence Day überleben konnte .	['Video/pa_amod']	pa_amod
+2016_544040	"Gruseliger viraler Hit "" Men in Chairs "" : Was steckt dahinter ?"	['Hit/pa_amod']	pa_amod
+2016_588641	In dem Internet und den sozialen Netzwerken wurde nach dem Ukraine - Spiel neben Bastian Schweinsteigers Comeback - Tor und dem Chuck - Norris - Kick von Jerome Boateng vor allem auch Löws Griff in die eigene Hose zu dem viralen Hit .	['Hit/pa_amod']	pa_amod
+2016_597865	In dem vergangenen Jahr zählte es zu den meistgeteilten Bildern in dem viralen Netz .	['Netz/pa_amod']	pa_amod
+2016_625672	Insgesamt haben die Videos und Beiträge in nicht einmal 2 Wochen über 11.600 Menschen gesehen und es ist durchaus vorstellbar , dass dieses Konzept virale Größen erreichen kann wie die bekannte „ Ice Bucket Challenge “ in dem Sommer 2014 .	['Größe/pa_amod']	pa_amod
+2016_697517	Mit diesem unzählige Male geteilten Foto schafften drei junge Asylwerber einen viralen Beitrag , der sowohl als Kommentar auf die Erwartungen der Familienmitglieder in Syrien und Irak als auch auf die Vorurteile mancher Europäer verstanden werden kann .	['Beitrag/pa_amod']	pa_amod
+2016_700798	Mit ihrem Schneeschaufeltanz landet die ' Maritime Bhangra Group ' passend zu der Weihnachtszeit einen viralen Hit .	['Hit/pa_amod']	pa_amod
+2016_702821	Mit seiner Einhorn - Schokolade hat Ritter Sport einen viralen Hit gelandet .	['Hit/pa_amod']	pa_amod
+2016_722180	Nach seinem viralen Gangsterrap - Debüt “ Ich hab Polizei ” hat der Satiriker Jan Böhmermann nun ein zweites Ding nachgelegt .	['Gangsterrap/pa_amod']	pa_amod
+2016_728990	Nein , Hayter wurde lediglich von seinem Kollegen Paul Eiding ( Stimme von Roy Campbell aus MGS ) herausgefordert , an einer viralen Crowdfunding - Kampagne teilzunehmen .	['Ding/pa_amod']	pa_amod
+2016_755402	Oleksiy Mishchenko aus Zürich filmte die virale Straussen - Jagd : « Ich wäre fast vor Lachen von dem Velo gefallen »	['Strausse/pa_amod']	pa_amod
+2016_787813	Sein Clip wurde zu einem viralen Hit in dem Kurznachrichtendienst : Er sammelte 210.000 Retweets und 220.000 Likes .	['Hit/pa_amod']	pa_amod
+2016_798509	Serviceplan schaffte den Einstieg in dem zweiten Anlauf und ist künftig Partner für die klassische Kommunikation , während sich Labamba um virale Kampagnen und Social Media kümmert .	['Kampagne/pa_amod']	pa_amod
+2016_825538	So mancher andere findet Böhmermanns viralen Clip dagegen voll daneben – und schreibt das auch .	['Clip/pa_amod']	pa_amod
+2016_839702	Stöger litt an einem viralen Infekt und hatte drei Tage lang nicht mit der Mannschaft arbeiten können .	['Infekt/pa_amod']	pa_amod
+2016_862868	Und auch die britische Supermarktkette Sainsbury 's hat Weihnachten einen viralen Erfolg gefeiert - mit einer aufwendig inszenierten Katzengeschichte .	['Erfolg/pa_amod']	pa_amod
+2016_863239	Und auch Manuel Neuer , der den DFB - Trip wegen eines viralen Infekts verpasste , ist wieder fit .	['Infekt/pa_amod']	pa_amod
+2016_886303	Unternehmen und Einzelpersonen täten gut daran , zu verstehen , ob es tatsächlich eine Wissenschaft des viralen Hits gibt und wie diese für Kampagnen genutzt werden kann .	['Hit/pa_amod']	pa_amod
+2016_887078	Unvergessen ist sein „ Todesstern Stuttgart “ , in dem er bereits vor Jahren das virale Marketing auf die Schippe nahm .	['Marketing/pa_amod']	pa_amod
+2016_893579	Viele Elemente seiner Show sind auf die schnelle Netz - Nutzung und virale Verbreitung zugeschnitten - Klamauk , Varieté , Einspieler .	['Verbreitung/pa_amod']	pa_amod
+2016_952735	Wie konnte es so weit kommen , dass der vermeintlich harmlose private Tweet eines Bürgers diese virale Macht entfaltete ?	['Macht/pa_amod']	pa_amod
+2017_21024	"Allerdings ist das von "" The Good Life Radio Show "" auf Facebook veröffentlichte Video nicht weges des Rappers , sondern wegen einer Frau in dem Publikum ein viraler Hit ."	['Hit/pa_amod']	pa_amod
+2017_21974	""" Allerdings sieht es so aus , dass das erhöhte Zöliakie - Risiko eher mit einer dauerhaften Entzündung des Magen - Darm - Trakts in dem frühen Kindesalter in Zusammenhang steht und nicht durch einen spezifischen viralen oder bakteriellen Erreger ausgelöst wird . """	['Erreger/pa_amod']	pa_amod
+2017_88337	Barack & Michelle : Das nächste virale Urlaubsfoto ist …	['Foto/pa_amod']	pa_amod
+2017_108499	Bereits wenige Verbreiter der Fake News machen dabei in dem konkreten Fall schon einen Großteil der viralen Reichweite aus .	['Weite/pa_amod']	pa_amod
+2017_167342	"Das Froschpeptid bindet offenbar ein virales Oberflächenprotein , das in vielen Grippestämmen vorkommt , schrieben die Forscher in der Fachzeitschrift "" Immunity "" ."	['Protein/pa_amod']	pa_amod
+2017_168921	Das gelang erst so richtig sieben Jahre später , das war 1979 – da haben wir das virale Erbgut in genitalen Warzen charakterisiert .	['Erbgut/pa_amod']	pa_amod
+2017_203528	Das virale Video zog einen Skandal nach sich , durch den er sich als Alkoholiker outen musste und das Besuchsrecht für seine Töchter verlor .	['Video/pa_amod']	pa_amod
+2017_217723	Den Anfang machten in dem Jänner die Niederlande : Die satirische Antwort der Holländer auf US - Präsident Donald Trump avancierte binnen Tagen zu dem viralen Klick - Hit .	['Klick/pa_amod']	pa_amod
+2017_269318	Der Schneesturm „ Stella “ , der über den Nordosten der USA gezogen ist , hat uns einen viralen Hit beschert .	['Hit/pa_amod']	pa_amod
+2017_332247	Die Ice Bucket Challenge gilt als eine der erfolgreichsten viralen Kampagnen .	['Kampagne/pa_amod']	pa_amod
+2017_415182	Dort wurde es binnen weniger Tage mit 1,2 Millionen Aufrufen zu dem viralen Hit .	['Hit/pa_amod']	pa_amod
+2017_516155	"Für den britischen Wohltätigkeitsevent "" Red Nose Day "" zeichneten sie zudem eines der berühmt - berüchtigten "" Carpool Karaoke "" mit Corden auf - damit hatten sich zuvor schon Lady Gaga , Bruno Mars , Adele und Michelle Obama in das virale Licht gerückt ."	['Licht/pa_amod']	pa_amod
+2017_580587	Ihr Misserfolg wird zu dem viralen Hit in dem Netz .	['Hit/pa_amod']	pa_amod
+2017_595175	In dem Sommer 2014 war es die Ice Bucket Challenge und in dem Jahr 2016 die Mannequin Challenge : Doch welche absurde Aufgabe könnte in dem Jahr 2017 den viralen Berg erklimmen ?	['Berg/pa_amod']	pa_amod
+2017_659457	Kürzlich schwappte die Taubenwelle schließlich auch in den angloamerikanischen Raum über , wo auf virale Phänomene spezialisierte Plattformen wie 9Gag das Interesse weitertrugen .	['Phänomen/pa_amod']	pa_amod
+2017_701098	Mithilfe eines Mausmodells konnte gezeigt werden , dass die anti - virale Immunantwort in trächtigen Muttertieren deutlich abgeschwächt ist und die Infektion sehr viel schwerer verläuft als bei nicht - trächtigen Tieren .	['Antwort/pa_amod']	pa_amod
+2017_899484	Virales Video : Wie viele Menschen passen in einem Honda Civic ?	['Video/pa_amod']	pa_amod
+2018_28567	Als Kandidatin dafür böte sich an , parlamentarische Geschäftsführerin der Grünen , die nicht nur wegen einer viralen Wutrede gegen die AfD schon einen Fanklub auf YouTube hat .	['Wutrede/pa_amod']	pa_amod
+2018_96376	Bei der Magersüchtigen sind vor allem Infekte ein Thema : Der ausgezehrte Körper hat einfach nichts mehr an sich , was er einem viralen Angriff entgegensetzen kann .	['Angriff/pa_amod']	pa_amod
+2018_162192	Das BioReliance® - Portfolio für virale und gentherapeutische Assays von Merck wurde mit einem R&D 100 - Award in der Kategorie Analytik / Test ausgezeichnet .	['Assay/pa_amod']	pa_amod
+2018_194914	Dass eine solche Ankündigung aber nicht mehr zu lange auf sich warten lassen wird , darauf lässt auch der Auftritt von NBA - Star James Harden schließen , der von vielen als Beginn einer viralen Marketing - Kampagne interpretiert wird .	['Marketing/pa_amod']	pa_amod
+2018_198973	Dass sie auf Platz 1 der viralen Songs Spaniens steht , ist eine Beleidigung der Intelligenz .	['Song/pa_amod']	pa_amod
+2018_256941	Der Komiker wollte gar das italienische Heer gegen einen Ausbau der viralen Autobahn Genua –Nizza aufbieten .	['Autobahn/pa_amod']	pa_amod
+2018_295614	Die Anwendung gehört zu dem Welternährungsprogramm der Vereinten Nationen – und ist ein viraler Hit .	['Hit/pa_amod']	pa_amod
+2018_295839	Die App erstellt einen Newsfeed aus viralen Videos und Bildern , dazu kombiniert sie Klickzahlen von unter anderem Facebook , YouTube und Instagram .	['Video/pa_amod']	pa_amod
+2018_331559	Die Höhe des viralen Setpoints bestimmt die Geschwindigkeit des Krankheitsprozesses und Schnelligkeit und Ausmaß des Abfalls der Helferzellen .	['Setpoint/pa_amod']	pa_amod
+2018_355760	Die Proben stammen von Patienten mit Verdacht auf virale Gehirn - oder Hirnhautentzündung sowie von Menschen mit akuten schlaffen Lähmungen .	['Gehirn/pa_amod']	pa_amod
+2018_367935	Diesen viralen Hit hätte sich der zuständige Redaktor vermutlich lieber erspart : Ein Artikel über Julia Robers war durch einen Tippfehler besonders unglücklich betitelt – und wurde Gegenstand des Spotts in dem Internet .	['Hit/pa_amod']	pa_amod
+2018_596574	In dem Spiel bei Borussia Mönchengladbach ( 1:1 ) sorgte der 23 - Jährige für eine Szene , die zu dem viralen Hit in dem Netz wurde .	['Hit/pa_amod']	pa_amod
+2018_605630	In den vergangenen fünf Wochen gab es 21 vermutete virale hämorrhagische Fieber in und um die iIkoko Iponge , darunter 17 Todesfälle .	['Fieber/pa_amod']	pa_amod
+2018_705483	Mitthilfe eines Schwangerschaftsmodells in der Maus gingen Forscherinnen und Forscher der HPI - und TiHo - Abteilung „ Virale Zoonosen – One Health “ unter der Leitung von Prof. Dr. Gülsah Gabriel dieser Frage auf den Grund .	['Zoono/pa_amod']	pa_amod
+2018_727490	Neben Cauly Oliveira Souza ( viraler Infekt ) muss Coach Ilia Gruev allerdings auch Rechtsverteidiger Enis Hajri ersetzen .	['Infekt/pa_amod']	pa_amod
+2018_754220	Oft ist ein viraler Infekt die Ursache .	['Infekt/pa_amod']	pa_amod
+2018_818598	SIRION Biotech bietet Strategien für virale Vektoren für Forschung und Entwicklung in dem Life Sciences - Bereich und anknüpfenden Industrien .	['Tor/pa_amod']	pa_amod
+2018_821401	Sofort wurde der Artikel ein viraler Hit in dem Internet , denn er lieferte eine einfache Erklärung für ein komplexes Phänomen .	['Hit/pa_amod']	pa_amod
+2018_831158	So viel wurde gekichert und geschäkert , jeder Auftritt taugte zu dem viralen Hit .	['Hit/pa_amod']	pa_amod
+2018_871238	Und er glaubt , dass ohne das Internet Menschen wie Ibrahim Abu Thurayeh niemals virale Berühmtheit erlangt hätten und dass dies der palästinensischen Sache guttut .	['Berühmtheit/pa_amod']	pa_amod
+2018_900490	"Viraler Hit : Liebesbrief in dem S - Bahnhof : Wo ist der Junge "" von dem Gleis gegenüber "" ?"	['Hit/pa_amod']	pa_amod
+2018_900491	Virale Verbreitung von Inhalten ist für viele Organisationen noch Neuland .	['Verbreitung/pa_amod']	pa_amod
+2019_66777	Auch in Deutschland machen Prominente bei dem viralen Hit mit , darunter Fußballprofi Marco Reus und Teenie - Idol Mike Singer .	['Hit/pa_amod']	pa_amod
+2019_69942	Auch über den Umweg einer simulierten viralen Infektion von Leberzellen , die daraufhin APOA-1 Strukturproteine in dem Übermaß produzierten , zeigte sich eine protektive Wirkung bei Bauchspeicheldrüsenkrebs .	['Infektion/pa_amod']	pa_amod
+2019_266090	"Der Name der Videoreihe - "" Bosstown Dynamics "" - kommt nicht von ungefähr : Die viralen Videos der Robotikfirma Boston Dynamics standen hier offensichtlich Pate ."	['Video/pa_amod']	pa_amod
+2019_272582	Der Schal wurde durch eine Twitter - Nachricht von Webers Tochter Sara bekannt und entwickelte sich schnell zu einem viralen Hit .	['Hit/pa_amod']	pa_amod
+2019_365171	Dies auch vor dem Hintergrund , dass HPV die häufigste virale Infektion in dem Genitalbereich und Ursache einer Reihe von Erkrankungen bei Männern und Frauen ist ( 7 ) .	['Infektion/pa_amod']	pa_amod
+2019_479004	"Er war letzte Woche krank "" , sprach Thiem - Manager an dem Donnerstag gegenüber der APA die eben überstandene virale Infektion seines Schützlings an ."	['Infektion/pa_amod']	pa_amod
+2019_522082	Für die Entwicklung personalisierter Therapien werden Gene mittels viraler Vektoren , wie sie von Merck produziert werden , in Immunzellen eingeschleust .	['Tor/pa_amod']	pa_amod
+2019_582663	Ihre Gegnerin Anett Kontaveit aus Estland muss wegen eines akuten viralen Infekts Forfait geben .	['Infekt/pa_amod']	pa_amod
+2019_651810	Kaum jemand berichtet darüber , aber jedes brennende E- Auto wird zu dem viralen Hit .	['Hit/pa_amod']	pa_amod
+2019_677281	Luxemburg , Wien – 6600 von 5,1 Millionen Menschen sind 2016 in der EU an viraler Hepatitis gestorben .	['unknown/pa_amod']	pa_amod
+2019_726489	Nach seiner viralen Infektion hat Österreichs Tennis - Star endlich wieder intensiver trainiert und danach zufrieden festgestellt : „ Es geht aufwärts . “	['Infektion/pa_amod']	pa_amod
+2019_735623	New York - Ein virales Video von einem brennenden Model S in Schanghai bringt den US - Elektroautobauer unter Druck .	['Video/pa_amod']	pa_amod
+2019_770794	Rätsel nach viralem Video : Wer hat diesen Tauben Cowboy - Hüte aufgesetzt ?	['Video/pa_amod']	pa_amod
+2019_993775	""" zu sehen war , einen viralen Volltreffer ."	['Volltreffer/pa_amod']	pa_amod
+2019_999990	Zynteglo verwendet einen inaktivierten viralen Vektor , um ein funktionelles menschliches Beta - Globin - Gen in die patienteneigenen hämatopoetischen Stammzellen ( die Blutzellen produzieren ) außerhalb des Körpers ( ex - vivo ) einzubringen .	['Vektor/pa_amod']	pa_amod
+2020_3070	Aber das Hauptgewicht liegt auf den Versuchen geistig - seelischer Konfrontationen mit einem viralen Elementarereignis der Menschheitsgeschichte .	['Eleignis/pa_amod']	pa_amod
+2020_69056	Auch in mindestens mehreren anderen Ländern Mittel - und Südamerikas wurden Anstrengungen zu der biologischen Kriegsführung unternommen , wobei es um eine Reihe von viralen Krankheitserregern , die Krebs erzeugten .	['Reger/pa_amod']	pa_amod
+2020_83331	"Auf Twitter kommentiert Sarah Frier zu solchen Clips , es habe eine "" gewaltige virale Anstrengung "" in dem Netz gegeben , wenngleich es schwer zu sagen sei , wie groß genau der Einfluss der Social - Media - Aktionen auf die Besucherzahl an dem Ende gewesen sei ."	['Anstrengung/pa_amod']	pa_amod
+2020_92997	Baudrillard wurde nicht müde , in zahlreichen Essays über Viralität , Videowelt und Virulenz die Ausbreitung von Information als ansteckend zu charakterisieren und vor diesen viralen Massenmedien zu warnen .	['Medium/pa_amod']	pa_amod
+2020_99436	Bei der Entwicklung des viralen Vektorimpfstoffs AZD1222 sei es – wie auch bei dem Vakzin BNT162b2 – zu einer Reihe schwerer , aber nicht lebensbedrohlicher Nebenwirkungen gekommen , schreibt der Arzneimittelbrief .	['Stoff/pa_amod']	pa_amod
+2020_103527	Bei einer viralen oder bakteriellen Bronchitis ist diese Gefahr bei einer ärztlichen Behandlung selbstverständlich geringer als bei einer bereits chronischen Bronchitis , die wie erwähnt vor allem Rauchern droht .	['unknown/pa_amod']	pa_amod
+2020_137907	Dabei handelt es sich um eine virale Gehirn - und Hirnhautentzündung , die durch infizierte Zecken übertragen wird .	['Gehirn/pa_amod']	pa_amod
+2020_207826	Das Team untersuchte Abwasserproben auf bestimmte Genfragmente des Virus zu verschiedenen Zeitpunkten : Drei Wochen bevor der erste niederländische Covid-19 -Fall bekannt war , konnten die Forscher keine viralen Genfragmente nachweisen .	['Kente/pa_amod']	pa_amod
+2020_261761	Der ironische Wendepunkt spielt sich außerhalb des Theaters ab : Diese Geschichten , zu der Unterhaltung in Pestzeiten erdacht , bleiben nach der Premiere – der viralen Ansteckungsgefahr wegen – vorerst ungespielt .	['Gefahr/pa_amod']	pa_amod
+2020_269600	""" Der Nachweis von viraler RNA ( nicht - infektiöse virale Erbgutpartikel , Anm. ) ist nicht gleichbedeutend mit einer Infektion ."	['unknown/pa_amod']	pa_amod
+2020_269600	""" Der Nachweis von viraler RNA ( nicht - infektiöse virale Erbgutpartikel , Anm. ) ist nicht gleichbedeutend mit einer Infektion ."	['Partikel/pa_amod']	pa_amod
+2020_283717	Der US - amerikanische Arzt und Buchautor , Dr. Thomas Levy , weist deshalb in mehreren wissenschaftlichen Fachartikeln darauf hin , dass ein ausreichender Vitamin-C - Spiegel eine wichtige Voraussetzung zu der Abwehr von viralen Infekten darstellt .	['Infekt/pa_amod']	pa_amod
+2020_286703	Der Vorteil der zweiten Methode : Weil sie sich nicht direkt gegen das Virus richtet , kann sie eher bei verschiedenen viralen Infektionen helfen .	['Infektion/pa_amod']	pa_amod
+2020_319338	Die dreifach viralen ( MMR ) und doppelt viralen ( SR ) Impfstoffe sind zu 98% gegen Masern wirksam .	['MMR/pa_amod']	pa_amod
+2020_319338	Die dreifach viralen ( MMR ) und doppelt viralen ( SR ) Impfstoffe sind zu 98% gegen Masern wirksam .	['SR/pa_amod']	pa_amod
+2020_326994	"Die "" fäkale Belastung "" sei zeitweise sehr hoch , es gebe virale und parasitäre Krankheitserreger – an Badespaß ist also – wie schon berichtet – nicht zu denken ."	['Serreger/pa_amod']	pa_amod
+2020_337774	Die Gruppe veröffentlicht immer wieder virale Videoclips des Präsidenten , die auf seine Schwachpunkte abzielen .	['Videoclip/pa_amod']	pa_amod
+2020_341626	Die Infektion beginnt wie andere virale Atemwegsinfekte auch : mit Husten , Atemnot , Fieber , mal leichter , mal ernsthafter .	['Kte/pa_amod']	pa_amod
+2020_370094	Die RNA , Grundlage des viralen Erbguts , wurde modifiziert .	['Erbgut/pa_amod']	pa_amod
+2020_373590	Dies deutet darauf hin , dass virale Partikel über längere Zeit in der Luft schweben und eingeatmet werden können .	['Partikel/pa_amod']	pa_amod
+2020_395114	Die Tänzerin April ( ) kommt nach einem viralen Missgeschick an dem Broadway zurück in ihr Heimatdorf und übernimmt dort widerwillig den Tanzunterricht einer bunt gemischten Mädchengruppe .	['Geschick/pa_amod']	pa_amod
+2020_412411	"Doch allein das Auftauchen des viralen Erbguts in den Aerosolen lege die Möglichkeit einer solchen Ansteckung nahe "" , ist die entscheidende Aussage ."	['Erbgut/pa_amod']	pa_amod
+2020_443112	Eine in dem Fachjournal veröffentlichte US - Studie hat gezeigt , dass sich ein Nahrungsentzug besonders bei viralen Erkrankungen negativ auf die Genesung auswirkt .	['Erkrankung/pa_amod']	pa_amod
+2020_459839	Ein positiver Nebeneffekt ist , dass durch diese lebendigen , bewegten Bilder , auch der virale Effekt und damit die Verbreitung der Job - Anzeige in den sozialen Medien und in dem Internet zunimmt .	['Effekt/pa_amod']	pa_amod
+2020_463825	Ein virales Posting liefert einen einprägsamen Erklärungsversuch .	['unknown/pa_amod']	pa_amod
+2020_467020	Ende Dezember hatten die chinesischen Behörden in der Provinz Hubei den Ausbruch einer viralen Lungenentzündung unbekannter Herkunft vermeldet .	['Ründung/pa_amod']	pa_amod
+2020_470070	"Er bezeichnete es in dem viralen Posting als "" dünn verschleierten Datensammeldienst "" und empfahl Nutzern , es schleunigst zu deinstallieren ."	['unknown/pa_amod']	pa_amod
+2020_500572	Es ist seltsam , dass andere Lieferungen von Tiefkühlkost in andere Teile der Welt nicht das gleiche virale Ergebnis verursacht hatten .	['Ergebnis/pa_amod']	pa_amod
+2020_541754	Gemeinsam erinnern wir uns an das Video von einem Live - Interview der BBC mit einem amerikanischen Politikprofessor , das vor drei Jahren zu dem viralen Hit wurde .	['Hit/pa_amod']	pa_amod
+2020_543518	Generell ist nicht einmal der Zusammenhang zwischen dem Kawasaki - Syndrom und einer viralen Infektion jemals zuvor bewiesen worden , sagt auch Thomas Müller .	['Infektion/pa_amod']	pa_amod
+2020_563091	Heute beherbergt der Standort Carlsbad 16 modulare Reinraumbereiche mit Einwegausrüstung für die Bulk - Herstellung virusbasierter Produkte sowie zwei Fill-/Finish - Suiten für Gentherapeutika , virale Impfstoffe und Immuntherapeutika .	['Impfstoff/pa_amod']	pa_amod
+2020_648477	Jenaer Forscher entwickeln aus viralem Marketing - Modell eine Simulation zu der Ausbreitung von Infektionskrankheiten .	['Marketing/pa_amod']	pa_amod
+2020_685012	Man habe Erfahrung mit Lungenentzündungen , jedes Jahr nach der Influenza - Saison kommen Patienten , die wegen der viralen Erkrankung schwere Verläufe durchgemacht haben .	['Erkrankung/pa_amod']	pa_amod
+2020_733572	Neben den Alarmisten – vor allem jüngere Virologie - und Epidemiologie - Professoren , die sich scheinbar einen Namen machen wollten - traten Philosophen und Psychologen auf , die das Ganze als virales Phänomen in den Köpfen interpretierten .	['Phänomen/pa_amod']	pa_amod
+2020_756219	Obwohl die Konzentration der viralen Nukleoprotein - Antigene in dem Verlauf der Erkrankung schwankt , erkennt der Test eine Infektion mit 96 - prozentiger Sicherheit .	['Protein/pa_amod']	pa_amod
+2020_814007	Sie springen etwa auf virale Songs auf , zu denen Videos automatisch eine gute Reichweite versprechen , und unterlegen diese mit Texttafeln , die beispielsweise Argumente für einen der Spitzenkandidaten zeigen .	['Song/pa_amod']	pa_amod
+2020_904185	Von Pneumokokken ist bekannt , dass sie sich bevorzugt auf virale Infektionen „ aufsetzen “ können .	['Infektion/pa_amod']	pa_amod
+2020_912219	Währenddessen sorgt viralen Lacher auf der Plattform brisanten Gespräch mit ihrer ehemaligen Vertrauten Stephanie Winston Wolkoff ihrer Frustration damals freien Lauf .	['Lacher/pa_amod']	pa_amod
+2020_917458	Was aber rund eine Million , vorwiegend asiatische Gäste pro Jahr selbst in Zeiten viraler Bedrohungen nicht von einem Abstecher in den Weltkulturerbeort abhält .	['Bedrohung/pa_amod']	pa_amod
+2020_966584	Wir sind der Meinung , dass die Menschheit zusammenhalten muss , wenn es darum geht , virale Bedrohungen dieser Größenordnung zu bekämpfen .	['Bedrohung/pa_amod']	pa_amod
+2020_973614	Wo sind nun all die Neunmal - Gescheiten , die Panikmacher , die uns vor allgegenwärtigen unsichtbaren viralen Dämonen warnen , die Weltuntergangspropheten , Besserwisser und Rechtfertiger eines neuen Pandemie - Faschismus ?	['Dämon/pa_amod']	pa_amod
+2020_979351	Zudem hat der Streaming - Marktführer mit der Doku - Serie « Tiger King » zuletzt auch noch einen großen viralen Hit gelandet .	['Hit/pa_amod']	pa_amod
+2021_10127	Aber wenn er zwischen zwei Fernsehauftritten einen Blick auf die „ Freuden des Dichters “ werfen könnte , würde das zumindest erklären , warum ihm die virale Stillstandsrhetorik so rheinisch leicht von den Lippen geht .	['Torik/pa_amod']	pa_amod
+2021_11764	Abivax , ein Unternehmen mit Medikamenten in der klinischen Entwicklung , mobilisiert das natürliche körpereigene Immunsystem zu der Behandlung von Patienten mit chronischen Entzündungserkrankungen , viralen Infektionskrankheiten und Krebs .	['Krankheit/pa_amod']	pa_amod
+2021_51056	Angefangen hatte alles in dem März , als sich das Team des St. Vinzenz - Krankenhaus einen Ruf als Lieferant für virale Videos machte .	['Video/pa_amod']	pa_amod
+2021_91402	Avigan hat seine Wirksamkeit gegen ein breites Spektrum von viralen Erregern bereits unter Beweis gestellt , darunter zahlreiche Arten und Subtypen von Influenzaviren .	['Erreger/pa_amod']	pa_amod
+2021_141277	Dabei zeigte sich , dass bei Kindern die Zellen in dem Nasen - Rachen - Raum bereits in deutlich erhöhter Alarmbereitschaft gegen virale Eindringlinge waren .	['Eindringling/pa_amod']	pa_amod
+2021_172758	"Das Ergebnis : Alle drei Ansätze verhinderten effektiv das "" Aufschließen "" der Zellen durch das virale Spike - Proteins ."	['Spike/pa_amod']	pa_amod
+2021_179485	Das habe eine unglaubliche Resonanz gefunden : « Nach acht Tagen hatte ich das erste virale Video mit 800 000 Aufrufen , und von da an ist der Kanal explodiert , das ist der Wahnsinn . »	['Video/pa_amod']	pa_amod
+2021_204014	"Das sind die guten Nachrichten "" , erklärte einer der führenden Wissenschaftler für virale Impfstoffe bei Pfizer ."	['Impfstoff/pa_amod']	pa_amod
+2021_221009	Dazu kommen viele weitere spannende Test zu Spielen aus allen möglichen Genres , etwa das Adventure Tohu oder auch der virale Hit Among Us .	['Hit/pa_amod']	pa_amod
+2021_231539	Denn etwa unser Immunsystem wäre ohne den viralen Input wohl nicht das , was es heute ist .	['unknown/pa_amod']	pa_amod
+2021_354729	Die Menschen waren auf den bis zu 60 Zentimeter dicken Schneedecken teils auch auf Langlaufskiern und Schlitten unterwegs – ein Mann liess sich von fünf Huskys ziehen und wurde so zu dem viralen Internet - Hit .	['Internet/pa_amod']	pa_amod
+2021_356596	Die Mutationsanalyse ergab eine Neuinfektion mit einer viralen Variante ( E484K - Mutation ) , die in Südafrika gefunden wurde .	['Variante/pa_amod']	pa_amod
+2021_370172	Die RNA , Grundlage des viralen Erbguts , wurde modifiziert .	['Erbgut/pa_amod']	pa_amod
+2021_380603	Dieser sogenannte virale Vektor schleust dann die FVIII Kopie in die Zellen der Leber ein , sodass diese das FVIII - Protein produzieren können .	['Vektor/pa_amod']	pa_amod
+2021_384161	"Diese Varianten weisen Veränderungen in mehreren viralen Proteinen auf , unter anderem in dem Spike - Protein , das für das Virus zu der Infektion seiner Wirtszelle unerlässlich ist . """	['Protein/pa_amod']	pa_amod
+2021_448434	Einer der Hauptgründe : Das Video einer Fitnesstrainerin , die unwissentlich filmte , wie sich der Staatsstreich in Myanmar live hinter ihr abspielte , wurde an diesem Tag zu dem viralen Hit .	['Hit/pa_amod']	pa_amod
+2021_451960	Eine virale Genfähre bringt Tumorzellen dazu , in ihrem Innern Antikörper gegen sich selbst herzustellen .	['Genfähr/pa_amod']	pa_amod
+2021_520564	FRANKFURT ( Dow Jones) Evotec hat eine Initiative zu der Vorbereitung auf virale Pandemien gestartet .	['Pandemium/pa_amod']	pa_amod
+2021_523933	Fünftens : Es gibt eine Menge mehr zu diesem viralen Testspiel , und es gibt eine Menge seltsamer Anreize .	['Spiel/pa_amod']	pa_amod
+2021_547189	Geschätzte Spitzenwerte in der viralen Last waren an dem höchsten bei Patienten in Krankenhausbehand lung und an dem niedrigsten bei Infizierten ohne oder mit geringen Symptomen .	['Last/pa_amod']	pa_amod
+2021_570967	Historisch sind lange Komplikationen viraler Infekte wie Fatigue und kognitive Probleme auch von früheren Grippe - Epidemien bekannt , stellen also keine grundsätzlich neue Problematik mit dem Coronavirus dar ( Stefano , 2021 in Med Sci Monit .	['Infekt/pa_amod']	pa_amod
+2021_626730	In einem viralen Post lädt der junge TikToker Adrien Gleichaltrige zu seiner Geburtstags - Party an dem Huntington Beach ein .	['Post/pa_amod']	pa_amod
+2021_640326	Interessant ist , dass beide hochgradig virale PR - Kampagnen durchaus eine Verbindung haben könnten .	['PR/pa_amod']	pa_amod
+2021_665566	Konkret besteht der neue HIV - Impfstoff zu dem einen aus RNA mit der Bauanleitung des viralen Hüllproteins Env .	['Protein/pa_amod']	pa_amod
+2021_699982	Milliarden viraler mRNA - Moleküle gelangen in unsere Zellen .	['unknown/pa_amod']	pa_amod
+2021_706644	Mit der Powerballade gelang Wees vor einem Jahr ein viraler Hit .	['Hit/pa_amod']	pa_amod
+2021_712904	Mit Sitz in Vancouver , ist BioVaxys Technology Corp . ein in British Columbia registriertes Biotechnologie - Unternehmen in dem Frühstadium , das virale und onkologische Impfstoffplattformen sowie Immundiagnostika entwickelt .	['Plattform/pa_amod']	pa_amod
+2021_721046	Nach Ansicht des Forschungsteams bestätigt dies , dass der Vektorimpfstoff seine Aufgabe erfüllt und unsere Zellen dazu bringt , die viralen Spike - Proteine nachzubauen .	['Spike/pa_amod']	pa_amod
+2021_723285	Nachdem er die virale NFT - Aufholjagd der Kunstszene eröffnet hatte , ging es Schlag auf Schlag : Zunächst machten an dem 11 . Mai bei Christie ’s neun Cryptopunks von Larva Labs , geschätzt auf 7-9 Millionen , für 16,9 Millionen Dollar Furore .	['unknown/pa_amod']	pa_amod
+2021_735209	"Natürlich könne er in den "" viralen Kopf "" von Covid-19 schlüpfen , gab der 72 Jahre alte Bestsellerautor zu Protokoll ."	['Kopf/pa_amod']	pa_amod
+2021_739704	Neuen Studien zufolge kann Remdesivir allerdings die virale Reproduktion nicht vollständig stoppen .	['Reproduktion/pa_amod']	pa_amod
+2021_770364	"Pollard verwies allerdings auf "" vielversprechende Ergebnisse "" anderer Studien in Südafrika , in denen ein ähnlicher viraler Vektor wie bei dem Astrazeneca - Impfstoff verwendet wurde ."	['Vektor/pa_amod']	pa_amod
+2021_812391	"Sie macht es möglich , aus viralen Postings ein NFT ( "" "" ) zu machen , das sich dann in dem Netz versteigern lässt ."	['unknown/pa_amod']	pa_amod
+2021_899037	Viraler Humor : Was Corona - Witze über uns erzählen Die Dokumentation zeigt mit viralen Clips und mit der Einschätzung von Comedians und Fachleuten , wie Humor in der Krise zu der Bewältigungsstrategie werden kann .	['Humor/pa_amod']	pa_amod
+2021_899037	Viraler Humor : Was Corona - Witze über uns erzählen Die Dokumentation zeigt mit viralen Clips und mit der Einschätzung von Comedians und Fachleuten , wie Humor in der Krise zu der Bewältigungsstrategie werden kann .	['Clip/pa_amod']	pa_amod
+2021_899038	Virales Haaland - Torschussvideo nur ein Fake ?	['Haaland/pa_amod']	pa_amod
+2021_899039	Virales Video von Boston DynamicsKönnen Roboter wirklich so gut tanzen ?	['Video/pa_amod']	pa_amod
+2021_929757	Weiterlesen : Musikalischer Modellzug aus dem Miniatur - Wunderland wird viraler Hit Gleich 47 Mal war die übereifrige Gil bei dem Reko .	['Hit/pa_amod']	pa_amod
+2021_947418	Wie der dänische Rundfunksender DR zu berichten wusste , stürmte das fröhliche Lied über eine Angeltour auf Platz eins einer Liste viraler Hits auf dem Streaming - Dienst Spotify .	['Hit/pa_amod']	pa_amod
+2021_959439	"Wir freuen uns , dieses Forschungsprojekt mit Albumedix in Angriff zu nehmen , um die Herstellung von viralen Vektoren zu optimieren und sicherzustellen , dass das Angebot den wachsenden Bedarf an Gentherapien decken kann . """	['Tor/pa_amod']	pa_amod
+2021_964941	Wir müssen schneller werden als die viralen Bedrohungen , denen wir mit Sicherheit begegnen werden .	['Bedrohung/pa_amod']	pa_amod
+2021_970405	WissenschaftlerInnen des Wiener Biotechnologie - UnternehmensBlueSky Immunotherapies GmbH haben ihre virale Vektorplattform delNS zu der Therapie von Sarkoiden bei Pferden genutzt .	['Plattform/pa_amod']	pa_amod
+2021_999986	Zymo Research bietet auch ( TM ) an , ein Reagenz , das virale RNA nach der Inaktivierung eines jeden Virus vor weiterem Abbau schützt , um eine sichere Sammlung und einen sicheren Transport von Abwasserproben bei Raumtemperatur zu gewährleisten .	['unknown/pa_amod']	pa_amod
+2022_13917	Airbnb und das Hilton Hotel sind auf das virale Video aufmerksam geworden und machten der Familie eine riesige Freude .	['Video/pa_amod']	pa_amod
+2022_20585	Allerdings sei alles , was jetzt erforscht werde , auch hilfreich für die Entwicklung anderer Schleimhaut - Impfstoffe - „ gegen Grippe , virale Atemwegserkrankungen oder alles andere , was noch kommen mag . “	['Erkrankung/pa_amod']	pa_amod
+2022_51232	Angesichts des Traumas , das die beiden verfolgen wird , hofft die dritte Gruppe , dass die Szene einfach von Schauspielern gestellt worden sei , um für ein virales Video zu sorgen .	['Video/pa_amod']	pa_amod
+2022_79343	Auf einer Videoaufzeichnung , die zuerst auf Telegram kursierte und sich von dort aus nun ihren viralen Weg durchs Netz bahnt , sieht man , wie der Bub zu einer Figur greift und sein Finger plötzlich von dem Roboter niedergedrückt wird .	['Weg/pa_amod']	pa_amod
+2022_119578	Bild 3 : Die Expression viraler Proteine lässt sich immunhistochemisch nachweisen .	['Protein/pa_amod']	pa_amod
+2022_185616	Das italienische Luxuslabel verpasst dem eingestaubten Office - Look ein heißes Update , so dass der Minirock seit seiner Präsentation auf dem Laufsteg für einen viralen Hype sorgt .	['Hype/pa_amod']	pa_amod
+2022_186071	Das kanadische Unternehmen Rumble wurde 2013 von Pavlovski gegründet und lebte in den Anfängen vor allem von viralen Videos und Nachrichten .	['Video/pa_amod']	pa_amod
+2022_213856	Das wurde zu einem viralen Erfolg , und es gab alle möglichen nachdenklichen Texte darüber , dass es ein Kommentar über Maskulinität gewesen sei .	['Erfolg/pa_amod']	pa_amod
+2022_223936	Den Durchbruch schaffte er mit einem viralen Video , in dem er in 40 Stunden bis auf 100’000 zählte .	['Video/pa_amod']	pa_amod
+2022_240437	Der Aufbau von Profilen mit Millionen von Followern kann Jahre dauern und das Rezept für einen viralen Hit ist nicht so einfach , wie viele denken .	['Hit/pa_amod']	pa_amod
+2022_288967	Derzeit ganz heiß ist bekanntlich der Glaube , virale Infektionskrankheiten mittels hochmoderner mRNA - Gentherapeutika bekämpfen zu können .	['Krankheit/pa_amod']	pa_amod
+2022_308391	Die Belastung des Abwassers mit viraler RNA liegt laut dem Experten eindeutig in dem Bereich der Delta - Welle von dem vergangenen Herbst .	['unknown/pa_amod']	pa_amod
+2022_311037	"Die bisherigen Virenentwicklungen ließen ihn allerdings vermuten , dass die Pandemie in dem nächsten Sommer keine Wellen mehr erzeuge und zu der "" normalen "" viralen Atemwegsinfektion heruntergestuft werden könne ."	['Infektion/pa_amod']	pa_amod
+2022_317495	Die Dokumentation zeigt mit viralen Clips und mit der Einschätzung von Comedians und Fachleuten , wie Humor in der Krise zu der Bewältigungsstrategie werden kann . ”	['Clip/pa_amod']	pa_amod
+2022_350822	Die Liste der post - viralen â€ “ und manchmal auch post - bakteriellen â€ “ Folgekrankheiten ist lang .	['â€/pa_amod']	pa_amod
+2022_366516	""" Die Punkies "" stürmen das Internet : In ihrer neuen Hörspielfolge "" Sister 's Act "" landet Bandmitglied Lucas einen viralen Hit ."	['Hit/pa_amod']	pa_amod
+2022_380288	Dieser Vorgang passiert zufällig an unterschiedlichen Orten in dem viralen Genom ( Erbgut ) .	['unknown/pa_amod']	pa_amod
+2022_409131	Die Zahl der durch die Omikron - Variante infizierten Personen steigt explosionsartig - selbst bei Geimpften und Genesenen ist sie deutlich einfacher zu übertragen als ihre viralen Vorgängern .	['Vorgänger/pa_amod']	pa_amod
+2022_431246	Durch die viralen Videos seien viele auf Emus und ihre Eskapaden aufmerksam geworden und viele Leute würden sie nun „ aus einer Laune “ heraus kaufen , meinte die Farmerin .	['Video/pa_amod']	pa_amod
+2022_520074	Fischer spricht von einer niedrigen viralen Intra - Host - Diversität .	['Intra/pa_amod']	pa_amod
+2022_675307	Laut Reuters plant aktuell , virale Tweets zukünftig zu monetarisieren .	['Tweet/pa_amod']	pa_amod
+2022_681767	Louis Vuitton hat mit einer neuen Werbekampagne einen viralen Hit gelandet .	['Hit/pa_amod']	pa_amod
+2022_685417	Man denke an den viralen Begriff der Flugscham , « Fridays for Future » oder die immer längere Liste der Länder , die aus verschiedenen Gründen nicht mehr ansteuerbar waren .	['Begriff/pa_amod']	pa_amod
+2022_691047	Massentestungen mit Schnelltests , die virale Antigene erkennen , wurden vorgeschlagen , um kontagiöse Personen zu erkennen und dadurch die gegenwärtige SARS - CoV-2 - Pandemie zu kontrollieren ( 1 ) .	['Antigen/pa_amod']	pa_amod
+2022_777410	Rhino - und Parainfluenzaviren seien vorherrschend unter den viralen Erregern , hieß es .	['Erreger/pa_amod']	pa_amod
+2022_791149	Schuld daran ist nicht mehr nur das Coronavirus , sondern auch andere virale Erreger wie Rhino - , Influenza - und Respiratorische Synzytialviren , kurz RSV .	['Erreger/pa_amod']	pa_amod
+2022_840514	Stattdessen bindet er an anderer Stelle des viralen Spike - Proteins und blockiert dadurch die Fusion des Virus mit der Zellmembran – und damit die Infektion .	['Spike/pa_amod']	pa_amod
+2022_900007	"Virales Tiktok - Video Junge Frau zeigt , wie sie ihre Atemkanüle wechselt : "" Ich könnte das nie und nimmer """	['Tiktok/pa_amod']	pa_amod
+2022_980719	Zudem verfügt das Unternehmen über eine umfassende Erfahrung als CDMO bei der Herstellung von viralen Vektoren , Lipiden , Lipidnanopartikeln und mRNA – von der präklinischen Entwicklung bis zu der Kommerzialisierung .	['Tor/pa_amod']	pa_amod
+2023_24045	Als dieser sich neben sie gestellt habe , habe Ofarim schließlich damit gedroht , dem Hotel mit einem viralen Video zu schaden .	['Video/pa_amod']	pa_amod
+2023_53245	Antibiotika wirken bei einem rein viralen Infekt nicht , sondern nur gegen bakterielle Infektionen .	['Infekt/pa_amod']	pa_amod
+2023_104635	Bei manchen nimmt die Liebe zu ihrem Auto aber auch gefährliche Züge an – wie nun ein virales Video zeigt .	['Video/pa_amod']	pa_amod
+2023_208425	Das Video eines Fotografen , auf dem zu sehen ist , wie er eine junge Stuttgarter Polizistin anspricht und fotografiert , wird über Nacht zu dem viralen Tiktok - Hit .	['Tiktok/pa_amod']	pa_amod
+2023_231767	Denn wie Therapeut Jeff Guether in einem viralen Erklärvideo auf Tiktok sagt , setzt man sich bei dem Konzept « Boundaries » eigentlich selbst gesunde Grenzen , um sein Wohlbefinden und seine Integrität zu schützen .	['Video/pa_amod']	pa_amod
+2023_264126	Der Mann , der hinter dem viralen Kleid von 2015 steckt , muss sich vor Gericht behaupten .	['Kleid/pa_amod']	pa_amod
+2023_284011	Der virale Clip , der vermutlich in Thailand aufgenommen wurde , zeigt , wie das Tier seinen Tod geradezu inszeniert .	['Clip/pa_amod']	pa_amod
+2023_336812	Die histologischen Veränderungen ( mit einer ausgeprägten Zytolyse von Leberzellen , umgeben von leichten entzündlichen Infiltraten aus Lymphozyten und Histiozyten ) sprachen für eine virale Hepatitis .	['unknown/pa_amod']	pa_amod
+2023_422060	Dort hatten Biologinnen die Reaktionen auf ein virales Tiervideo aus Madagaskar ausgewertet .	['Tiervideo/pa_amod']	pa_amod
+2023_428930	Durch ein virales Video wurde der Vorfall deutschlandweit bekannt .	['Video/pa_amod']	pa_amod
+2023_438355	Eine Anwohnerin der Werler Straße hat witzig kommentierte Clips auf der Plattform „ Tiktok “ hochgeladen – und damit einen viralen Hit gelandet .	['Hit/pa_amod']	pa_amod
+2023_447054	Einer der Spieler , der slowakische Profi Yang Wang , ist für das virale Video durch einen Roboter ersetzt worden – der Spieler selbst wurde aus dem Video entfernt und seine Bewegungen auf das 3D - Modell des Roboters übertragen .	['Video/pa_amod']	pa_amod
+2023_482847	Erste Laborergebnisse zeigen nun , dass die Tiere keine virale Erkrankung , also keine Geflügelpest hatten .	['Erkrankung/pa_amod']	pa_amod
+2023_574547	Ich bin sicher , dass dies das nächste virale Produkt von TikTok sein wird .	['Produkt/pa_amod']	pa_amod
+2023_575481	« Ich erwarte einfach immer , dass mir grossartige Dinge passieren , und das tun sie auch » , sagt Galebe in ihrem viralen Video und fügt hinzu , dass sie aufregende Chancen erhalte , weil sie einfach fest daran glaube , dass diese zu ihren Gunsten stünden .	['Video/pa_amod']	pa_amod
+2023_612956	In den viralen Videos fragen Frauen ihre Partner , Freunde , Väter , Brüder und andere Männer , wie oft sie an das Römische Reich denken .	['Video/pa_amod']	pa_amod
+2023_624670	In einem viralen Video zeigen Teenager , wie sie in Restaurants Sushi und Besteck ablecken .	['Video/pa_amod']	pa_amod
+2023_625795	In einer Zeit , in der virale Videos oft manipuliert oder aus dem Kontext gerissen werden , hat das Faktenprüfungsportal das Video sorgfältig analysiert und seine Echtheit bestätigt .	['Video/pa_amod']	pa_amod
+2023_633155	Insbesondere eine Tanzszene in dem Spin - off zu der Addams Family wurde zu dem viralen Hit und hunderte Millionen Male in den sozialen Medien geteilt .	['Hit/pa_amod']	pa_amod
+2023_709286	Mit ihrer ersten Single “ The record player song ” 2019 erreichten die Newcomer:innen 20 Millionen Streams und einige virale Momente auf TikTok .	['Moment/pa_amod']	pa_amod
+2023_712679	Mittlerweile hat der virale Tanzmoment eine Welle der Begeisterung und Nachahmung ausgelöst .	['unknown/pa_amod']	pa_amod
+2023_727760	Nach einem viralen Erklärvideo zu Midjourney hätten zahlreiche Nutzer versucht , kostenfrei Bilder zu erstellen , sagte Holz dem Fachportal » The Verge «	['Video/pa_amod']	pa_amod
+2023_738574	Nerze haben wiederholt viralen Krankheiten als « Brückenwirt » hin zu dem Menschen gedient .	['Krankheit/pa_amod']	pa_amod
+2023_755668	Ob eine Impfung gegen Grippe oder andere virale Infekte wie Covid-19 tatsächlich das Demenzrisiko senken kann , ist also noch nicht klar , doch es gibt wissenschaftlich fundierte Hinweise , dass dieser Zusammenhang besteht .	['Infekt/pa_amod']	pa_amod
+2023_792444	Schwere virale Infektionen stehen bereits seit längerem in dem Verdacht , diese zu verstärken .	['Infektion/pa_amod']	pa_amod
+2023_832570	So sind sie mit sauberem Spritzbesteck versorgt und die Neuinfektionen von HIV , Hepatitis C und anderen viralen und bakteriellen Infektionen können so minimiert werden .	['Infektion/pa_amod']	pa_amod
+2023_900021	Virale Hits : Bilder , wie hier von dem berühmten Chuenisbärgli in Adelboden , werden tausendfach weitergereicht .	['Hit/pa_amod']	pa_amod
+2023_903108	Von den unvergesslichen Klassikern , die uns an Sonntagsessen bei Oma erinnern , über kreative Neuinterpretationen bis hin zu den viralen Trendsettern der Saison – lasst die Pasta - Party beginnen .	['unknown/pa_amod']	pa_amod
+2023_903583	Von der rustikalen Einfachheit eines gebackenen Camemberts mit Pfirsichen , der die süßen und herzhaften Noten perfekt harmonisiert , bis hin zu der viralen Baked Camembert PastaBaked Feta Pasta ( mit Kürbis ) TikTok in dem Sturm erobert hat .	['Baked/pa_amod']	pa_amod
+2023_922645	Was jedoch bekannt und unübersehbar ist : Sie neuen Zuhause angekommengar nicht mehr aufhören zu lächeln , wie das virale Video beweist , das an dem Tag ihrer Heimkunft aufgenommen wurde .	['Video/pa_amod']	pa_amod
+2023_957089	Wie Wenger an dem Freitag auf Instagram mitteilt , würden ihn « wiederkehrende Rückenprobleme und ein viraler Infekt » an einer Teilnahme hindern .	['Infekt/pa_amod']	pa_amod
+2023_978755	Zudem haben sich die Veranstalter einige der Shooting - Stars gesichert , denen in diesem Jahr vor allem durch Spotify und TikTok virale Hits gelungen sind .	['Hit/pa_amod']	pa_amod
+2023_992440	Zu der Verhinderung einer viralen Reaktivierung ist eine antivirale Therapie gemäß den lokalen institutionellen Richtlinien/klinischen Praktiken zu erwägen .	['Aktivierung/pa_amod']	pa_amod
+2024_41339	An dem Tag des diesjährigen Anstichs erzielte die Oktoberfest - Bedienung erneut virale Erfolge .	['Erfolg/pa_amod']	pa_amod
+2024_70047	Auch virale Infektionen können dafür verantwortlich sein .	['Infektion/pa_amod']	pa_amod
+2024_80925	Auf TikTok landet der offizielle Account der Paralympics mit solchen Szenen virale Hits .	['Hit/pa_amod']	pa_amod
+2024_87374	Außerdem wurden virale Suchergebnisse entfernt .	['Suchergebnis/pa_amod']	pa_amod
+2024_89338	Bakterielle Infektionen wie Chlamydien , Gonorrhö und Syphilis mit Antibiotika , virale Infektionen wie HIV und Hepatitis B und C mit antiviralen Medikamenten , sogenannten Virostatika , die über einen längeren Zeitraum eingenommen werden .	['Infektion/pa_amod']	pa_amod
+2024_135848	Da – bei – saßen an dem Montag die renommierten Journalisten Jake Tapper und Jamie Gangel und erörterten , was genau der virale Tweet denn bedeute .	['Tweet/pa_amod']	pa_amod
+2024_139585	Dadurch konnten sie herausfinden , welche der aktiven Gene viralen Ursprungs sind .	['Ursprung/pa_amod']	pa_amod
+2024_168512	Das erklärt auch das virale Beispiel des Prompt - Ingenieurs Alex Albert : Er ließ Claude 3 für einen Test ein unpassendes Detail in einem Dokument finden .	['Beispiel/pa_amod']	pa_amod
+2024_168651	Das ermögliche eine hohe Wiedererkennbarkeit und biete ein enormes Potenzial für virale Verbreitung .	['Verbreitung/pa_amod']	pa_amod
+2024_177514	Das humorvolle Meme - Branding sorgt für virales Potenzial , während die fortschrittliche Technologie und die klare Roadmap auch langfristigen Nutzen erzeugen sollen .	['Potenzial/pa_amod']	pa_amod
+2024_185022	Das Labor soll künftig virale und bakterielle biologische Wirkstoffe unter Verwendung steriler Herstellungstechnologien produzieren .	['Stoff/pa_amod']	pa_amod
+2024_252664	Der Grenzschutz reagierte an dem 30. Dezember auf die viralen Gerüchte und versicherte , dass sich nichts an den Regeln für das Übertreten der Grenze geändert hätte .	['Gerücht/pa_amod']	pa_amod
+2024_271552	Der schon siebenmal in dieser Drittligasaison erfolgreiche Offensivspieler verpasste die Partie gegen Ulm wegen einer viralen Infektion , konnte aber an dem Dienstag wieder in das Training einsteigen .	['Infektion/pa_amod']	pa_amod
+2024_323522	Die Forschenden der Universität Kobe zeigen sich zuversichtlich , auf Basis dieses Wissens neue antivirale Medikamente entwickeln zu können , die die Funktion des viralen Enzyms hemmen .	['unknown/pa_amod']	pa_amod
+2024_342480	Die Kuchenskulptur von Lara Mason aus Walsall in Großbritannien ist in den sozialen Medien zu dem viralen Erfolg geworden und hat auf Tiktok sieben Millionen Klicks erhalten .	['Erfolg/pa_amod']	pa_amod
+2024_348121	Die meisten viralen Atemwegsinfektionen fallen in die Wintermonate , in der kalten Jahreszeit haben Viren und Bakterien ein leichtes Spiel .	['Infektion/pa_amod']	pa_amod
+2024_440443	Eine ganz bestimmte Veränderung in dem viralen Erbgut ist dafür verantwortlich .	['Erbgut/pa_amod']	pa_amod
+2024_445525	Eine Online - Petition zu dem EM - Viertelfinale erfreut sich geradezu viraler Beliebtheit .	['Beliebtheit/pa_amod']	pa_amod
+2024_460714	Ein Schlüsselmoment in Karriere war ein viraler LinkedIn - Post , inspiriert von einem Gespräch mit ihrem 101 - jährigen Großvater über Carsharing und Digitalisierung .	['LinkedIn/pa_amod']	pa_amod
+2024_467918	"Ende Juli hatte der ultrakonservative Influencer Robby Starbuck in einem Videoclip auf der Plattform X zu der viralen Attacke aufgerufen : "" Es ist Zeit , dass Harley - Davidson bloßgestellt wird . """	['Attacke/pa_amod']	pa_amod
+2024_509293	Es wird angenommen , dass sie in der Folge der Pandemie noch stark wachsen wird , denn als häufigste Auslöser gelten virale Infektionen ; auch eine Impfung kann das Syndrom vermutlich auslösen .	['Infektion/pa_amod']	pa_amod
+2024_528152	Für die Erkrankung an MS können genetische Faktoren , aber auch Umwelt - und Lebensstilfaktoren , virale Infektionen sowie Vitamin-D - Mangel verantwortlich sein .	['Infektion/pa_amod']	pa_amod
+2024_574364	""" Ich breche mir meistens was "" Liefert der Dschungel jetzt einen viralen Tanz - Hit ?"	['Tanz/pa_amod']	pa_amod
+2024_590412	In dem Fachblatt „ Nature Communications “ stellt Chiu mit einem weiteren Team ein ähnliches mNGS - Verfahren vor : Dieses kann bei Infektionen der Atemwege die viralen Ursachen binnen eines Tages ermitteln .	['Ursache/pa_amod']	pa_amod
+2024_601676	In dem schlimmsten Fall mündet das post - virale Syndrom in eine myalgische Enzephalomyelitis/Chronisches Fatigue - Syndrom ( ME/CFS ) .	['unknown/pa_amod']	pa_amod
+2024_612130	In den USA reagiert das Weiße Haus auf virale , KI - generierte , sexuell explizite Bilder von Taylor Swift und fordert Maßnahmen gegen Missbrauch .	['Bild/pa_amod']	pa_amod
+2024_623406	In einem aktuellen - Video machen die Unternehmerin und ihre Tochter ( 6 ) eine virale Social - Media - Challenge nach .	['Social/pa_amod']	pa_amod
+2024_671379	Langzeitfolgen treten auch bei anderen viralen Erkrankungen auf , betonen Experten .	['Erkrankung/pa_amod']	pa_amod
+2024_687755	Männer denken angeblich einmal an dem Tag an das Römische Reich , wie uns ein viraler Tiktok - Trend glaubhaft machen möchte .	['Tiktok/pa_amod']	pa_amod
+2024_696046	Meme - Coins haben in den letzten Jahren immer wieder durch ihre virale Verbreitung und das Potenzial für hohe Renditen Aufmerksamkeit erregt .	['Verbreitung/pa_amod']	pa_amod
+2024_716032	Moo Deng , die an dem 10 . Juli 2024 als Tochter von Tony und Jona geboren wurde , ist zu einer echten viralen Sensation geworden , nachdem auf X Bilder von ihrer niedlichen Reaktion auf ein Bad geteilt wurden .	['Sensation/pa_amod']	pa_amod
+2024_716620	MrBeast verlangt von seinen Teams , nicht in den traditionellen Bahnen von Hollywood oder anderen Medien zu denken , sondern innovative Ansätze zu verfolgen , die speziell auf viralen Erfolg ausgerichtet sind .	['Erfolg/pa_amod']	pa_amod
+2024_754924	Ob als süße Verführung in Form der viralen „ Dubai - Schokolade “ mit EngelshaarBrotaufstrich aus schokoladiger Pistaziencreme oder herzhaft verarbeitet in einer Pasta mit Pistazien - Ricotta - Sauce – die grüne „ Nuss “ erobert die Küchenwelt in dem Sturm .	['Dubai/pa_amod']	pa_amod
+2024_776243	Rechtsextreme Parolen sind mit einem Mal wieder sagbar und werden online zu viralen Trends .	['Trend/pa_amod']	pa_amod
+2024_790862	Schon seit Oktober 2023 geistert die Version durch soziale Netzwerke , zunächst auf Tiktok , wird so zu dem viralen Hit , ein Meme , das in die analoge Welt einfließt .	['Hit/pa_amod']	pa_amod
+2024_807201	"Sie beschloss dann , sie selbst zu veröffentlichen , was dazu führte , dass ihr Song "" Escapism "" ein viraler TikTok - Hit und später eine Nummer - eins - Single wurde ."	['TikTok/pa_amod']	pa_amod
+2024_812251	Sie ist eine virale , seuchenartige Infektionskrankheit , die sich schnell ausbreitet .	['Krankheit/pa_amod']	pa_amod
+2024_832231	So richtig neu ist die virale Idee dabei aber gar nicht .	['Idee/pa_amod']	pa_amod
+2024_848593	Teilt sie sich , wird auch die virale genetische Information immer wieder weitergegeben .	['Information/pa_amod']	pa_amod
+2024_850820	TikTok ist bekannt für seine viralen Trends und Herausforderungen .	['Trend/pa_amod']	pa_amod
+2024_893785	Vermutet werden eine immunologische Prädisposition sowie virale und bakterielle Infektionen als mögliche Auslöser .	['Infektion/pa_amod']	pa_amod
+2024_900947	Virale Videos versprachen unendlich viel Geld .	['Video/pa_amod']	pa_amod
+2024_937527	Wenn etwa ein bestimmtes Produkt oder Dienstleistung aufgrund eines viralen Trends stark nachgefragt wird , können die Preise angehoben werden , um dem Anstieg Rechnung zu tragen .	['Trend/pa_amod']	pa_amod
+2024_947650	Wichtig wäre es in diesem Bereich außerdem zu erforschen , welche Folgen virale Persistenz in dem Körper oder Reaktivierung des Virus nach der akuten Infektion haben und welche klinische Implikationen das nach sich ziehen könne .	['Persistenz/pa_amod']	pa_amod
+2024_952182	Wie findet ihr es , dass Nick die viralen Clips selbst witzig findet ?	['Clip/pa_amod']	pa_amod
+2024_993729	Zu sehen in einem viralen Video des Youtubers Marvin .	['Video/pa_amod']	pa_amod
+2025_64593	Auch ihr Video zu dem Thema Weihnachtsmarkt ist ein viraler Hit geworden .	['Hit/pa_amod']	pa_amod
+2025_73389	Auf den Plattformen TikTok und Instagram braucht es nur den richtigen Post eines Influencers , und der virale Duft wird schnell zu dem Hit .	['Duft/pa_amod']	pa_amod
+2025_87139	Autokonto leer , Insta voll : Bridgestone Corp wird zu dem viralen Reifen - Liebling .	['Reifen/pa_amod']	pa_amod
+2025_137006	Dabei zeigt sie , warum die BILD - Show der Main Character in der Medienwelt ist – mit Promi - Tea first , den viralsten Stories und absolut keinen NPC - Vibes .	['Stories/pa_amod']	pa_amod
+2025_151095	Dann bekommst du ähnliche Effekte auch mit günstigeren Alternativen , nur eben ohne fancy Brand und virale Aura .	['Aura/pa_amod']	pa_amod
+2025_195295	Das sind virale Themen , die kursieren , ohne dass das jemand kontrolliert .	['Thema/pa_amod']	pa_amod
+2025_202766	Das virale Video wurde bereits 6,9 Millionen Mal aufgerufen .	['Video/pa_amod']	pa_amod
+2025_204888	Das Weihnachtslied hat die sozialen Medien erobert und sich zu dem viralen Phänomen entwickelt .	['Phänomen/pa_amod']	pa_amod
+2025_213840	Demnach beinhalten virale Beiträge einen viermal höheren Anteil an Desinformation als andere Beiträge .	['Beitrag/pa_amod']	pa_amod
+2025_232264	Der aufstrebende Krypto - YouTuber Borch hat seinen 92.100 Abonnenten in einem seiner neuesten Videos gesagt , dass der T6900 aufgrund seines viralen Potenzials und der Nutzung des SPX6900 - Mindspace um 2.000 % steigen könnte .	['Potenzial/pa_amod']	pa_amod
+2025_234296	Der Berliner Rapper Baran Kok bringt derzeit selbst die vermeintlich maskulinsten hetero Typen dazu , über schwulen Sex zu singen – und wird damit zu dem viralen Phänomen in dem Netz .	['Phänomen/pa_amod']	pa_amod
+2025_235579	Der Boom war ein Beispiel für virale Verbreitung vor dem Internetzeitalter , doch auch er ging vorbei .	['Verbreitung/pa_amod']	pa_amod
+2025_259417	"Der Musiker , der 2015 mit seinem viralen Hit "" Watch Me ( Whip/Nae Nae ) "" Berühmtheit erlangt hatte , bekannte sich des Totschlags , schwerer Körperverletzung , des Waffenbesitzes während einer Straftat und der Verheimlichung eines Todesfalls schuldig ."	['Hit/pa_amod']	pa_amod
+2025_277270	Der virale Tipp lautet : Nach jeder Transaktion sollte man die rote Abbruch - Taste betätigen , um zu verhindern , dass Kriminelle die noch offene Sitzung kapern und das Konto plündern .	['Tipp/pa_amod']	pa_amod
+2025_283050	Deshalb ist die Zahl der Menschen , die an viraler Hepatitis starben , von 1,1 Millionen in dem Jahr 2019 auf 1,3 Millionen in dem Jahr 2022 angestiegen .	['unknown/pa_amod']	pa_amod
+2025_314802	« Die ersten Untersuchungen zeigten gute Ergebnisse , doch die jüngste Diagnose bestätigte eine virale Meningitis .	['unknown/pa_amod']	pa_amod
+2025_352220	Die Partei gewann mit einer viralen Social - Media - Kampagne kurz vor dem Wahltag an Schwung .	['Social/pa_amod']	pa_amod
+2025_373569	Dieses Frühwarnsystem misst die Belastung durch virale Erreger , die über menschliche Ausscheidungen in das Abwasser gelangen .	['Erreger/pa_amod']	pa_amod
+2025_396712	Die virale Infektion ist häufig , jährlich sind bis zu 20 von 100.000 Menschen in Deutschland betroffen .	['Infektion/pa_amod']	pa_amod
+2025_399916	Die WHO hat ein Expertenteam für die Bekämpfung von Ausbrüchen solcher viraler hämorrhagischer Fieber die Region geschickt , hieß es in einer Mitteilung an dem Wochenende .	['Fieber/pa_amod']	pa_amod
+2025_400140	Die wie eine Kalberei anmutende Aktion wurde zu dem viralen Hit .	['Hit/pa_amod']	pa_amod
+2025_447573	Eine virale Kampagne zu dem â€žWomenâ€˜s History Monthâ€œ der US - Brauerei â€žMillerâ€œ endete in dem Jahr 2023 in einem Shitstorm aus dem Trump - Lager .	['Kampagne/pa_amod']	pa_amod
+2025_447574	Eine virale Meningitis ist eine ernsthafte Erkrankung , bei der sich die Gewebsschichten entzünden , die Gehirn und Rückenmark umgeben .	['unknown/pa_amod']	pa_amod
+2025_453638	Ein klassischer „ Viraler Hit “ in dem Sinne von : Alle haben eine Meinung dazu .	['Hit/pa_amod']	pa_amod
+2025_459632	Ein städtischer Bauhof , der sich ohne Chef organisiert , eine Stadt , die innerhalb von zwei Jahren 28 Digitalisierungs - Projekte umsetzt und virale Tiktok - Videos von Azubis .	['Tiktok/pa_amod']	pa_amod
+2025_462086	Ein viraler Trend ist nach Düsseldorf gekommen : In Unterbilk steht der erste „ Secret - Pack “ - Automat der Stadt .	['Trend/pa_amod']	pa_amod
+2025_462087	Ein virales Video zeigt , wie ein Mediziner wutentbrannt einen Operationssaal verlassen hat .	['Video/pa_amod']	pa_amod
+2025_462088	Ein virales YouTube - Video hat genau diese Methode getestet - mit Erfolg .	['YouTube/pa_amod']	pa_amod
+2025_462848	Ein weiterer Trick der viralen Vorher - Nachher - Videos : « Die Ergebnisse werden direkt nach den Eingriffen abgefilmt .	['Vorher/pa_amod']	pa_amod
+2025_476880	Er machte Furore mit viralen Videos , etwa als er in den kalten Atlantik sprang , um seine Idee eingefrorener Mieten zu lancieren .	['Video/pa_amod']	pa_amod
+2025_566611	Hinter dem viralen Video steckt irgendwie auch eine Debatte über die Generationen , über Arbeitskultur und die Zukunft der Arbeitswelt .	['Video/pa_amod']	pa_amod
+2025_587703	"In dem Beschreibungstext des viralen YouTube - Videos betont er jedoch ausdrücklich : "" Ich bin ein professioneller Schauspieler und wohne jetzt in LA , aber was ich in dem Video mache , ist keine Schauspielerei . """	['YouTube/pa_amod']	pa_amod
+2025_622715	In einem viralen Videoclip schreit ein junger Basketballfan während eines Basketballspiels die Phrase und macht die typische Handgeste .	['Videoclip/pa_amod']	pa_amod
+2025_623523	In einer Pressekonferenz sagte er zu dem mittlerweile viralen Video der beiden : « Ich sagte : Junge , die sehen aus wie zwei Menschen , die sich mögen .	['Video/pa_amod']	pa_amod
+2025_625255	In früheren Studien entwickelten unsere Wissenschaftergruppen einen viralen Vektorimpfstoff auf Basis eines ( bei dem Menschen ; Anm. ) keine Krankheit erregenden Newcastle - Disease - Virus ( NDV ) ( .	['Stoff/pa_amod']	pa_amod
+2025_640595	Ist das jetzt der nächste virale Hit aus den USA oder einfach nur ein teurer Fail , der auf TikTok größer aussieht als er ist ?	['Hit/pa_amod']	pa_amod
+2025_641534	Ist STLD der nächste virale Hit an der Börse oder nur ein kurzfristiger Hype , der gleich wieder wegbricht ?	['Hit/pa_amod']	pa_amod
+2025_644543	Jeder hat die Chance auf einen viralen Tiktok - Hit , kann aber genauso schnell wieder weg sein von dem Fenster . “	['Tiktok/pa_amod']	pa_amod
+2025_677617	"Leute : 15 -Jähriger steckt hinter viralem "" Louvre - Detektiv """	['unknown/pa_amod']	pa_amod
+2025_690555	Mehr als 28 Millionen Aufrufe generierte der virale Clip .	['Clip/pa_amod']	pa_amod
+2025_697421	Mind of Pepe soll sich dabei insbesondere durch das virale Potenzial des Frosches in Kombination mit den revolutionären KIs auszeichnen und von anderen absetzen .	['Potenzial/pa_amod']	pa_amod
+2025_702755	Mit der äußerst brutalen und erfolgreichen „ „ - Reihe hat man zudem in den letzten Jahren eine neue ikonische Slasher - Saga aus dem Boden gestampft , die mit ihren Grenzüberschreitungen und Splatterszenen einen viralen Hype auslöste .	['Hype/pa_amod']	pa_amod
+2025_705455	Mit einem Outfit sorgte Boone auch schon für einen viralen Moment : und Nikki Glaser durften ihm während seines Auftritts in dem vergangenen Februar die Kleider von dem Leib rissen .	['Moment/pa_amod']	pa_amod
+2025_725856	Nach einem viralen Video über einen Wiener Influencer spricht Expertin Claudia Paganini darüber , wie man Jugendliche über Online - Gefahren aufklären sollte .	['Video/pa_amod']	pa_amod
+2025_751867	Nuseir Yassin , Gründer und Content Creator von NasDaily – Der globale Storyteller , der durch virale Inhalte , die aufklären und inspirieren , eine Community von über 70 Millionen Followern aufgebaut hat , erforscht nun die Grenzen des Web3 - Storytelling .	['Inhalt/pa_amod']	pa_amod
+2025_788303	Schon in früheren Staffeln war Rittersporn ( Joey Batey ) meist nur für unlustige Witze und den ein oder anderen viralen Song bekannt .	['Song/pa_amod']	pa_amod
+2025_813535	Sie platzierten ihre eigenen Gesichter auf die Körper der in flagranti erwischten Konzertbesucher aus dem viralen Video .	['Video/pa_amod']	pa_amod
+2025_826996	Solche Retroviren sind dafür verantwortlich , dass in dem menschlichen Genom acht Prozent virale DNA gefunden wird .	['unknown/pa_amod']	pa_amod
+2025_832698	So werden grafische Inhalte , extreme Schönheitsideale und virale Challenges sowie sexuelle , romantische oder gewalttätige Rollenspiele eingeschränkt .	['Challeng/pa_amod']	pa_amod
+2025_835753	Spektakulärer Juwelendiebstahl in dem Louvre : Virales Video zeigt Täter bei der Flucht .	['Video/pa_amod']	pa_amod
+2025_839229	Stattdessen verlässt sich der Film auf : virale Tanzsequenzen , ironische One - Liner , abrupte Genrewendungen .	['Tanz/pa_amod']	pa_amod
+2025_850338	Trainerin Montserrat Tome berichtete , dass die vor der EM an einer viralen Meningitis erkrankte Bonmati wieder voll fit sei .	['unknown/pa_amod']	pa_amod
+2025_850611	Trainwreck - Dokumentationen über das virale Internet Zwei der neuen Netflix - Dokumentationen zeigen diesen Monat , was passieren kann , wenn ein Facebook - Post viral geht .	['Internet/pa_amod']	pa_amod
+2025_851695	Trotzdem erleben Ärzte , dass Patienten auch bei viralen Infekten auf eine Verschreibung drängen .	['Infekt/pa_amod']	pa_amod
+2025_882085	Und zu dem Schluss kommen müssen , so unsympathisch wie in dem ersten Kapitel – Brown hat es in dem Tonfall an realen viralen , doch schwindlig recherchierten Onlineartikeln geschult – ist er gar nicht .	['Rikeln/pa_amod']	pa_amod
+2025_890214	US - Vizepräsident JD Vance verkleidet sich zu Halloween als virales Internet - Meme – und wird über Nacht zu dem Social - Media - Star .	['Internet/pa_amod']	pa_amod
+2025_900107	Virales Video zeigt mutmaßlichen Wolf in NRW - Stadt – „ Als nächstes kommt sicher der Abschuss “	['Video/pa_amod']	pa_amod
+2025_919143	Was als viraler TikTok - Trend begann , entwickelt sich zu einem ernstzunehmenden Thema in dem Performance - Bereich .	['TikTok/pa_amod']	pa_amod
+2025_922356	Washington , D.C./Chicago – Ein virales Foto aus Illinois zeigt schwergewichtige Soldaten der Texas National Guard bei dem Ausladen aus einem Truck – und sorgt in den USA für Empörung .	['Foto/pa_amod']	pa_amod
+2025_934978	Wenn Chefs sich als Opfer ihrer Mitarbeiter darstellen : Ein viraler Reddit - Post zeigt , warum solche Sprüche immer mehr Frust auslösen .	['unknown/pa_amod']	pa_amod
+2025_984557	Zu intensiv waren der Schmerz und die Fassungslosigkeit angesichts der viralen Verbreitung dieser Bilder .	['Verbreitung/pa_amod']	pa_amod

@@ -1,6 +1,2 @@
 slot,total_period_tests,valid_period_tests,invalid_period_tests,raw_p_significant,fdr_significant,corrected_by_fdr,raw_significant_percent,fdr_significant_percent,fdr_corrected_percent_of_raw_sig
-Case,5,5,0,0,0,0,0.0,0.0,0.0
-Degree,5,5,0,0,0,0,0.0,0.0,0.0
-Gender,5,5,0,0,0,0,0.0,0.0,0.0
-Number,5,5,0,1,0,1,20.0,0.0,100.0
-Variant,5,5,0,0,0,0,0.0,0.0,0.0
+type,5,5,0,3,3,0,60.0,60.0,0.0
