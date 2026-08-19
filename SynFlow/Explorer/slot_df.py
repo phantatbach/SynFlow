@@ -14,7 +14,9 @@ def spaths_json_to_slotfiller_df(
     with open(json_path, encoding="utf-8") as f:
         spaths = json.load(f)
 
-    target = Path(json_path).name.replace("_spaths.json", "")
+    name_parts = Path(json_path).stem.split("_")
+    target = "_".join(name_parts[:2])
+
     rows = []
 
     for subfolder, slot_counts in spaths.items():
