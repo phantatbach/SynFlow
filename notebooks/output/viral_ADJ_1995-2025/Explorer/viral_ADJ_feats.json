@@ -1,0 +1,44 @@
+{
+  "1995-2000": {
+    "Number": 30,
+    "Degree": 18,
+    "Case": 5,
+    "Gender": 3,
+    "Variant": 3
+  },
+  "2001-2005": {
+    "Number": 20,
+    "Degree": 11,
+    "Gender": 4,
+    "Case": 2,
+    "Variant": 1
+  },
+  "2006-2010": {
+    "Number": 72,
+    "Degree": 38,
+    "Gender": 24,
+    "Case": 12,
+    "Variant": 6
+  },
+  "2011-2015": {
+    "Number": 89,
+    "Degree": 78,
+    "Variant": 33,
+    "Gender": 31,
+    "Case": 12
+  },
+  "2016-2020": {
+    "Degree": 167,
+    "Variant": 129,
+    "Number": 89,
+    "Gender": 17,
+    "Case": 11
+  },
+  "2021-2025": {
+    "Degree": 405,
+    "Variant": 350,
+    "Number": 139,
+    "Gender": 27,
+    "Case": 19
+  }
+}

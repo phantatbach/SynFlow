@@ -1,0 +1,9 @@
+sentence_id	sentence	sfillers	path
+2017_740173	Nun gehen diese Bilder viral und Sorgen für viel Gesprächsstoff .	['Sorge/NOUN']	chi_conj
+2017_740173	Nun gehen diese Bilder viral und Sorgen für viel Gesprächsstoff .	['gehen/VERB']	pa_advmod
+2021_102321	Beide zusammen – viral und bakteriell – ergeben dann eine sogenannte Superinfektion .	['bakteriell/ADJ']	chi_conj
+2021_102321	Beide zusammen – viral und bakteriell – ergeben dann eine sogenannte Superinfektion .	['beide/DET']	pa_advmod
+2022_400740	Die Ursache kann entweder infektiös ( vor allem viral , zu dem Beispiel durch eine Influenza ) , bakteriell ( Diphterie oder Borreliose ) oder nicht - infektiös ( durch rheumatische Erkrankungen , Alkohol , Chemos etc. ) sein .	['bakteriell/ADJ']	chi_conj
+2022_400740	Die Ursache kann entweder infektiös ( vor allem viral , zu dem Beispiel durch eine Influenza ) , bakteriell ( Diphterie oder Borreliose ) oder nicht - infektiös ( durch rheumatische Erkrankungen , Alkohol , Chemos etc. ) sein .	['infektiös/ADJ']	pa_advmod
+2023_377039	Dieser praktische Gemüseschneider geht gerade auf TikTok viral und das zurecht .	['der/PRON']	chi_conj
+2023_377039	Dieser praktische Gemüseschneider geht gerade auf TikTok viral und das zurecht .	['gehen/VERB']	pa_advmod

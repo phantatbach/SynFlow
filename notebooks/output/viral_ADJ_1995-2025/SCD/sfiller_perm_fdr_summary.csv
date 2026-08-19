@@ -1,0 +1,12 @@
+slot,total_period_tests,valid_period_tests,invalid_period_tests,raw_p_significant,fdr_significant,corrected_by_fdr,raw_significant_percent,fdr_significant_percent,fdr_corrected_percent_of_raw_sig
+chi_advcl,1,1,0,0,0,0,0.0,0.0,0.0
+chi_advmod,2,2,0,0,0,0,0.0,0.0,0.0
+chi_case,1,1,0,0,0,0,0.0,0.0,0.0
+chi_cc,5,5,0,0,0,0,0.0,0.0,0.0
+chi_conj,3,3,0,0,0,0,0.0,0.0,0.0
+chi_det,1,1,0,0,0,0,0.0,0.0,0.0
+chi_punct,3,3,0,0,0,0,0.0,0.0,0.0
+pa_advmod,5,5,0,1,0,1,20.0,0.0,100.0
+pa_amod,5,5,0,4,4,0,80.0,80.0,0.0
+pa_conj,5,5,0,0,0,0,0.0,0.0,0.0
+pa_nmod,1,1,0,0,0,0,0.0,0.0,0.0

@@ -1,0 +1,77 @@
+{
+  "1995-2000": {
+    "pa_amod": 42,
+    "chi_conj": 5,
+    "pa_advmod": 3,
+    "chi_punct": 3,
+    "chi_cc": 1,
+    "pa_conj": 1,
+    "chi_case": 1,
+    "chi_det": 1,
+    "pa_obl": 1
+  },
+  "2001-2005": {
+    "pa_amod": 27,
+    "chi_punct": 2,
+    "chi_cc": 2,
+    "pa_conj": 2,
+    "pa_advmod": 1,
+    "chi_advmod": 1
+  },
+  "2006-2010": {
+    "pa_amod": 102,
+    "pa_advmod": 6,
+    "chi_cc": 3,
+    "pa_conj": 2,
+    "chi_conj": 2,
+    "chi_advcl": 1
+  },
+  "2011-2015": {
+    "pa_amod": 134,
+    "pa_advmod": 25,
+    "chi_punct": 20,
+    "chi_conj": 6,
+    "chi_advmod": 6,
+    "chi_nsubj": 5,
+    "chi_cop": 5,
+    "pa_conj": 3,
+    "chi_obl": 2,
+    "chi_cc": 2,
+    "pa_parataxis": 2,
+    "chi_appos": 1,
+    "chi_parataxis": 1,
+    "chi_advcl": 1,
+    "pa_appos": 1
+  },
+  "2016-2020": {
+    "pa_amod": 134,
+    "pa_advmod": 128,
+    "chi_advmod": 9,
+    "chi_punct": 6,
+    "pa_conj": 5,
+    "chi_conj": 5,
+    "chi_cc": 3,
+    "chi_case": 2,
+    "chi_det": 2,
+    "pa_obl": 1,
+    "pa_nmod": 1
+  },
+  "2021-2025": {
+    "pa_advmod": 340,
+    "pa_amod": 212,
+    "chi_advmod": 17,
+    "chi_punct": 14,
+    "chi_conj": 14,
+    "pa_conj": 9,
+    "chi_cc": 7,
+    "chi_obl": 5,
+    "chi_det": 4,
+    "chi_nsubj": 3,
+    "chi_cop": 2,
+    "pa_acl": 1,
+    "chi_acl": 1,
+    "pa_nmod": 1,
+    "chi_case": 1,
+    "pa_advcl": 1
+  }
+}

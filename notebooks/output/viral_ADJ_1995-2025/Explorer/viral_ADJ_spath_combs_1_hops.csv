@@ -1,0 +1,61 @@
+subfolder&frequency&target&slot1&slot2&slot3&slot4&slot5
+1995-2000&38&viral&> pa_amod&&&&
+1995-2000&4&viral&> chi_conj&> pa_amod&&&
+1995-2000&3&viral&> pa_advmod&&&&
+1995-2000&1&viral&> chi_cc&> pa_conj&&&
+1995-2000&1&viral&> chi_case&> chi_conj&> chi_det&> pa_obl&
+2001-2005&26&viral&> pa_amod&&&&
+2001-2005&2&viral&> chi_cc&> pa_conj&&&
+2001-2005&1&viral&> pa_advmod&&&&
+2001-2005&1&viral&> chi_advmod&> pa_amod&&&
+2006-2010&98&viral&> pa_amod&&&&
+2006-2010&6&viral&> pa_advmod&&&&
+2006-2010&2&viral&> chi_cc&> pa_conj&&&
+2006-2010&2&viral&> chi_conj&> pa_amod&&&
+2006-2010&1&viral&> chi_cc&> pa_amod&&&
+2006-2010&1&viral&> chi_advcl&> pa_amod&&&
+2011-2015&133&viral&> pa_amod&&&&
+2011-2015&23&viral&> pa_advmod&&&&
+2011-2015&2&viral&> chi_cc&> pa_conj&&&
+2011-2015&1&viral&> chi_conj&> chi_cop&> chi_nsubj&> chi_obl&
+2011-2015&1&viral&> chi_advmod&> pa_amod&&&
+2011-2015&1&viral&> chi_appos&> pa_advmod&&&
+2011-2015&1&viral&> pa_conj&&&&
+2011-2015&1&viral&> chi_advmod&> chi_conj&> chi_cop&> chi_nsubj&> pa_parataxis
+2011-2015&1&viral&> chi_conj&> chi_cop&> chi_nsubj&> chi_parataxis&
+2011-2015&1&viral&> chi_advcl&> chi_advmod&> chi_conj&&
+2011-2015&1&viral&> chi_advmod&> chi_obl&> pa_advmod&&
+2011-2015&1&viral&> pa_appos&&&&
+2011-2015&1&viral&> chi_advmod&> chi_conj&> chi_cop&> chi_nsubj&
+2011-2015&1&viral&> chi_advmod&> chi_cop&> chi_nsubj&> pa_parataxis&
+2016-2020&128&viral&> pa_amod&&&&
+2016-2020&122&viral&> pa_advmod&&&&
+2016-2020&5&viral&> chi_advmod&> pa_advmod&&&
+2016-2020&4&viral&> chi_conj&> pa_amod&&&
+2016-2020&3&viral&> chi_cc&> pa_conj&&&
+2016-2020&2&viral&> pa_conj&&&&
+2016-2020&2&viral&> chi_advmod&> pa_amod&&&
+2016-2020&1&viral&> chi_advmod&&&&
+2016-2020&1&viral&> chi_conj&> pa_advmod&&&
+2016-2020&1&viral&> chi_case&> chi_det&> pa_obl&&
+2016-2020&1&viral&> chi_case&> chi_det&> pa_nmod&&
+2021-2025&324&viral&> pa_advmod&&&&
+2021-2025&203&viral&> pa_amod&&&&
+2021-2025&10&viral&> chi_advmod&> pa_advmod&&&
+2021-2025&7&viral&> chi_conj&> pa_amod&&&
+2021-2025&4&viral&> chi_cc&> pa_conj&&&
+2021-2025&2&viral&> pa_conj&&&&
+2021-2025&2&viral&> chi_advmod&> pa_amod&&&
+2021-2025&2&viral&> chi_advmod&> chi_cc&> pa_conj&&
+2021-2025&1&viral&> chi_cc&> chi_conj&> chi_cop&> chi_nsubj&> pa_acl
+2021-2025&1&viral&> chi_advmod&> chi_conj&> pa_advmod&&
+2021-2025&1&viral&> chi_acl&> chi_det&> pa_advmod&&
+2021-2025&1&viral&> chi_conj&> chi_obl&> pa_advmod&&
+2021-2025&1&viral&> chi_det&> pa_nmod&&&
+2021-2025&1&viral&> chi_conj&> pa_advmod&&&
+2021-2025&1&viral&> chi_obl&> pa_conj&&&
+2021-2025&1&viral&> chi_advmod&> chi_case&> chi_det&> pa_advmod&
+2021-2025&1&viral&> chi_det&> pa_advmod&&&
+2021-2025&1&viral&> pa_advcl&&&&
+2021-2025&1&viral&> chi_cop&> chi_nsubj&> chi_obl&&
+2021-2025&1&viral&> chi_conj&> chi_nsubj&&&
