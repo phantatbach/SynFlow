@@ -45,7 +45,7 @@ Clone the repository, create a virtual environment, and install the required
 packages:
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/phantatbach/SynFlow.git
 cd SynFlow
 python -m venv .venv
 source .venv/bin/activate
