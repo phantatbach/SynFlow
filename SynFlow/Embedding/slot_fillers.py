@@ -217,7 +217,7 @@ def _get_period_embedding(
 def add_period_pca_coordinates(points_df: pd.DataFrame) -> pd.DataFrame:
     """Project fillers separately within each period embedding space."""
     period_dfs = []
-    for _, period_df in points_df.groupby("period"):
+    for _, period_df in points_df.groupby("period", sort=False):
         if len(period_df) < 2:
             continue
 
