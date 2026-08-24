@@ -187,7 +187,7 @@ def spath_explorer(
     all_results: dict[str, dict[str, int]] = {}
     global_counter: Counter[str] = Counter()
 
-    for subfolder in os.listdir(corpus_folder):
+    for subfolder in sorted(os.listdir(corpus_folder)):
         subfolder_path = os.path.join(corpus_folder, subfolder)
         if not os.path.isdir(subfolder_path):
             continue
@@ -367,7 +367,7 @@ def spath_comb_explorer(
     all_totals: dict[str, Counter[str]] = {}
     csv_rows: list[tuple[str, int, str, list[str]]] = []
 
-    for subfolder in os.listdir(corpus_folder):
+    for subfolder in sorted(os.listdir(corpus_folder)):
         subfolder_path = os.path.join(corpus_folder, subfolder)
         if not os.path.isdir(subfolder_path):
             continue

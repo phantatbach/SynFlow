@@ -133,7 +133,7 @@ def build_feat_df(
     feature_cols = template.strip("[]").split("][") if template.strip("[]") else []
     all_rows: list[dict[str, Any]] = []
 
-    for subfolder in os.listdir(corpus_folder):
+    for subfolder in sorted(os.listdir(corpus_folder)):
         subfolder_path = os.path.join(corpus_folder, subfolder)
         if not os.path.isdir(subfolder_path):
             continue

@@ -57,6 +57,42 @@ def follow_path(graph, id2deprel, start, rel_seq):
     dfs(start, 0, [])
     return chains
 
+
+def _parse_subslot_projection(subslot: str) -> tuple[list[str], set[int] | None]:
+    path_part, separator, projection_part = subslot.partition("@")
+    rel_seq = [rel.strip() for rel in path_part.split(">") if rel.strip()]
+
+    if not rel_seq:
+        raise ValueError(f"slot path cannot be empty: {subslot!r}")
+
+    if not separator:
+        return rel_seq, None
+
+    projection_values = [
+        value.strip() for value in projection_part.split(",") if value.strip()
+    ]
+    if not projection_values:
+        raise ValueError(f"slot projection cannot be empty: {subslot!r}")
+
+    keep_indices = set()
+    for value in projection_values:
+        try:
+            index = int(value)
+        except ValueError as exc:
+            raise ValueError(
+                f"slot projection indices must be integers: {subslot!r}"
+            ) from exc
+
+        normalized_index = index if index >= 0 else len(rel_seq) + index
+        if normalized_index < 0 or normalized_index >= len(rel_seq):
+            raise ValueError(
+                f"slot projection index {index} is out of range for {subslot!r}"
+            )
+        keep_indices.add(normalized_index)
+
+    return rel_seq, keep_indices
+
+
 def process_file(args) -> list[dict[str, Any]]:
     corpus_folder, fname, pattern, target_lemma, target_pos, slots, filtered_pos, filler_format = args # Use this for multiprocess.Pool
     pattern = pattern or DEFAULT_PATTERN
@@ -101,8 +137,7 @@ def process_file(args) -> list[dict[str, Any]]:
                             slot_fillers: list[FillerItem] = []
                             # split if there are multiple fillers in a slot
                             for subslot in slot.split("|"):
-                                # split your multi-hop slot
-                                rel_seq = [r.strip() for r in subslot.split(">")]
+                                rel_seq, keep_indices = _parse_subslot_projection(subslot)
                                 # get every chain of IDs matching that rel sequence
                                 chains  = follow_path(graph, id2deprel, tid, rel_seq)
                                 # print(f"DEBUG {fname}:{token_line} chains for {slot} =", chains)
@@ -110,10 +145,14 @@ def process_file(args) -> list[dict[str, Any]]:
                                 for chain in chains:
                                     prev_id = tid
                                     chain_fillers = []
-                                    for nid in chain:
+                                    for hop_index, nid in enumerate(chain):
                                         lemma_pos = id2lemma_pos[nid]
                                         lemma, pos = lemma_pos.rsplit("/", 1)
                                         if pos in filtered_pos:
+                                            prev_id = nid
+                                            continue
+
+                                        if keep_indices is not None and hop_index not in keep_indices:
                                             prev_id = nid
                                             continue
 
@@ -167,6 +206,11 @@ def build_sfiller_df(
     preserve path order inside the tuple. Multiple subslots separated by ``|``
     contribute separate tuple items to the same slot column.
 
+    A subslot can use ``@`` with comma-separated path indices to keep only
+    selected fillers after matching the full dependency path. For example,
+    ``"[chi_case > chi_det @ -1]"`` follows ``chi_case > chi_det`` but stores
+    only the final ``chi_det`` filler. Without ``@``, the full path is stored.
+
     When saved with pandas, these cells are serialized with Python ``repr``
     syntax, for example ``"[('bark/NOUN', 'the/DET')]"``. The parser helpers in
     this module expect that Python-literal list-of-tuples format when reading
@@ -189,7 +233,7 @@ def build_sfiller_df(
     skipped_non_subfolders: list[str] = []
 
     # Go through each subfolder in the corpus folder
-    for subfolder in os.listdir(corpus_folder):
+    for subfolder in sorted(os.listdir(corpus_folder)):
         subfolder_path = os.path.join(corpus_folder, subfolder)
         if not os.path.isdir(subfolder_path):
             skipped_non_subfolders.append(subfolder_path)

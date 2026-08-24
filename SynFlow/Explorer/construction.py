@@ -648,7 +648,7 @@ def construction_explorer(
     num_procs = max(1, num_processes)
     rows: List[Dict[str, object]] = []
 
-    for subfolder in os.listdir(corpus_folder):
+    for subfolder in sorted(os.listdir(corpus_folder)):
         subfolder_path = os.path.join(corpus_folder, subfolder)
         if not os.path.isdir(subfolder_path):
             continue

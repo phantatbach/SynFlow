@@ -35,7 +35,10 @@ def count_keyword_tokens_by_period(
     future_to_subfolder = {}
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        for subfolder_entry in os.scandir(corpus_path):
+        for subfolder_entry in sorted(
+            os.scandir(corpus_path),
+            key=lambda entry: entry.name,
+        ):
             if not subfolder_entry.is_dir():
                 continue
 
