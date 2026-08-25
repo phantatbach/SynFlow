@@ -10,7 +10,12 @@ from typing import Any
 
 import pandas as pd
 
-from SynFlow.const import DEFAULT_PATTERN
+from SynFlow.const import (
+    DEFAULT_PATTERN,
+    target_label,
+    target_line_contains,
+    target_matches,
+)
 
 FeatureItem = tuple[str, ...]
 
@@ -63,8 +68,6 @@ def _process_file(args: tuple[str, str, re.Pattern[str], str, str]) -> list[dict
     path = os.path.join(corpus_folder, fname)
     rows: list[dict[str, Any]] = []
 
-    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
-
     with open(path, encoding="utf8") as fh:
         file_line = 0
         for line in fh:
@@ -74,7 +77,7 @@ def _process_file(args: tuple[str, str, re.Pattern[str], str, str]) -> list[dict
             if not line or line.startswith("<"):
                 continue
 
-            if has_target_check_string not in line:
+            if not target_line_contains(line, target_lemma, target_pos):
                 continue
 
             match = pattern.match(line)
@@ -82,13 +85,13 @@ def _process_file(args: tuple[str, str, re.Pattern[str], str, str]) -> list[dict
                 continue
 
             _, lemma, pos, _, _, _, feats = match.groups()
-            if lemma != target_lemma or pos != target_pos:
+            if not target_matches(lemma, pos, target_lemma, target_pos):
                 continue
 
             row = {
                 "id": f"{target_lemma}/{fname}/{file_line}",
                 "subfolder": subfolder,
-                "target": [(f"{target_lemma}/{target_pos}",)],
+                "target": [(target_label(target_lemma, target_pos),)],
             }
             row.update(parse_feature_cell(feats))
             rows.append(row)
@@ -118,7 +121,8 @@ def build_feat_df(
         template: Bracketed feature-type template, for example
             ``"[Number][Tense][VerbForm]"``.
         target_lemma: Lemma to match exactly.
-        target_pos: POS tag to match exactly.
+        target_pos: POS tag to match exactly, or ``"ALLPOS"`` to match every
+            POS for ``target_lemma``.
         num_processes: Worker count. Defaults to CPU count minus one.
         pattern: Regex capturing token, lemma, POS, ID, HEAD, DEPREL, and FEATS.
         output_path: Optional CSV path to write.

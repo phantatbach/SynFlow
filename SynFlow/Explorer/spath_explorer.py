@@ -11,7 +11,12 @@ from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
 
-from SynFlow.const import DEFAULT_PATTERN
+from SynFlow.const import (
+    DEFAULT_PATTERN,
+    lemma_pos_matches,
+    target_label,
+    target_line_contains,
+)
 from SynFlow.utils import build_graph
 
 
@@ -27,8 +32,11 @@ def _iter_corpus_files(subfolder_path: str) -> Iterable[str]:
 
 
 def _target_ids(id2lemma_pos: dict[str, str], target_lemma: str, target_pos: str) -> list[str]:
-    target = f"{target_lemma}/{target_pos}"
-    return [idx for idx, lemma_pos in id2lemma_pos.items() if lemma_pos == target]
+    return [
+        idx
+        for idx, lemma_pos in id2lemma_pos.items()
+        if lemma_pos_matches(lemma_pos, target_lemma, target_pos)
+    ]
 
 
 def _collect_counter(
@@ -86,7 +94,6 @@ def _read_target_sentences(
     target_pos: str,
 ) -> Iterable[list[str]]:
     has_target = False
-    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
     sent_tokens: list[str] = []
 
     with open(path, encoding="utf8") as fh:
@@ -101,7 +108,7 @@ def _read_target_sentences(
                     yield sent_tokens
             else:
                 sent_tokens.append(line)
-                if has_target_check_string in line:
+                if target_line_contains(line, target_lemma, target_pos):
                     has_target = True
 
 
@@ -181,6 +188,8 @@ def spath_explorer(
 
     Writes ``{target_lemma}_{target_pos}_spaths.json`` to ``output_folder`` and
     returns the last subfolder's aggregate counter, preserving the previous API.
+    Set ``target_pos`` to ``"ALLPOS"`` to match every POS tag for
+    ``target_lemma``.
     """
     pattern = pattern or DEFAULT_PATTERN
     num_processes = num_processes or max(1, cpu_count() - 1)
@@ -309,7 +318,9 @@ def _process_file_spath_combs(
             unique_paths = sorted(set(paths))
             if trimmed_rels_set and not unique_paths:
                 continue
-            parts = [target_lemma] + ["> " + path for path in unique_paths]
+            parts = [target_label(target_lemma, target_pos)] + [
+                "> " + path for path in unique_paths
+            ]
             pattern_str = " & ".join(parts)
             counter[pattern_str] += 1
 

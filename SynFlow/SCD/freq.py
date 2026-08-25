@@ -8,15 +8,21 @@ import numpy as np
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from SynFlow.const import target_line_contains
 from SynFlow.Explorer.sfiller_df import parse_filler_cell
 
 
-def count_keyword_in_file(file_path: str, target_string: str) -> int:
+def count_keyword_in_file(
+    file_path: str,
+    target_lemma: str,
+    target_pos: str,
+) -> int:
     try:
         count = 0
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
-                count += line.count(target_string)
+                if target_line_contains(line, target_lemma, target_pos):
+                    count += 1
         return count
     except Exception as e:
         print(f"Warning: failed to read {file_path}: {e}")
@@ -29,8 +35,12 @@ def count_keyword_tokens_by_period(
     target_pos: str,
     max_workers: int = 8,
 ) -> dict[str, int]:
-    """Count target-token occurrences in all files under each period folder."""
-    target_string = f"{target_lemma}\t{target_pos}\t"
+    """
+    Count target-token occurrences in all files under each period folder.
+
+    Set ``target_pos`` to ``"ALLPOS"`` to count every POS tag for
+    ``target_lemma``.
+    """
     counts_by_period = defaultdict(int)
     future_to_subfolder = {}
 
@@ -52,7 +62,8 @@ def count_keyword_tokens_by_period(
                 future = executor.submit(
                     count_keyword_in_file,
                     file_entry.path,
-                    target_string
+                    target_lemma,
+                    target_pos,
                 )
 
                 future_to_subfolder[future] = subfolder

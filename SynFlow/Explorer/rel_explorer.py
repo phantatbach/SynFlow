@@ -9,7 +9,13 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import pandas as pd
 
-from SynFlow.const import DEFAULT_PATTERN, SENT_ID_PATTERN, VALID_FILLER_FORMATS
+from SynFlow.const import (
+    DEFAULT_PATTERN,
+    SENT_ID_PATTERN,
+    VALID_FILLER_FORMATS,
+    lemma_pos_matches,
+    target_line_contains,
+)
 from SynFlow.utils import build_graph, format_filler
 
 
@@ -353,8 +359,6 @@ def process_file(
     has_multiple_paths = len(parsed_template.paths) > 1
     effective_search_mode = search_mode if has_multiple_paths else "open"
     results: List[Dict[str, object]] = []
-    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
-
     filepath = os.path.join(corpus_folder, fname)
     with open(filepath, encoding="utf8") as fh:
         sent_tokens: List[str] = []
@@ -377,8 +381,11 @@ def process_file(
                     id2wp, graph, id2deprel = build_graph(sent_tokens, pattern)
                     id2context = build_context_lookup(sent_tokens, pattern)
                     sentence_text = " ".join(sent_forms)
-                    target_lp = f"{target_lemma}/{target_pos}"
-                    target_ids = [idx for idx, lemma_pos in id2wp.items() if lemma_pos == target_lp]
+                    target_ids = [
+                        idx
+                        for idx, lemma_pos in id2wp.items()
+                        if lemma_pos_matches(lemma_pos, target_lemma, target_pos)
+                    ]
 
                     for target_id in target_ids:
                         path_matches_by_path: List[List[PathMatch]] = []
@@ -453,7 +460,7 @@ def process_file(
                 match = pattern.match(line)
                 if match:
                     sent_forms.append(match.group(1))
-                if has_target_check_string in line:
+                if target_line_contains(line, target_lemma, target_pos):
                     has_target = True
 
     return results
@@ -479,7 +486,8 @@ def rel_explorer(
         pattern: Regex used to parse token lines. Defaults to
             ``DEFAULT_PATTERN``.
         target_lemma: Lemma of the target node where each search starts.
-        target_pos: POS tag of the target node where each search starts.
+        target_pos: POS tag of the target node where each search starts, or
+            ``"ALLPOS"`` to match every POS for ``target_lemma``.
         deprel: Relation template such as
             ``"> (chi_nsubj, [NOUN, PROPN]) & > (chi_obj, [])"``. ``&``
             separates independent required paths, and ``>`` separates

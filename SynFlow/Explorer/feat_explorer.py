@@ -10,7 +10,7 @@ from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Iterable
 
-from SynFlow.const import DEFAULT_PATTERN
+from SynFlow.const import DEFAULT_PATTERN, target_line_contains, target_matches
 
 
 def parse_feature_types(feats: str) -> list[str]:
@@ -50,15 +50,13 @@ def process_file(args: tuple[str, str, re.Pattern[str], str, str]) -> Counter[st
     counter: Counter[str] = Counter()
     path = os.path.join(corpus_folder, fname)
 
-    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
-
     with open(path, encoding="utf8") as fh:
         for line in fh:
             line = line.rstrip("\n")
             if not line or line.startswith("<"):
                 continue
 
-            if has_target_check_string not in line:
+            if not target_line_contains(line, target_lemma, target_pos):
                 continue
 
             match = pattern.match(line)
@@ -66,7 +64,7 @@ def process_file(args: tuple[str, str, re.Pattern[str], str, str]) -> Counter[st
                 continue
 
             _, lemma, pos, _, _, _, feats = match.groups()
-            if lemma != target_lemma or pos != target_pos:
+            if not target_matches(lemma, pos, target_lemma, target_pos):
                 continue
 
             counter.update(parse_feature_types(feats))
@@ -117,7 +115,8 @@ def feat_explorer(
     Args:
         corpus_folder: Folder containing period subfolders.
         target_lemma: Lemma to match exactly.
-        target_pos: POS tag to match exactly.
+        target_pos: POS tag to match exactly, or ``"ALLPOS"`` to match every
+            POS for ``target_lemma``.
         output_folder: Folder where the JSON frequency file is written.
         top_n: Number of top feature types to plot per subfolder.
         num_processes: Worker count. Defaults to CPU count minus one.

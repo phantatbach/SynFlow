@@ -234,6 +234,11 @@ Use parsed corpora that already follow this format. The notebooks and package
 functions for slot, construction, morphology, qualitative inspection, and
 embedding analysis assume this contract.
 
+Target-based Explorer functions normally match both `target_lemma` and
+`target_pos`. Set `target_pos = "ALLPOS"` to match every POS tag for the target
+lemma. Outputs keep that choice explicit in paths and target columns, for
+example `viral_ALLPOS` and `viral/ALLPOS`.
+
 ## End-to-End Workflow
 
 SynFlow supports an end-to-end workflow from raw sentences to temporal and

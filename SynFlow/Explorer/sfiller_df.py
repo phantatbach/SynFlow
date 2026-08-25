@@ -9,7 +9,14 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
-from SynFlow.const import DEFAULT_COLS, DEFAULT_PATTERN, VALID_FILLER_FORMATS
+from SynFlow.const import (
+    DEFAULT_COLS,
+    DEFAULT_PATTERN,
+    VALID_FILLER_FORMATS,
+    lemma_pos_matches,
+    target_label,
+    target_line_contains,
+)
 from SynFlow.utils import build_graph, format_filler
 
 FillerItem = tuple[str, ...]
@@ -103,8 +110,6 @@ def process_file(args) -> list[dict[str, Any]]:
     path = os.path.join(corpus_folder, fname)
 
     has_target = False
-    has_target_check_string = f"\t{target_lemma}\t{target_pos}"
-
     with open(path, encoding="utf8") as fh:
         file_line = 0
         sent_tokens, sent_lines = [], [] # Init for the whole file. Sent_tokens = lines, sent_forms = word forms only
@@ -123,9 +128,8 @@ def process_file(args) -> list[dict[str, Any]]:
                 if sent_tokens and has_target == True:
                     # Build graph when the whole sentence is appended
                     id2lemma_pos, graph, id2deprel = build_graph(sent_tokens, pattern)
-                    target_lp = f"{target_lemma}/{target_pos}"
                     for tid, lp in id2lemma_pos.items():
-                        if lp != target_lp: # Only process the matched token
+                        if not lemma_pos_matches(lp, target_lemma, target_pos):
                             continue
                         token_line = sent_lines[int(tid)-1]
                         row = {
@@ -179,7 +183,7 @@ def process_file(args) -> list[dict[str, Any]]:
                 sent_tokens.append(line)
                 sent_lines.append(file_line)
                 # Check for target lemma/POS in the current line
-                if has_target_check_string in line:
+                if target_line_contains(line, target_lemma, target_pos):
                     has_target = True
 
     return out
@@ -200,6 +204,10 @@ def build_sfiller_df(
 ) -> tuple[pd.DataFrame, list[str]]:
     """
     Build a slot-filler DataFrame from a parsed corpus.
+
+    Set ``target_pos`` to ``"ALLPOS"`` to match every POS tag for
+    ``target_lemma`` while writing ``target_lemma/ALLPOS`` in the output
+    ``target`` column.
 
     Each matched dependency chain is stored as one atomic tuple. Single-depth
     matches are normalized to one-element tuples, and multi-depth matches
@@ -257,6 +265,11 @@ def build_sfiller_df(
         print(f"Skipped non-subfolder entries: {skipped_non_subfolders}")
 
     # Build DataFrame   
+    if not all_rows:
+        df = pd.DataFrame(columns=["id", "subfolder", "target", *slots])
+        df = df.set_index("id", drop=True)
+        return df, []
+
     df = pd.DataFrame(all_rows).set_index("id", drop=True)
 
     # ensure each slot column exists, even empty columns
@@ -270,7 +283,7 @@ def build_sfiller_df(
     df = df[~mask]
 
     # --- Optional: insert the new "target" slot at column 0 ------------
-    target_slot = f"{target_lemma}/{target_pos}"
+    target_slot = target_label(target_lemma, target_pos)
     # Create a column of single‐item lists [target_slot] for every row:
     df.insert(1, "target", [[(target_slot,)] for _ in range(len(df))])
 
