@@ -1,19 +1,417 @@
-"""Parse raw sentence files with HanLP SRL and Stanza component lemmatisation."""
+"""Parse raw sentence files with HanLP SRL and Stanza lemmatisation.
+
+The input corpus is expected to contain raw sentence files inside subfolders
+below an input root, where each line is one raw sentence.
+
+The output mirrors the input directory structure and writes one SRL frame block
+per predicate:
+
+    <id=FILE_STEM_LINE_NUMBER_PREDICATE_NUMBER>
+    srl_component<TAB>lemmatised_srl_component<TAB>-<TAB>component_id<TAB>head_id<TAB>
+    srl_relation<TAB>-
+    <s>
+"""
 
 from __future__ import annotations
 
+import argparse
+import json
+import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass
+from multiprocessing import Queue
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable, Mapping, Sequence
+
+from tqdm import tqdm
 
 
-ALLOWED_INPUT_EXTENSIONS = frozenset({".txt", ".conll", ".conllu", ".json"})
-_DEFAULT_OUTPUT_SUFFIX = ".txt"
+SRL_PIPELINE: Any | None = None
+LEMMA_PIPELINE: Any | None = None
+DEFAULT_FILE_EXTENSIONS = ("*.txt", "*.conll", "*.conllu", "*.json")
+DEFAULT_STANZA_PROCESSORS = "tokenize,pos,lemma"
+DEFAULT_HANLP_BATCH_SIZE = 32
 
 
-def load_sentences(path: Path) -> list[str]:
-    """Load non-empty sentences while preserving source line order."""
-    return [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+@dataclass(frozen=True)
+class ParseTask:
+    """One input file and its mirrored output location."""
+
+    input_path: Path
+    output_path: Path
+
+
+@dataclass(frozen=True)
+class ParseResult:
+    """Summary for one parsed file."""
+
+    input_path: Path
+    output_path: Path
+    sentence_count: int
+    skipped: bool
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description=(
+            "Parse raw sentence files into HanLP SRL plus Stanza lemma "
+            "SynFlow format."
+        )
+    )
+    parser.add_argument(
+        "--input-root",
+        "--input-dir",
+        dest="input_root",
+        type=Path,
+        default=Path.cwd(),
+        help=(
+            "Corpus root containing raw sentence files. "
+            "Default: current directory."
+        ),
+    )
+    parser.add_argument(
+        "--output-root",
+        "--output-dir",
+        dest="output_root",
+        type=Path,
+        default=None,
+        help=(
+            "Output root. Default: sibling directory named "
+            "<input-root-name>_srl_parsed."
+        ),
+    )
+    parser.add_argument(
+        "--pattern",
+        action="append",
+        default=None,
+        help=(
+            "File glob to parse recursively under the input root. "
+            "Can be repeated. Default: *.txt, *.conll, *.conllu, *.json."
+        ),
+    )
+    parser.add_argument(
+        "--hanlp-model",
+        required=True,
+        help="Required HanLP SRL model name, URL, or local path.",
+    )
+    parser.add_argument(
+        "--hanlp-batch-size",
+        type=int,
+        default=DEFAULT_HANLP_BATCH_SIZE,
+        help=(
+            "Number of raw sentences sent to HanLP in each batch. "
+            f"Default: {DEFAULT_HANLP_BATCH_SIZE}."
+        ),
+    )
+    parser.add_argument(
+        "--language",
+        required=True,
+        help="Required Stanza language code for component lemmatisation.",
+    )
+    stanza_package_group = parser.add_mutually_exclusive_group(required=True)
+    stanza_package_group.add_argument(
+        "--stanza-package",
+        help=(
+            "One Stanza package to use for all requested processors, "
+            "for example ewt."
+        ),
+    )
+    stanza_package_group.add_argument(
+        "--stanza-package-json",
+        help=(
+            "JSON object mapping each Stanza processor to a package, for example "
+            '\'{"tokenize":"ewt","pos":"ewt","lemma":"ewt"}\'.'
+        ),
+    )
+    parser.add_argument(
+        "--stanza-processors",
+        default=DEFAULT_STANZA_PROCESSORS,
+        help=(
+            "Comma-separated Stanza processors for component lemmatisation. "
+            f"Default: {DEFAULT_STANZA_PROCESSORS}."
+        ),
+    )
+    parser.add_argument(
+        "--gpu",
+        default="0",
+        help=(
+            "CUDA GPU id or comma-separated GPU ids to use, for example: "
+            "--gpu 2 or --gpu 2,3. Default: 0."
+        ),
+    )
+    parser.add_argument(
+        "--workers-per-gpu",
+        type=int,
+        default=1,
+        help=(
+            "Number of worker processes to run on each selected GPU. "
+            "Default: 1."
+        ),
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Re-parse files even when the output file already exists.",
+    )
+    return parser.parse_args()
+
+
+def parse_gpu_ids(gpu: str) -> list[int]:
+    """Parse one or more CUDA GPU ids from the --gpu argument."""
+    gpu_ids: list[int] = []
+    for raw_gpu_id in gpu.split(","):
+        gpu_id = raw_gpu_id.strip()
+        if not gpu_id:
+            raise ValueError("GPU ids must not be empty")
+        if not gpu_id.isdigit():
+            raise ValueError("GPU ids must be non-negative integers")
+        gpu_ids.append(int(gpu_id))
+    return gpu_ids
+
+
+def build_worker_gpu_ids(gpu_ids: list[int], workers_per_gpu: int) -> list[int]:
+    """Expand GPU ids so each selected GPU gets workers_per_gpu workers."""
+    if workers_per_gpu < 1:
+        raise ValueError("workers_per_gpu must be at least 1")
+    return [gpu_id for gpu_id in gpu_ids for _ in range(workers_per_gpu)]
+
+
+def parse_stanza_package_json(raw_json: str | None) -> dict[str, str] | None:
+    """Parse CLI JSON for Stanza per-processor packages."""
+    if raw_json is None:
+        return None
+
+    stanza_package = json.loads(raw_json)
+    if not isinstance(stanza_package, dict):
+        raise ValueError("--stanza-package-json must be a JSON object")
+
+    for processor, package in stanza_package.items():
+        if not isinstance(processor, str) or not isinstance(package, str):
+            raise ValueError("--stanza-package-json keys and values must be strings")
+
+    return stanza_package
+
+
+def validate_parse_config(
+    hanlp_model_name: str,
+    language: str,
+    stanza_package: str | Mapping[str, str],
+    stanza_processors: str,
+    hanlp_batch_size: int,
+) -> tuple[str, str]:
+    """Validate required HanLP and Stanza parser configuration."""
+    hanlp_model_name = hanlp_model_name.strip()
+    language = language.strip()
+    stanza_processors = stanza_processors.strip()
+
+    if not hanlp_model_name:
+        raise ValueError("hanlp_model_name must be a non-empty HanLP model name")
+    if not language:
+        raise ValueError("language must be a non-empty Stanza language code")
+    if isinstance(stanza_package, str) and not stanza_package.strip():
+        raise ValueError("stanza_package must be a non-empty Stanza package name")
+    if isinstance(stanza_package, Mapping) and not stanza_package:
+        raise ValueError("stanza_package must not be empty")
+    if isinstance(stanza_package, Mapping):
+        for processor, package in stanza_package.items():
+            if not isinstance(processor, str) or not isinstance(package, str):
+                raise ValueError("stanza_package keys and values must be strings")
+    if not stanza_processors:
+        raise ValueError("stanza_processors must not be empty")
+    if hanlp_batch_size < 1:
+        raise ValueError("hanlp_batch_size must be at least 1")
+
+    return hanlp_model_name, language
+
+
+def build_hanlp_srl_pipeline(model_name: str, gpu: int) -> Any:
+    """Load one HanLP SRL pipeline on one CUDA GPU."""
+    import hanlp
+
+    device = f"cuda:{gpu}"
+    print(f"Loading HanLP SRL on {device} with model={model_name!r}", flush=True)
+    return hanlp.load(model_name, devices=gpu)
+
+
+def build_stanza_lemma_pipeline(
+    gpu: int,
+    language: str,
+    stanza_package: str | Mapping[str, str],
+    stanza_processors: str,
+) -> Any:
+    """Load one Stanza lemmatisation pipeline on one CUDA GPU."""
+    import stanza
+    from stanza.pipeline.core import DownloadMethod
+
+    device = f"cuda:{gpu}"
+    resolved_package: str | dict[str, str] = (
+        dict(stanza_package)
+        if isinstance(stanza_package, Mapping)
+        else stanza_package
+    )
+
+    print(
+        f"Loading Stanza {language} on {device} "
+        f"with package={resolved_package!r}, processors={stanza_processors!r}",
+        flush=True,
+    )
+
+    return stanza.Pipeline(
+        lang=language,
+        package=resolved_package,
+        processors=stanza_processors,
+        tokenize_no_ssplit=True,
+        use_gpu=True,
+        device=device,
+        download_method=DownloadMethod.REUSE_RESOURCES,
+    )
+
+
+def init_worker(
+    gpu_queue: Queue[int],
+    hanlp_model_name: str,
+    language: str,
+    stanza_package: str | Mapping[str, str],
+    stanza_processors: str,
+) -> None:
+    """Load HanLP and Stanza pipelines on the GPU assigned to this worker."""
+    global SRL_PIPELINE, LEMMA_PIPELINE
+    gpu = gpu_queue.get()
+    SRL_PIPELINE = build_hanlp_srl_pipeline(hanlp_model_name, gpu)
+    LEMMA_PIPELINE = build_stanza_lemma_pipeline(
+        gpu=gpu,
+        language=language,
+        stanza_package=stanza_package,
+        stanza_processors=stanza_processors,
+    )
+
+
+def discover_tasks(
+    input_root: Path,
+    output_root: Path,
+    patterns: Sequence[str] = DEFAULT_FILE_EXTENSIONS,
+) -> list[ParseTask]:
+    """Return parse tasks for matching files inside input-root subfolders."""
+    tasks: list[ParseTask] = []
+    seen: set[Path] = set()
+    for pattern in patterns:
+        for input_path in sorted(
+            path for path in input_root.rglob(pattern) if path.is_file()
+        ):
+            relative_path = input_path.relative_to(input_root)
+            if len(relative_path.parts) < 2 or input_path in seen:
+                continue
+            seen.add(input_path)
+            tasks.append(
+                ParseTask(
+                    input_path=input_path,
+                    output_path=output_root / relative_path,
+                )
+            )
+    return tasks
+
+
+def hanlp_stanza_parse_folder(
+    input_root: str | Path,
+    output_root: str | Path,
+    *,
+    hanlp_model_name: str,
+    language: str,
+    stanza_package: str | Mapping[str, str],
+    stanza_processors: str = DEFAULT_STANZA_PROCESSORS,
+    gpu: str = "0",
+    workers_per_gpu: int = 1,
+    hanlp_batch_size: int = DEFAULT_HANLP_BATCH_SIZE,
+    overwrite: bool = False,
+    file_patterns: Sequence[str] = DEFAULT_FILE_EXTENSIONS,
+) -> Path:
+    """Parse raw sentence files inside input-root subfolders."""
+    input_root = Path(input_root).resolve()
+    output_root = Path(output_root).resolve()
+
+    hanlp_model_name, language = validate_parse_config(
+        hanlp_model_name=hanlp_model_name,
+        language=language,
+        stanza_package=stanza_package,
+        stanza_processors=stanza_processors,
+        hanlp_batch_size=hanlp_batch_size,
+    )
+
+    tasks = discover_tasks(input_root, output_root, file_patterns)
+    if not tasks:
+        extensions = ", ".join(file_patterns)
+        raise FileNotFoundError(
+            f"No subfolder files matched {extensions} under {input_root}"
+        )
+
+    gpu_ids = parse_gpu_ids(gpu)
+    worker_gpu_ids = build_worker_gpu_ids(gpu_ids, workers_per_gpu)
+
+    print(f"Input root: {input_root}", flush=True)
+    print(f"Output root: {output_root}", flush=True)
+    print(f"Files: {len(tasks)}", flush=True)
+    print(
+        f"HanLP model: {hanlp_model_name}; "
+        f"Stanza language: {language}; "
+        f"Stanza package: {stanza_package}; "
+        f"Stanza processors: {stanza_processors}",
+        flush=True,
+    )
+    print(
+        f"GPUs: {', '.join(f'cuda:{gpu_id}' for gpu_id in gpu_ids)}; "
+        f"workers per GPU: {workers_per_gpu}; "
+        f"total workers: {len(worker_gpu_ids)}; "
+        f"HanLP batch size: {hanlp_batch_size}; "
+        f"overwrite: {overwrite}",
+        flush=True,
+    )
+
+    run_tasks(
+        tasks=tasks,
+        hanlp_batch_size=hanlp_batch_size,
+        worker_gpu_ids=worker_gpu_ids,
+        overwrite=overwrite,
+        hanlp_model_name=hanlp_model_name,
+        language=language,
+        stanza_package=stanza_package,
+        stanza_processors=stanza_processors,
+    )
+    return output_root
+
+
+def batched(items: list[str], batch_size: int) -> Iterable[list[str]]:
+    """Yield fixed-size batches."""
+    for start in range(0, len(items), batch_size):
+        yield items[start : start + batch_size]
+
+
+def read_sentence_rows(input_path: Path) -> list[tuple[str, str]]:
+    """Read raw sentence lines from one input file."""
+    rows: list[tuple[str, str]] = []
+    with input_path.open("r", encoding="utf-8") as input_file:
+        for line_number, line in enumerate(input_file, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            rows.append((str(line_number), stripped))
+    return rows
+
+
+def parse_hanlp_srl_batches(
+    sentences: list[str],
+    hanlp_batch_size: int,
+) -> list[Any]:
+    """Run HanLP SRL in sentence batches and return SRL frames per sentence."""
+    if SRL_PIPELINE is None:
+        raise RuntimeError("HanLP SRL pipeline was not initialized")
+    if not sentences:
+        return []
+
+    all_srl_frames: list[Any] = []
+    for batch in batched(sentences, hanlp_batch_size):
+        all_srl_frames.extend(SRL_PIPELINE(batch)["srl"])
+    return all_srl_frames
 
 
 def span_start(span: Any, fallback_index: int) -> int:
@@ -23,24 +421,26 @@ def span_start(span: Any, fallback_index: int) -> int:
     return fallback_index
 
 
-def lemmatise_component(srl_component: str, lemma_parser: Any) -> str:
+def lemmatise_component(srl_component: str) -> str:
     """Lemmatise one SRL component by parsing it with Stanza."""
-    doc = lemma_parser(srl_component)
-    lemmas = [word.lemma or word.text for sentence in doc.sentences for word in sentence.words]
+    if LEMMA_PIPELINE is None:
+        raise RuntimeError("Stanza lemma pipeline was not initialized")
+
+    doc = LEMMA_PIPELINE(srl_component)
+    lemmas = [
+        word.lemma or word.text
+        for sentence in doc.sentences
+        for word in sentence.words
+    ]
     return " ".join(lemmas) if lemmas else srl_component
 
 
-def frame_to_rows(
-    frame: list[Any],
-    lemma_parser: Any,
-) -> list[tuple[str, str, int, int, str]]:
-    """Convert one HanLP SRL frame into output rows.
-
-    Each returned row contains SRL component text, lemmatised SRL component
-    text, component id, head id, and SRL relation. Arguments point to the
-    predicate component id; the predicate points to head id 0.
-    """
-    sorted_frame = sorted(enumerate(frame), key=lambda item: span_start(item[1], item[0]))
+def frame_to_rows(frame: list[Any]) -> list[tuple[str, str, int, int, str]]:
+    """Convert one HanLP SRL frame into output rows."""
+    sorted_frame = sorted(
+        enumerate(frame),
+        key=lambda item: span_start(item[1], item[0]),
+    )
     predicate_component_id: int | None = None
 
     for component_id, (_, span) in enumerate(sorted_frame, start=1):
@@ -55,7 +455,7 @@ def frame_to_rows(
     rows: list[tuple[str, str, int, int, str]] = []
     for component_id, (_, span) in enumerate(sorted_frame, start=1):
         srl_component = str(span[0])
-        lemmatised_srl_component = lemmatise_component(srl_component, lemma_parser)
+        lemmatised_srl_component = lemmatise_component(srl_component)
         srl_relation = str(span[1])
         head_id = 0 if srl_relation == "PRED" else predicate_component_id
         rows.append(
@@ -71,310 +471,197 @@ def frame_to_rows(
     return rows
 
 
-def file_id_for_output(
-    input_file: Path,
-    input_root: Path | None = None,
-) -> str:
-    """Build the file id used in <id=...>."""
-    return input_file.stem
+def format_frame_block(
+    file_id: str,
+    sentence_index: str,
+    predicate_index: int,
+    frame: list[Any],
+) -> str | None:
+    """Serialize one HanLP SRL frame as one SynFlow block."""
+    rows = frame_to_rows(frame)
+    if not rows:
+        return None
+
+    lines = [f"<id={file_id}_{sentence_index}_{predicate_index}>"]
+    for (
+        srl_component,
+        lemmatised_srl_component,
+        component_id,
+        head_id,
+        srl_relation,
+    ) in rows:
+        lines.append(
+            f"{srl_component}\t{lemmatised_srl_component}\t-\t"
+            f"{component_id}\t{head_id}\t{srl_relation}\t-"
+        )
+    lines.append("<s>")
+    return "\n".join(lines)
 
 
-def output_file_for_input(
-    input_file: Path,
-    input_root: Path | None,
-    output_path: Path,
-    output_suffix: str | None = None,
-) -> Path:
-    """Return the output file path for one input file."""
-    suffix = output_suffix if output_suffix is not None else _DEFAULT_OUTPUT_SUFFIX
-    if input_root is None:
-        if output_path.suffix:
-            return output_path
-        return output_path / f"{input_file.stem}{suffix}"
-
-    relative_path = input_file.relative_to(input_root)
-    return (output_path / relative_path).with_suffix(suffix)
+def fsync_parent(path: Path) -> None:
+    """Ensure a directory entry is durable after os.replace."""
+    directory_fd = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 
 
-def has_allowed_input_extension(
-    path: Path,
-    allowed_input_extensions: frozenset[str] = ALLOWED_INPUT_EXTENSIONS,
-) -> bool:
-    """Return whether a path satisfies the input file extension contract."""
-    return path.suffix.lower() in allowed_input_extensions
+def parse_file(
+    task: ParseTask,
+    hanlp_batch_size: int,
+    overwrite: bool,
+) -> ParseResult:
+    """Parse one corpus file and atomically publish the mirrored output."""
+    if task.output_path.exists() and not overwrite:
+        return ParseResult(task.input_path, task.output_path, 0, skipped=True)
 
+    rows = read_sentence_rows(task.input_path)
+    sentence_indexes = [sentence_index for sentence_index, _ in rows]
+    sentences = [sentence for _, sentence in rows]
+    all_srl_frames = parse_hanlp_srl_batches(sentences, hanlp_batch_size)
 
-def iter_input_files(
-    input_path: Path,
-    allowed_input_extensions: frozenset[str] = ALLOWED_INPUT_EXTENSIONS,
-) -> list[Path]:
-    """Return valid input files in deterministic relative path order."""
-    if input_path.is_file():
-        if not has_allowed_input_extension(input_path, allowed_input_extensions):
-            allowed = ", ".join(sorted(allowed_input_extensions))
-            raise ValueError(f"Input file extension must be one of: {allowed}. Got: {input_path}")
-        return [input_path]
-
-    if input_path.is_dir():
-        return sorted(
-            path
-            for path in input_path.rglob("*")
-            if path.is_file() and has_allowed_input_extension(path, allowed_input_extensions)
+    if len(all_srl_frames) != len(sentence_indexes):
+        raise RuntimeError(
+            f"HanLP returned {len(all_srl_frames)} SRL results "
+            f"for {len(sentence_indexes)} inputs"
         )
 
-    raise FileNotFoundError(f"Input path does not exist: {input_path}")
+    task.output_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = task.output_path.with_name(f".{task.output_path.name}.tmp")
+    tmp_path.unlink(missing_ok=True)
 
-
-def parse_hanlp_srl_batches(
-    sentences: list[str],
-    srl_parser: Any,
-    hanlp_batch_size: int | None = None,
-) -> list[Any]:
-    """Run HanLP SRL in sentence batches and return SRL frames per sentence."""
-    if hanlp_batch_size is None:
-        return list(srl_parser(sentences)["srl"])
-    if hanlp_batch_size <= 0:
-        raise ValueError(f"hanlp_batch_size must be positive or None. Got: {hanlp_batch_size}")
-
-    all_srl_frames: list[Any] = []
-    for start in range(0, len(sentences), hanlp_batch_size):
-        batch = sentences[start : start + hanlp_batch_size]
-        all_srl_frames.extend(srl_parser(batch)["srl"])
-    return all_srl_frames
-
-
-def write_conll_like(
-    input_file: Path,
-    srl_parser: Any,
-    lemma_parser: Any,
-    output_file: Path,
-    input_root: Path | None = None,
-    hanlp_batch_size: int | None = None,
-) -> int:
-    """Run HanLP SRL, lemmatise SRL components with Stanza, and write output."""
-    sentences = load_sentences(input_file)
-    all_srl_frames = parse_hanlp_srl_batches(sentences, srl_parser, hanlp_batch_size)
-    file_id = file_id_for_output(input_file, input_root)
-
-    lines: list[str] = []
-    for sentence_index, sentence_frames in enumerate(all_srl_frames, start=1):
-        predicate_index = 0
-
-        for frame in sentence_frames:
-            rows = frame_to_rows(frame, lemma_parser)
-            if not rows:
-                continue
-
-            predicate_index += 1
-            lines.append(f"<id={file_id}_{sentence_index}_{predicate_index}>")
-
-            for (
-                srl_component,
-                lemmatised_srl_component,
-                component_id,
-                head_id,
-                srl_relation,
-            ) in rows:
-                lines.append(
-                    f"{srl_component}\t{lemmatised_srl_component}\t-\t"
-                    f"{component_id}\t{head_id}\t{srl_relation}\t-"
+    with tmp_path.open("w", encoding="utf-8") as output_file:
+        for sentence_index, sentence_frames in zip(
+            sentence_indexes,
+            all_srl_frames,
+        ):
+            predicate_index = 0
+            for frame in sentence_frames:
+                block = format_frame_block(
+                    file_id=task.input_path.stem,
+                    sentence_index=sentence_index,
+                    predicate_index=predicate_index + 1,
+                    frame=frame,
                 )
+                if block is None:
+                    continue
+                predicate_index += 1
+                output_file.write(block)
+                output_file.write("\n")
 
-            lines.append("<s>")
+        output_file.flush()
+        os.fsync(output_file.fileno())
 
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    output_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return len(sentences)
-
-
-def build_hanlp_srl_parser(model_name: str, gpu_id: int | None = None) -> Any:
-    """Load the HanLP parser used for semantic role labelling."""
-    import hanlp
-
-    if gpu_id is None:
-        return hanlp.load(model_name)
-    return hanlp.load(model_name, devices=gpu_id)
+    os.replace(tmp_path, task.output_path)
+    fsync_parent(task.output_path)
+    return ParseResult(task.input_path, task.output_path, len(rows), skipped=False)
 
 
-def build_stanza_pipeline(
-    lang: str,
-    package: str | dict[str, str] | None = None,
-    gpu_id: int | None = None,
-    processors: str | dict[str, str] = "tokenize,pos,lemma",
-    **kwargs: Any,
-) -> Any:
-    """Build a Stanza pipeline from language-only or explicit package config."""
-    import stanza
-
-    pipeline_kwargs: dict[str, Any] = {
-        "lang": lang,
-        "processors": processors,
-        "tokenize_no_ssplit": True,
-    }
-    if package is not None:
-        pipeline_kwargs["package"] = package
-    if gpu_id is not None:
-        pipeline_kwargs["device"] = f"cuda:{gpu_id}"
-        pipeline_kwargs["use_gpu"] = True
-    pipeline_kwargs.update(kwargs)
-    return stanza.Pipeline(**pipeline_kwargs)
-
-
-def parse_path(
-    input_path: Path,
-    output_path: Path,
-    srl_parser: Any,
-    lemma_parser: Any,
-    allowed_input_extensions: frozenset[str] = ALLOWED_INPUT_EXTENSIONS,
-    output_suffix: str | None = None,
-    hanlp_batch_size: int | None = None,
-    verbose: bool = True,
-) -> dict[Path, int]:
-    """Parse one file or a folder tree and keep folder structure in output."""
-    input_root = input_path if input_path.is_dir() else None
-    input_files = iter_input_files(input_path, allowed_input_extensions)
-    if not input_files:
-        allowed = ", ".join(sorted(allowed_input_extensions))
-        raise FileNotFoundError(f"No input files with extensions {allowed} under {input_path}")
-
-    sentence_counts: dict[Path, int] = {}
-    for input_file in input_files:
-        output_file = output_file_for_input(input_file, input_root, output_path, output_suffix)
-        sentence_count = write_conll_like(
-            input_file=input_file,
-            srl_parser=srl_parser,
-            lemma_parser=lemma_parser,
-            output_file=output_file,
-            input_root=input_root,
-            hanlp_batch_size=hanlp_batch_size,
-        )
-        sentence_counts[input_file] = sentence_count
-        if verbose:
-            print(f"Parsed {sentence_count} sentences: {input_file} -> {output_file}")
-
-    if verbose:
-        total_sentences = sum(sentence_counts.values())
-        print(f"Done. Parsed {len(sentence_counts)} files and {total_sentences} sentences.")
-
-    return sentence_counts
-
-
-def split_round_robin(items: list[Path], chunk_count: int) -> list[list[Path]]:
-    """Split items into non-empty round-robin chunks."""
-    chunks: list[list[Path]] = [[] for _ in range(chunk_count)]
-    for index, item in enumerate(items):
-        chunks[index % chunk_count].append(item)
-    return [chunk for chunk in chunks if chunk]
-
-
-def _parse_file_chunk(
-    input_files: list[Path],
-    input_root: Path | None,
-    output_path: Path,
-    output_suffix: str | None,
+def run_tasks(
+    tasks: list[ParseTask],
+    hanlp_batch_size: int,
+    worker_gpu_ids: list[int],
+    overwrite: bool,
     hanlp_model_name: str,
-    stanza_lang: str,
-    stanza_package: str | dict[str, str] | None,
-    stanza_processors: str | dict[str, str],
-    stanza_kwargs: dict[str, Any],
-    gpu_id: int,
-    hanlp_batch_size: int | None,
-) -> list[tuple[Path, Path, int, int]]:
-    """Worker entrypoint: load parsers on one GPU and parse a file chunk."""
-    srl_parser = build_hanlp_srl_parser(hanlp_model_name, gpu_id=gpu_id)
-    lemma_parser = build_stanza_pipeline(
-        lang=stanza_lang,
-        package=stanza_package,
-        gpu_id=gpu_id,
-        processors=stanza_processors,
-        **stanza_kwargs,
-    )
+    language: str,
+    stanza_package: str | Mapping[str, str],
+    stanza_processors: str,
+) -> None:
+    """Parse files in parallel with the requested GPU worker layout."""
+    parsed_sentences = 0
+    skipped_files = 0
+    gpu_queue: Queue[int] = Queue()
+    for gpu_id in worker_gpu_ids:
+        gpu_queue.put(gpu_id)
 
-    results: list[tuple[Path, Path, int, int]] = []
-    for input_file in input_files:
-        output_file = output_file_for_input(input_file, input_root, output_path, output_suffix)
-        sentence_count = write_conll_like(
-            input_file=input_file,
-            srl_parser=srl_parser,
-            lemma_parser=lemma_parser,
-            output_file=output_file,
-            input_root=input_root,
-            hanlp_batch_size=hanlp_batch_size,
-        )
-        results.append((input_file, output_file, sentence_count, gpu_id))
-    return results
-
-
-def hanlp_stanza_parse_folder(
-    input_path: Path,
-    output_path: Path,
-    hanlp_model_name: str,
-    stanza_lang: str,
-    stanza_package: str | dict[str, str] | None,
-    gpu_ids: list[int],
-    num_worker_per_gpu: int,
-    stanza_processors: str | dict[str, str] = "tokenize,pos,lemma",
-    stanza_kwargs: dict[str, Any] | None = None,
-    allowed_input_extensions: frozenset[str] = ALLOWED_INPUT_EXTENSIONS,
-    output_suffix: str | None = None,
-    hanlp_batch_size: int | None = None,
-    verbose: bool = True,
-) -> dict[Path, int]:
-    """Parse a file/folder tree with HanLP SRL and Stanza lemmatisation.
-
-    HanLP is batched by sentence count through hanlp_batch_size. Stanza is kept
-    component-by-component inside each worker to avoid sending all SRL
-    components from a sentence/file as one large Stanza batch.
-    """
-    if not gpu_ids:
-        raise ValueError("gpu_ids must contain at least one GPU id.")
-    if num_worker_per_gpu <= 0:
-        raise ValueError(f"num_worker_per_gpu must be positive. Got: {num_worker_per_gpu}")
-    if hanlp_batch_size is not None and hanlp_batch_size <= 0:
-        raise ValueError(f"hanlp_batch_size must be positive or None. Got: {hanlp_batch_size}")
-
-    input_root = input_path if input_path.is_dir() else None
-    input_files = iter_input_files(input_path, allowed_input_extensions)
-    if not input_files:
-        allowed = ", ".join(sorted(allowed_input_extensions))
-        raise FileNotFoundError(f"No input files with extensions {allowed} under {input_path}")
-
-    max_workers = min(len(input_files), len(gpu_ids) * num_worker_per_gpu)
-    chunks = split_round_robin(input_files, max_workers)
-    worker_gpu_ids = [gpu_ids[index % len(gpu_ids)] for index in range(len(chunks))]
-    stanza_options = stanza_kwargs or {}
-
-    sentence_counts: dict[Path, int] = {}
-    with ProcessPoolExecutor(max_workers=len(chunks)) as executor:
+    with ProcessPoolExecutor(
+        max_workers=len(worker_gpu_ids),
+        initializer=init_worker,
+        initargs=(
+            gpu_queue,
+            hanlp_model_name,
+            language,
+            stanza_package,
+            stanza_processors,
+        ),
+    ) as executor:
         futures = [
             executor.submit(
-                _parse_file_chunk,
-                chunk,
-                input_root,
-                output_path,
-                output_suffix,
-                hanlp_model_name,
-                stanza_lang,
-                stanza_package,
-                stanza_processors,
-                stanza_options,
-                gpu_id,
+                parse_file,
+                task,
                 hanlp_batch_size,
+                overwrite,
             )
-            for chunk, gpu_id in zip(chunks, worker_gpu_ids)
+            for task in tasks
         ]
-
-        for future in as_completed(futures):
-            for input_file, output_file, sentence_count, gpu_id in future.result():
-                sentence_counts[input_file] = sentence_count
-                if verbose:
-                    print(
-                        f"GPU {gpu_id}: parsed {sentence_count} sentences: "
-                        f"{input_file} -> {output_file}"
+        with tqdm(total=len(futures), desc="Files", unit="file") as file_progress:
+            for future in as_completed(futures):
+                result = future.result()
+                parsed_sentences += result.sentence_count
+                skipped_files += int(result.skipped)
+                if result.skipped:
+                    file_progress.set_postfix_str(
+                        f"skipped: {result.input_path.name}"
                     )
+                else:
+                    file_progress.set_postfix_str(
+                        f"parsed {result.sentence_count}: "
+                        f"{result.input_path.name}"
+                    )
+                file_progress.update(1)
 
-    if verbose:
-        total_sentences = sum(sentence_counts.values())
-        print(f"Done. Parsed {len(sentence_counts)} files and {total_sentences} sentences.")
+    print(
+        f"Done. Files: {len(tasks)}, skipped: {skipped_files}, "
+        f"sentences parsed: {parsed_sentences}",
+        flush=True,
+    )
 
-    return sentence_counts
+
+def main() -> None:
+    """Parse all discovered corpus files."""
+    args = parse_args()
+    input_root = args.input_root.resolve()
+    output_root = (
+        args.output_root.resolve()
+        if args.output_root is not None
+        else input_root.parent / f"{input_root.name}_srl_parsed"
+    )
+
+    patterns = args.pattern if args.pattern is not None else DEFAULT_FILE_EXTENSIONS
+    stanza_package = (
+        parse_stanza_package_json(args.stanza_package_json)
+        if args.stanza_package_json is not None
+        else args.stanza_package
+    )
+    if stanza_package is None:
+        raise ValueError("A Stanza package must be provided")
+
+    hanlp_stanza_parse_folder(
+        input_root=input_root,
+        output_root=output_root,
+        hanlp_model_name=args.hanlp_model,
+        language=args.language,
+        stanza_package=stanza_package,
+        stanza_processors=args.stanza_processors,
+        gpu=args.gpu,
+        workers_per_gpu=args.workers_per_gpu,
+        hanlp_batch_size=args.hanlp_batch_size,
+        overwrite=args.overwrite,
+        file_patterns=patterns,
+    )
+
+
+if __name__ == "__main__":
+    main()
+
+# Example:
+# python -m SynFlow.Data.hanlp_stanza_srl \
+#   --input-dir /home/volt/bach/Corpora/raw_sentences \
+#   --output-dir /home/volt/bach/Corpora/raw_sentences_srl_parsed \
+#   --hanlp-model /path/to/hanlp-srl-model \
+#   --language en \
+#   --stanza-package-json '{"tokenize":"ewt","pos":"ewt","lemma":"ewt"}' \
+#   --gpu 2,3 \
+#   --workers-per-gpu 1 \
+#   --hanlp-batch-size 32

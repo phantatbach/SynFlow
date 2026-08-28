@@ -143,6 +143,32 @@ processor_models = {
 }
 ```
 
+The same parser can be run from a terminal with one Stanza package/model:
+
+```bash
+python -m SynFlow.Data.stanza_parse \
+  --input-dir /path/to/raw_root \
+  --output-dir /path/to/parsed_root \
+  --language en \
+  --model ewt \
+  --gpu 2,3 \
+  --workers-per-gpu 2 \
+  --batch-size 128
+```
+
+Or with per-processor Stanza packages:
+
+```bash
+python -m SynFlow.Data.stanza_parse \
+  --input-dir /path/to/raw_root \
+  --output-dir /path/to/parsed_root \
+  --language de \
+  --processor-models-json '{"tokenize":"gsd","mwt":"gsd","pos":"hdt","lemma":"hdt","depparse":"hdt"}' \
+  --gpu 2,3 \
+  --workers-per-gpu 2 \
+  --batch-size 128
+```
+
 #### HanLP + Stanza SRL Parse
 
 The SRL section runs HanLP SRL, lemmatises each SRL component with Stanza, and
@@ -161,6 +187,20 @@ from SynFlow.Data import hanlp_stanza_parse_folder
 The notebook requires explicit HanLP and Stanza model settings, plus GPU worker
 settings for parallel parsing. It also requires the `hanlp` package in the
 runtime environment.
+
+The same parser can be run from a terminal:
+
+```bash
+python -m SynFlow.Data.hanlp_stanza_srl \
+  --input-dir /path/to/raw_root \
+  --output-dir /path/to/srl_parsed_root \
+  --hanlp-model /path/to/hanlp-srl-model \
+  --language en \
+  --stanza-package-json '{"tokenize":"ewt","pos":"ewt","lemma":"ewt"}' \
+  --gpu 2,3 \
+  --workers-per-gpu 1 \
+  --hanlp-batch-size 32
+```
 
 ### 2. Slot Level
 
