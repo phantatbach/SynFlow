@@ -23,11 +23,11 @@ def span_start(span: Any, fallback_index: int) -> int:
     return fallback_index
 
 
-def lemmatise_component(component_text: str, lemma_parser: Any) -> str:
+def lemmatise_component(srl_component: str, lemma_parser: Any) -> str:
     """Lemmatise one SRL component by parsing it with Stanza."""
-    doc = lemma_parser(component_text)
+    doc = lemma_parser(srl_component)
     lemmas = [word.lemma or word.text for sentence in doc.sentences for word in sentence.words]
-    return " ".join(lemmas) if lemmas else component_text
+    return " ".join(lemmas) if lemmas else srl_component
 
 
 def frame_to_rows(
@@ -36,16 +36,16 @@ def frame_to_rows(
 ) -> list[tuple[str, str, int, int, str]]:
     """Convert one HanLP SRL frame into output rows.
 
-    Each returned row contains component text, lemmatised component text, SRL id,
-    head id, and SRL relation. Arguments point to the predicate SRL id; the
-    predicate points to head id 0.
+    Each returned row contains SRL component text, lemmatised SRL component
+    text, component id, head id, and SRL relation. Arguments point to the
+    predicate component id; the predicate points to head id 0.
     """
     sorted_frame = sorted(enumerate(frame), key=lambda item: span_start(item[1], item[0]))
     predicate_component_id: int | None = None
 
     for component_id, (_, span) in enumerate(sorted_frame, start=1):
-        relation = str(span[1])
-        if relation == "PRED":
+        srl_relation = str(span[1])
+        if srl_relation == "PRED":
             predicate_component_id = component_id
             break
 
@@ -54,11 +54,19 @@ def frame_to_rows(
 
     rows: list[tuple[str, str, int, int, str]] = []
     for component_id, (_, span) in enumerate(sorted_frame, start=1):
-        component_text = str(span[0])
-        lemmatised_component = lemmatise_component(component_text, lemma_parser)
-        relation = str(span[1])
-        head_id = 0 if relation == "PRED" else predicate_component_id
-        rows.append((component_text, lemmatised_component, component_id, head_id, relation))
+        srl_component = str(span[0])
+        lemmatised_srl_component = lemmatise_component(srl_component, lemma_parser)
+        srl_relation = str(span[1])
+        head_id = 0 if srl_relation == "PRED" else predicate_component_id
+        rows.append(
+            (
+                srl_component,
+                lemmatised_srl_component,
+                component_id,
+                head_id,
+                srl_relation,
+            )
+        )
 
     return rows
 
@@ -160,10 +168,16 @@ def write_conll_like(
             predicate_index += 1
             lines.append(f"<id={file_id}_{sentence_index}_{predicate_index}>")
 
-            for component_text, lemmatised_component, component_id, head_id, relation in rows:
+            for (
+                srl_component,
+                lemmatised_srl_component,
+                component_id,
+                head_id,
+                srl_relation,
+            ) in rows:
                 lines.append(
-                    f"{component_text}\t{lemmatised_component}\t-\t"
-                    f"{component_id}\t{head_id}\t{relation}\t-"
+                    f"{srl_component}\t{lemmatised_srl_component}\t-\t"
+                    f"{component_id}\t{head_id}\t{srl_relation}\t-"
                 )
 
             lines.append("<s>")

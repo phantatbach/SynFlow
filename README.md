@@ -149,7 +149,7 @@ The SRL section runs HanLP SRL, lemmatises each SRL component with Stanza, and
 writes seven tab-separated fields:
 
 ```text
-component_text<TAB>component_lemma<TAB>-<TAB>id<TAB>head<TAB>srl_relation<TAB>-
+srl_component<TAB>lemmatised_srl_component<TAB>-<TAB>component_id<TAB>head_id<TAB>srl_relation<TAB>-
 ```
 
 The public entry point is:
