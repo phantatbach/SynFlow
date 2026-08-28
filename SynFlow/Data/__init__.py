@@ -22,6 +22,7 @@ __all__ = [
     "DEFAULT_PROCESSORS",
     "ParseResult",
     "ParseTask",
+    "frame_stanza_parse_folder",
     "hanlp_stanza_parse_folder",
     "merge_txt_files_all_subfolders",
     "merge_txt_files_one_subfolder",
@@ -34,6 +35,10 @@ __all__ = [
 
 def __getattr__(name: str) -> object:
     """Lazily expose optional parser entry points."""
+    if name == "frame_stanza_parse_folder":
+        from .frame_stanza import frame_stanza_parse_folder
+
+        return frame_stanza_parse_folder
     if name == "hanlp_stanza_parse_folder":
         from .hanlp_stanza_srl import hanlp_stanza_parse_folder
 

@@ -28,13 +28,17 @@ SynFlow supports multidimensional diachronic analysis through:
 
 - Stanza-based dependency parsing and HanLP semantic role labelling with
   Stanza lemmatisation into SynFlow's parsed-corpus format;
+- FrameSemanticTransformer frame parsing with Stanza lemmatisation into
+  SynFlow's parsed-corpus format;
 - Tracking change in different linguistic dimensions, such as:
     - Individual dependency slots and their lexical fillers;
     - Constructional configurations;
     - Morphological types and morphological features;
+    - Frame-semantic frame elements and frame-element fillers;
+    - Semantic role labelling components and SRL component fillers;
 - Value-level contribution analysis for interpreting what changed;
 - Support weighting and permutation testing for more careful historical-corpus
-  analysis.
+  analysis;
 - For lexical fillers, SynFlow further supports incremental clustering.
 
 SynFlow was developed by [Bach Phan-Tat](https://phantatbach.github.io/).
@@ -89,6 +93,8 @@ Use these notebooks:
 - `SynFlow_Slot.ipynb`
 - `SynFlow_Constr.ipynb`
 - `SynFlow_Morph.ipynb`
+- `SynFlow_Frame.ipynb`
+- `SynFlow_SRL.ipynb`
 - `SynFlow_Qual_Insp.ipynb`
 - `SynFlow_DiaEmb.ipynb`
 
@@ -98,10 +104,11 @@ workflow at the moment.
 ### 1. Stanza Data Prep
 
 Use `Input_Data.ipynb` to prepare raw sentence files in SynFlow's seven-field
-parsed-corpus format. The notebook has two independent sections:
+parsed-corpus format. The notebook has three independent sections:
 
 - Stanza dependency parsing;
-- HanLP semantic role labelling plus Stanza lemmatisation.
+- HanLP semantic role labelling plus Stanza lemmatisation;
+- FrameSemanticTransformer frame parsing plus Stanza lemmatisation.
 
 Run only the section needed for the corpus you want to prepare.
 
@@ -175,7 +182,9 @@ The SRL section runs HanLP SRL, lemmatises each SRL component with Stanza, and
 writes seven tab-separated fields:
 
 ```text
+<s id=PARENT_DIRECTORY_FILE_STEM_LINE_NUMBER_PREDICATE_NUMBER>
 srl_component<TAB>lemmatised_srl_component<TAB>-<TAB>component_id<TAB>head_id<TAB>srl_relation<TAB>-
+</s>
 ```
 
 The public entry point is:
@@ -200,6 +209,42 @@ python -m SynFlow.Data.hanlp_stanza_srl \
   --gpu 2,3 \
   --workers-per-gpu 1 \
   --hanlp-batch-size 32
+```
+
+#### FrameSemanticTransformer + Stanza Frame Parse
+
+The Frame parser section runs FrameSemanticTransformer, lemmatises each frame
+component with Stanza, and writes seven tab-separated fields:
+
+```text
+<s id=PARENT_DIRECTORY_FILE_STEM_LINE_NUMBER_FRAME_NUMBER>
+frame_component<TAB>lemmatised_frame_component<TAB>-<TAB>component_id<TAB>head_id<TAB>frame_relation<TAB>-
+</s>
+```
+
+The public entry point is:
+
+```python
+from SynFlow.Data import frame_stanza_parse_folder
+```
+
+The notebook requires explicit FrameSemanticTransformer and Stanza model
+settings, plus GPU worker settings for parallel parsing. It also requires the
+FrameSemanticTransformer runtime package in the environment.
+
+The same parser can be run from a terminal:
+
+```bash
+python -m SynFlow.Data.frame_stanza \
+  --input-dir /path/to/raw_root \
+  --output-dir /path/to/frame_parsed_root \
+  --frame-model base \
+  --small-frame-model small \
+  --language en \
+  --stanza-package-json '{"tokenize":"ewt","pos":"ewt","lemma":"ewt"}' \
+  --gpu 2,3 \
+  --workers-per-gpu 1 \
+  --frame-batch-size 24
 ```
 
 ### 2. Slot Level
@@ -233,12 +278,34 @@ This notebook is for questions such as:
 - Are changes concentrated in dimensions such as `Degree`, `Number`, `Case`, or
   `Tense`?
 
-### 5. Qualitative Inspection
+### 5. Frame Semantics Level
+
+Use `SynFlow_Frame.ipynb` to analyse frame semantics through frame elements
+(`FrameE`) and frame element fillers (`FrameEfiller`).
+
+This notebook is for questions such as:
+
+- Which frame elements become more or less frequent over time?
+- Which frame-element fillers drive the observed change?
+- How do frame-semantic distributions compare across periods?
+
+### 6. Semantic Role Labelling Level
+
+Use `SynFlow_SRL.ipynb` to analyse semantic role labelling through SRL
+components (`SRL`) and SRL component fillers (`SRLfiller`).
+
+This notebook is for questions such as:
+
+- Which SRL components become more or less frequent over time?
+- Which SRL component fillers drive the observed change?
+- How do SRL distributions compare across periods?
+
+### 7. Qualitative Inspection
 
 Use `SynFlow_Qual_Insp.ipynb` to inspect which values or components drive a
 distributional change. This notebook can be used after any dimension-specific
 analysis, including slot, construction, morphology, feature-value, or
-slot-filler distributions.
+slot-filler, frame-semantic, or SRL distributions.
 
 This notebook is for questions such as:
 
@@ -249,7 +316,7 @@ This notebook is for questions such as:
 
 This is the main notebook for qualitative interpretation of change drivers.
 
-### 6. Diachronic Embeddings
+### 8. Diachronic Embeddings
 
 Use `SynFlow_DiaEmb.ipynb` to prepare Word2Vec training data from parsed
 corpora, train period-specific Word2Vec models, align those models, and inspect
@@ -283,7 +350,7 @@ The parser mirrors this structure into the output root and writes parsed files
 using sentence boundaries like:
 
 ```text
-<s id=1995-2000_1>
+<s id=1995-2000_doc_001_1>
 The	the	DET	1	2	det	Definite=Def|PronType=Art
 dog	dog	NOUN	2	3	nsubj	Number=Sing
 barks	bark	VERB	3	0	root	Mood=Ind|Tense=Pres|VerbForm=Fin
@@ -318,6 +385,8 @@ raw sentences
        slot types/slot fillers
        constructions
        feature types/features
+       frame elements/frame element fillers
+       SRL components/SRL component fillers
 ```
 
 With slot-filler information, the workflow can continue into diachronic

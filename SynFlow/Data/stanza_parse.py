@@ -7,9 +7,9 @@ below an input root, where each line is one raw sentence.
 
 The output mirrors the input directory structure and writes one parsed sentence
 block per non-empty input row. Sentence ids are generated from the input file's
-parent directory name and the input line number in that file:
+parent directory name, file stem, and input line number in that file:
 
-    <s id=PARENT_DIRECTORY_LINE_NUMBER>
+    <s id=PARENT_DIRECTORY_FILE_STEM_LINE_NUMBER>
     token<TAB>lemma<TAB>upos<TAB>id<TAB>head<TAB>deprel<TAB>feats
     </s>
 """
@@ -374,9 +374,14 @@ def read_sentence_rows(input_path: Path) -> list[tuple[str, str]]:
     return rows
 
 
-def format_sentence_block(parent_name: str, sentence_index: str, doc: object) -> str:
+def sentence_id_base(input_path: Path, sentence_index: str) -> str:
+    """Build the shared SynFlow sentence id base for one input line."""
+    return f"{input_path.parent.name}_{input_path.stem}_{sentence_index}"
+
+
+def format_sentence_block(sentence_id: str, doc: object) -> str:
     """Serialize one Stanza document as one sentence block."""
-    lines = [f"<s id={parent_name}_{sentence_index}>"]
+    lines = [f"<s id={sentence_id}>"]
     sentences = getattr(doc, "sentences")
     for sentence in sentences:
         for word in sentence.words:
@@ -447,8 +452,7 @@ def parse_file(
             for sentence_index, doc in zip(indexes, docs):
                 output_file.write(
                     format_sentence_block(
-                        task.input_path.parent.name,
-                        sentence_index,
+                        sentence_id_base(task.input_path, sentence_index),
                         doc,
                     )
                 )
