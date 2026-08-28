@@ -26,8 +26,8 @@ normal use.
 
 SynFlow supports multidimensional diachronic analysis through:
 
-- Stanza-based parsing of raw sentence files into SynFlow's parsed-corpus
-  format;
+- Stanza-based dependency parsing and HanLP semantic role labelling with
+  Stanza lemmatisation into SynFlow's parsed-corpus format;
 - Tracking change in different linguistic dimensions, such as:
     - Individual dependency slots and their lexical fillers;
     - Constructional configurations;
@@ -85,7 +85,7 @@ notebooks/
 
 Use these notebooks:
 
-- `Stanza_Data_Prep.ipynb`
+- `Input_Data.ipynb`
 - `SynFlow_Slot.ipynb`
 - `SynFlow_Constr.ipynb`
 - `SynFlow_Morph.ipynb`
@@ -97,8 +97,15 @@ workflow at the moment.
 
 ### 1. Stanza Data Prep
 
-Use `Stanza_Data_Prep.ipynb` to parse raw sentence files into SynFlow's
-seven-field parsed-token format.
+Use `Input_Data.ipynb` to prepare raw sentence files in SynFlow's seven-field
+parsed-corpus format. The notebook has two independent sections:
+
+- Stanza dependency parsing;
+- HanLP semantic role labelling plus Stanza lemmatisation.
+
+Run only the section needed for the corpus you want to prepare.
+
+#### Stanza Dependency Parse
 
 The raw input root should contain files inside subfolders:
 
@@ -135,6 +142,25 @@ processor_models = {
     "depparse": "hdt",
 }
 ```
+
+#### HanLP + Stanza SRL Parse
+
+The SRL section runs HanLP SRL, lemmatises each SRL component with Stanza, and
+writes seven tab-separated fields:
+
+```text
+component_text<TAB>component_lemma<TAB>-<TAB>id<TAB>head<TAB>srl_relation<TAB>-
+```
+
+The public entry point is:
+
+```python
+from SynFlow.Data import hanlp_stanza_parse_folder
+```
+
+The notebook requires explicit HanLP and Stanza model settings, plus GPU worker
+settings for parallel parsing. It also requires the `hanlp` package in the
+runtime environment.
 
 ### 2. Slot Level
 
@@ -306,7 +332,7 @@ Contribution labels mark direction:
 - Start with the notebooks listed above.
 - Edit notebook configuration cells for paths, target lemma/POS, periods, and
   output locations.
-- Use `Stanza_Data_Prep.ipynb` when starting from raw sentence files; if you
+- Use `Input_Data.ipynb` when starting from raw sentence files; if you
   already have a parsed corpus in SynFlow's seven-field format, start directly
   with the dimension-specific notebooks.
 - Choose the Stanza language and model configuration in the notebook before
