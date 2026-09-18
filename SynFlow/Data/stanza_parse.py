@@ -17,12 +17,14 @@ parent directory name, file stem, and input line number in that file:
 from __future__ import annotations
 
 import argparse
+import heapq
 import json
 import os
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from multiprocessing import Queue
 from pathlib import Path
+from queue import Empty
 from typing import TYPE_CHECKING, Iterable, Mapping, Sequence
 
 from tqdm import tqdm
@@ -32,6 +34,7 @@ if TYPE_CHECKING:
 
 
 PIPELINE: stanza.Pipeline | None = None
+PROGRESS_QUEUE: Queue[int] | None = None
 DEFAULT_FILE_EXTENSIONS = ("*.txt", "*.conll", "*.conllu", "*.json")
 DEFAULT_PROCESSORS = "tokenize,mwt,pos,lemma,depparse"
 
@@ -247,13 +250,15 @@ def make_pipeline(
 
 def init_worker(
     gpu_queue: Queue[int],
+    progress_queue: Queue[int],
     language: str,
     model: str | None,
     processors: str,
     processor_models: Mapping[str, str] | None,
 ) -> None:
     """Load one Stanza pipeline on the GPU assigned to this worker."""
-    global PIPELINE
+    global PIPELINE, PROGRESS_QUEUE
+    PROGRESS_QUEUE = progress_queue
     PIPELINE = make_pipeline(
         gpu=gpu_queue.get(),
         language=language,
@@ -261,6 +266,12 @@ def init_worker(
         processors=processors,
         processor_models=processor_models,
     )
+
+
+def report_file_progress() -> None:
+    """Notify the parent process that one file has finished."""
+    if PROGRESS_QUEUE is not None:
+        PROGRESS_QUEUE.put(1)
 
 
 def discover_tasks(
@@ -419,53 +430,146 @@ def parse_file(
     show_sentence_progress: bool,
 ) -> ParseResult:
     """Parse one corpus file and atomically publish the mirrored output."""
-    if task.output_path.exists() and not overwrite:
-        return ParseResult(task.input_path, task.output_path, 0, skipped=True)
+    return parse_task_group(
+        [task],
+        batch_size,
+        overwrite,
+        show_sentence_progress,
+    )[0]
+
+
+def parse_task_group(
+    tasks: list[ParseTask],
+    batch_size: int,
+    overwrite: bool,
+    show_sentence_progress: bool,
+) -> list[ParseResult]:
+    """Parse sentences from several files in shared Stanza batches."""
     if PIPELINE is None:
         raise RuntimeError("Stanza pipeline was not initialized")
 
-    rows = read_sentence_rows(task.input_path)
-    task.output_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = task.output_path.with_name(f".{task.output_path.name}.tmp")
-    tmp_path.unlink(missing_ok=True)
+    results: list[ParseResult] = []
+    pending: list[tuple[ParseTask, str, str, bool]] = []
+    sentence_total = 0
 
-    with (
-        tmp_path.open("w", encoding="utf-8") as output_file,
-        tqdm(
-            total=len(rows),
-            desc=task.input_path.name,
-            unit="sent",
-            leave=False,
-            disable=not show_sentence_progress,
-        ) as sentence_progress,
-    ):
-        for batch in batched(rows, batch_size):
-            indexes = [sentence_index for sentence_index, _ in batch]
-            texts = [sentence for _, sentence in batch]
-            docs = PIPELINE.bulk_process(texts)
+    for task in tasks:
+        if task.output_path.exists() and not overwrite:
+            results.append(
+                ParseResult(task.input_path, task.output_path, 0, skipped=True)
+            )
+            report_file_progress()
+            continue
 
-            if len(docs) != len(indexes):
-                raise RuntimeError(
-                    f"Stanza returned {len(docs)} docs for {len(indexes)} inputs"
-                )
+        rows = read_sentence_rows(task.input_path)
+        sentence_total += len(rows)
+        task.output_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = task.output_path.with_name(f".{task.output_path.name}.tmp")
+        tmp_path.unlink(missing_ok=True)
+        tmp_path.touch()
 
-            for sentence_index, doc in zip(indexes, docs):
-                output_file.write(
-                    format_sentence_block(
-                        sentence_id_base(task.input_path, sentence_index),
-                        doc,
-                    )
-                )
-                output_file.write("\n")
+        if not rows:
+            with tmp_path.open("a", encoding="utf-8") as output_file:
+                output_file.flush()
+                os.fsync(output_file.fileno())
+            os.replace(tmp_path, task.output_path)
+            fsync_parent(task.output_path)
+            results.append(
+                ParseResult(task.input_path, task.output_path, 0, skipped=False)
+            )
+            report_file_progress()
+            continue
 
-            sentence_progress.update(len(batch))
+        for row_index, (sentence_index, text) in enumerate(rows):
+            pending.append((task, sentence_index, text, row_index == len(rows) - 1))
+            if len(pending) == batch_size:
+                _process_cross_file_batch(pending)
+                pending.clear()
 
-        output_file.flush()
-        os.fsync(output_file.fileno())
+        results.append(
+            ParseResult(task.input_path, task.output_path, len(rows), skipped=False)
+        )
 
-    os.replace(tmp_path, task.output_path)
-    fsync_parent(task.output_path)
-    return ParseResult(task.input_path, task.output_path, len(rows), skipped=False)
+    if pending:
+        _process_cross_file_batch(pending)
+
+    if show_sentence_progress:
+        tqdm.write(f"Parsed {sentence_total} sentences from {len(tasks)} files")
+    return results
+
+
+def _process_cross_file_batch(
+    batch: list[tuple[ParseTask, str, str, bool]],
+) -> None:
+    """Parse one batch and route documents back to their source files."""
+    if PIPELINE is None:
+        raise RuntimeError("Stanza pipeline was not initialized")
+
+    docs = PIPELINE.bulk_process([text for _, _, text, _ in batch])
+    if len(docs) != len(batch):
+        raise RuntimeError(
+            f"Stanza returned {len(docs)} docs for {len(batch)} inputs"
+        )
+
+    blocks_by_task: dict[ParseTask, list[str]] = {}
+    completed_tasks: set[ParseTask] = set()
+    for (task, sentence_index, _, is_last), doc in zip(batch, docs):
+        blocks_by_task.setdefault(task, []).append(
+            format_sentence_block(
+                sentence_id_base(task.input_path, sentence_index),
+                doc,
+            )
+        )
+        if is_last:
+            completed_tasks.add(task)
+
+    for task, blocks in blocks_by_task.items():
+        tmp_path = task.output_path.with_name(f".{task.output_path.name}.tmp")
+        with tmp_path.open("a", encoding="utf-8") as output_file:
+            output_file.write("\n".join(blocks))
+            output_file.write("\n")
+            if task in completed_tasks:
+                output_file.flush()
+                os.fsync(output_file.fileno())
+
+        if task in completed_tasks:
+            os.replace(tmp_path, task.output_path)
+            fsync_parent(task.output_path)
+            report_file_progress()
+
+
+def balance_tasks_by_size(
+    tasks: list[ParseTask],
+    worker_count: int,
+) -> list[list[ParseTask]]:
+    """Distribute files across workers while balancing their total byte sizes."""
+    if worker_count < 1:
+        raise ValueError("worker_count must be at least 1")
+    if not tasks:
+        return []
+
+    group_count = min(worker_count, len(tasks))
+    sized_tasks = sorted(
+        ((task.input_path.stat().st_size, task) for task in tasks),
+        key=lambda item: item[0],
+        reverse=True,
+    )
+    groups: list[list[ParseTask]] = [[] for _ in range(group_count)]
+    group_sizes: list[tuple[int, int, int]] = []
+
+    for group_index, (file_size, task) in enumerate(sized_tasks[:group_count]):
+        groups[group_index].append(task)
+        group_sizes.append((file_size, 1, group_index))
+    heapq.heapify(group_sizes)
+
+    for file_size, task in sized_tasks[group_count:]:
+        total_size, file_count, group_index = heapq.heappop(group_sizes)
+        groups[group_index].append(task)
+        heapq.heappush(
+            group_sizes,
+            (total_size + file_size, file_count + 1, group_index),
+        )
+
+    return groups
 
 
 def run_tasks(
@@ -480,8 +584,30 @@ def run_tasks(
 ) -> None:
     """Parse files in parallel with the requested GPU worker layout."""
     parsed_sentences = 0
-    skipped_files = 0
+    pending_tasks = (
+        tasks
+        if overwrite
+        else [task for task in tasks if not task.output_path.exists()]
+    )
+    skipped_files = len(tasks) - len(pending_tasks)
+
+    if not pending_tasks:
+        with tqdm(
+            total=len(tasks),
+            initial=skipped_files,
+            desc="Files",
+            unit="file",
+        ):
+            pass
+        print(
+            f"Done. Files: {len(tasks)}, skipped: {skipped_files}, "
+            "sentences parsed: 0",
+            flush=True,
+        )
+        return
+
     gpu_queue: Queue[int] = Queue()
+    progress_queue: Queue[int] = Queue()
     show_sentence_progress = len(worker_gpu_ids) == 1
     for gpu_id in worker_gpu_ids:
         gpu_queue.put(gpu_id)
@@ -489,33 +615,54 @@ def run_tasks(
     with ProcessPoolExecutor(
         max_workers=len(worker_gpu_ids),
         initializer=init_worker,
-        initargs=(gpu_queue, language, model, processors, processor_models),
+        initargs=(
+            gpu_queue,
+            progress_queue,
+            language,
+            model,
+            processors,
+            processor_models,
+        ),
     ) as executor:
+        task_groups = balance_tasks_by_size(pending_tasks, len(worker_gpu_ids))
         futures = [
             executor.submit(
-                parse_file,
-                task,
+                parse_task_group,
+                task_group,
                 batch_size,
                 overwrite,
                 show_sentence_progress,
             )
-            for task in tasks
+            for task_group in task_groups
         ]
-        with tqdm(total=len(futures), desc="Files", unit="file") as file_progress:
-            for future in as_completed(futures):
-                result = future.result()
-                parsed_sentences += result.sentence_count
-                skipped_files += int(result.skipped)
-                if result.skipped:
-                    file_progress.set_postfix_str(
-                        f"skipped: {result.input_path.name}"
-                    )
-                else:
-                    file_progress.set_postfix_str(
-                        f"parsed {result.sentence_count}: "
-                        f"{result.input_path.name}"
-                    )
-                file_progress.update(1)
+        pending_futures = set(futures)
+        with tqdm(
+            total=len(tasks),
+            initial=skipped_files,
+            desc="Files",
+            unit="file",
+        ) as file_progress:
+            while pending_futures:
+                try:
+                    file_progress.update(progress_queue.get(timeout=0.2))
+                except Empty:
+                    pass
+
+                completed_futures = {
+                    future for future in pending_futures if future.done()
+                }
+                for future in completed_futures:
+                    results = future.result()
+                    for result in results:
+                        parsed_sentences += result.sentence_count
+                        skipped_files += int(result.skipped)
+                    pending_futures.remove(future)
+
+            while file_progress.n < len(tasks):
+                try:
+                    file_progress.update(progress_queue.get_nowait())
+                except Empty:
+                    file_progress.update(len(tasks) - file_progress.n)
 
     print(
         f"Done. Files: {len(tasks)}, skipped: {skipped_files}, "
