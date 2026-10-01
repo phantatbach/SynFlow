@@ -14,11 +14,12 @@ import random
 import tempfile
 
 from gensim import utils
-from gensim.models import Word2Vec
+from gensim.models import KeyedVectors, Word2Vec
 from gensim.models.word2vec import LineSentence
 import numpy as np
 
 DEFAULT_SAVE_FORMATS = ("model", "keyed_vectors", "vectors_bin", "vectors_txt")
+RAW_VECTOR_SAVE_FORMATS = ("keyed_vectors", "vectors_bin", "vectors_txt")
 #----------------------------------------------
 # Word2Vec training for period-split sentence folders
 #----------------------------------------------
@@ -262,6 +263,20 @@ def _validate_save_formats(save_formats: tuple[str, ...]) -> tuple[str, ...]:
         joined = ", ".join(unknown_formats)
         raise ValueError(f"Unknown save format(s): {joined}")
     return tuple(dict.fromkeys(save_formats))
+
+
+def _validate_raw_vector_save_formats(save_formats: tuple[str, ...]) -> tuple[str, ...]:
+    valid_formats = set(RAW_VECTOR_SAVE_FORMATS)
+    requested_formats = tuple(format_name for format_name in save_formats if format_name != "model")
+    unknown_formats = sorted(set(requested_formats) - valid_formats)
+    if unknown_formats:
+        joined = ", ".join(unknown_formats)
+        raise ValueError(f"Unknown raw vector save format(s): {joined}")
+
+    deduplicated = tuple(dict.fromkeys(requested_formats))
+    if not deduplicated:
+        raise ValueError("save_formats must contain at least one raw vector format.")
+    return deduplicated
 
 
 def _validate_max_vocab(max_vocab: int | None) -> None:
@@ -546,7 +561,6 @@ def align_w2v_folder(
         min_anchor_count: Minimum shared vocabulary size required for aligning
             a period to the previous aligned period. If ``None``, the required
             anchor count is the embedding dimensionality.
-        show_progress: Whether to show tqdm progress over periods.
         overwrite: Whether to replace existing aligned output models.
     """
     input_root = Path(input_root)
@@ -634,6 +648,130 @@ def align_w2v_folder(
     return results
 
 
+def align_w2v_raw_vec_folder(
+    input_root: str | Path,
+    output_root: str | Path,
+    periods: list[str | int] | None = None,
+    *,
+    vector_filename: str = "{period}.txt",
+    save_formats: tuple[str, ...] = RAW_VECTOR_SAVE_FORMATS,
+    min_anchor_count: int | None = None,
+    overwrite: bool = False,
+) -> list[W2VAlignmentResult]:
+    """Sequentially align raw word2vec text vectors using orthogonal Procrustes.
+
+    This follows the same period-folder, normalization, alignment, skipping, and
+    output path contract as :func:`align_w2v_folder`, but each input period file
+    is loaded with ``KeyedVectors.load_word2vec_format(..., binary=False)``.
+    Because raw vector text files do not contain full Word2Vec training state,
+    this function does not write a ``.model`` output.
+
+    Args:
+        input_root: Root folder containing period subfolders with raw word2vec
+            text vector files.
+        output_root: Root folder where aligned period subfolders are written.
+        periods: Ordered periods to align. If omitted, the order is inferred
+            from direct subfolder names under ``input_root`` sorted by name.
+        vector_filename: Filename template inside each period subfolder. It can
+            include ``{period}``, for example ``"{period}_vectors.txt"``.
+        save_formats: Output formats to write for each aligned vector file.
+            Defaults to all supported raw-vector formats: ``"keyed_vectors"``,
+            ``"vectors_bin"``, and ``"vectors_txt"``.
+        min_anchor_count: Minimum shared vocabulary size required for aligning
+            a period to the previous aligned period. If ``None``, the required
+            anchor count is the embedding dimensionality.
+        overwrite: Whether to replace existing aligned output files.
+    """
+    input_root = Path(input_root)
+    output_root = Path(output_root)
+    if periods is None:
+        periods = _discover_period_subfolders(input_root)
+    if not periods:
+        raise ValueError("No periods provided or discovered for W2V alignment.")
+
+    save_formats = _validate_raw_vector_save_formats(save_formats)
+    if min_anchor_count is not None and min_anchor_count < 1:
+        raise ValueError("min_anchor_count must be at least 1.")
+
+    results: list[W2VAlignmentResult] = []
+    previous_vectors: KeyedVectors | None = None
+    previous_period: str | int | None = None
+
+    iterator = _progress_iter(periods, total=len(periods), enabled=True)
+    for period in iterator:
+        input_path = _resolve_period_vector_path(input_root, period, vector_filename)
+        paths = _build_alignment_output_paths(output_root, period)
+
+        existing_path = _find_existing_raw_vector_output(paths, save_formats)
+        if existing_path is not None and not overwrite:
+            current_vectors = _load_existing_raw_vector_output(existing_path, paths)
+            _normalize_keyed_vectors(current_vectors)
+            _save_aligned_keyed_vector_outputs(
+                keyed_vectors=current_vectors,
+                paths=paths,
+                save_formats=save_formats,
+                overwrite=False,
+            )
+            results.append(
+                _build_alignment_result(
+                    period=period,
+                    input_path=input_path,
+                    paths=paths,
+                    output_path=_primary_raw_vector_output_path(paths, save_formats),
+                    aligned_to_period=previous_period,
+                    anchor_count=0
+                    if previous_vectors is None
+                    else _count_common_keyed_vectors(previous_vectors, current_vectors),
+                    vocabulary_size=len(current_vectors),
+                )
+            )
+            previous_vectors = current_vectors
+            previous_period = period
+            continue
+
+        current_vectors = KeyedVectors.load_word2vec_format(
+            str(input_path),
+            binary=False,
+        )
+        _normalize_keyed_vectors(current_vectors)
+
+        anchor_count = 0
+        if previous_vectors is not None:
+            rotation, anchor_count = _orthogonal_procrustes_rotation_for_vectors(
+                base_vectors=previous_vectors,
+                other_vectors=current_vectors,
+                min_anchor_count=min_anchor_count,
+            )
+            current_vectors.vectors = current_vectors.vectors.dot(rotation).astype(
+                np.float32,
+                copy=False,
+            )
+            _reset_keyed_vector_norms(current_vectors)
+
+        paths["keyed_vectors"].parent.mkdir(parents=True, exist_ok=True)
+        _save_aligned_keyed_vector_outputs(
+            keyed_vectors=current_vectors,
+            paths=paths,
+            save_formats=save_formats,
+            overwrite=overwrite,
+        )
+        results.append(
+            _build_alignment_result(
+                period=period,
+                input_path=input_path,
+                paths=paths,
+                output_path=_primary_raw_vector_output_path(paths, save_formats),
+                aligned_to_period=previous_period,
+                anchor_count=anchor_count,
+                vocabulary_size=len(current_vectors),
+            )
+        )
+        previous_vectors = current_vectors
+        previous_period = period
+
+    return results
+
+
 def _discover_period_subfolders(input_root: Path) -> list[str]:
     if not input_root.exists():
         raise FileNotFoundError(f"Input folder does not exist: {input_root}")
@@ -651,6 +789,18 @@ def _resolve_period_model_path(
     path = input_root / period_name / model_filename.format(period=period_name)
     if not path.exists():
         raise FileNotFoundError(f"Missing W2V model for period {period}: {path}")
+    return path
+
+
+def _resolve_period_vector_path(
+    input_root: Path,
+    period: str | int,
+    vector_filename: str,
+) -> Path:
+    period_name = str(period)
+    path = input_root / period_name / vector_filename.format(period=period_name)
+    if not path.exists():
+        raise FileNotFoundError(f"Missing W2V vector file for period {period}: {path}")
     return path
 
 
@@ -696,9 +846,22 @@ def _orthogonal_procrustes_rotation(
     other_model: Word2Vec,
     min_anchor_count: int | None,
 ) -> tuple[np.ndarray, int]:
-    anchors = sorted(set(base_model.wv.key_to_index) & set(other_model.wv.key_to_index))
+    return _orthogonal_procrustes_rotation_for_vectors(
+        base_vectors=base_model.wv,
+        other_vectors=other_model.wv,
+        min_anchor_count=min_anchor_count,
+    )
+
+
+def _orthogonal_procrustes_rotation_for_vectors(
+    *,
+    base_vectors: KeyedVectors,
+    other_vectors: KeyedVectors,
+    min_anchor_count: int | None,
+) -> tuple[np.ndarray, int]:
+    anchors = sorted(set(base_vectors.key_to_index) & set(other_vectors.key_to_index))
     required_anchors = (
-        base_model.wv.vector_size
+        base_vectors.vector_size
         if min_anchor_count is None
         else min_anchor_count
     )
@@ -708,12 +871,12 @@ def _orthogonal_procrustes_rotation(
             f"found {len(anchors)}, required {required_anchors}."
         )
 
-    base_indices = [base_model.wv.key_to_index[word] for word in anchors]
-    other_indices = [other_model.wv.key_to_index[word] for word in anchors]
-    base_vectors = base_model.wv.vectors[base_indices]
-    other_vectors = other_model.wv.vectors[other_indices]
+    base_indices = [base_vectors.key_to_index[word] for word in anchors]
+    other_indices = [other_vectors.key_to_index[word] for word in anchors]
+    base_matrix = base_vectors.vectors[base_indices]
+    other_matrix = other_vectors.vectors[other_indices]
 
-    matrix = other_vectors.T.dot(base_vectors)
+    matrix = other_matrix.T.dot(base_matrix)
     u_matrix, _, vt_matrix = np.linalg.svd(matrix)
     rotation = u_matrix.dot(vt_matrix)
     return rotation.astype(np.float32), len(anchors)
@@ -721,6 +884,13 @@ def _orthogonal_procrustes_rotation(
 
 def _count_common_vocab(base_model: Word2Vec, other_model: Word2Vec) -> int:
     return len(set(base_model.wv.key_to_index) & set(other_model.wv.key_to_index))
+
+
+def _count_common_keyed_vectors(
+    base_vectors: KeyedVectors,
+    other_vectors: KeyedVectors,
+) -> int:
+    return len(set(base_vectors.key_to_index) & set(other_vectors.key_to_index))
 
 
 def _save_aligned_model_outputs(
@@ -742,11 +912,61 @@ def _save_aligned_model_outputs(
         model.wv.save_word2vec_format(str(paths["vectors_txt"]), binary=False)
 
 
+def _save_aligned_keyed_vector_outputs(
+    *,
+    keyed_vectors: KeyedVectors,
+    paths: dict[str, Path],
+    save_formats: tuple[str, ...],
+    overwrite: bool,
+) -> None:
+    if "keyed_vectors" in save_formats and (
+        overwrite or not paths["keyed_vectors"].exists()
+    ):
+        keyed_vectors.save(str(paths["keyed_vectors"]))
+    if "vectors_bin" in save_formats and (overwrite or not paths["vectors_bin"].exists()):
+        keyed_vectors.save_word2vec_format(str(paths["vectors_bin"]), binary=True)
+    if "vectors_txt" in save_formats and (overwrite or not paths["vectors_txt"].exists()):
+        keyed_vectors.save_word2vec_format(str(paths["vectors_txt"]), binary=False)
+
+
+def _find_existing_raw_vector_output(
+    paths: dict[str, Path],
+    save_formats: tuple[str, ...],
+) -> Path | None:
+    for format_name in ("keyed_vectors", "vectors_bin", "vectors_txt"):
+        if format_name in save_formats and paths[format_name].exists():
+            return paths[format_name]
+    return None
+
+
+def _load_existing_raw_vector_output(
+    path: Path,
+    paths: dict[str, Path],
+) -> KeyedVectors:
+    if path == paths["keyed_vectors"]:
+        return KeyedVectors.load(str(path))
+    if path == paths["vectors_bin"]:
+        return KeyedVectors.load_word2vec_format(str(path), binary=True)
+    return KeyedVectors.load_word2vec_format(str(path), binary=False)
+
+
+def _primary_raw_vector_output_path(
+    paths: dict[str, Path],
+    save_formats: tuple[str, ...],
+) -> Path:
+    for format_name in ("keyed_vectors", "vectors_bin", "vectors_txt"):
+        if format_name in save_formats:
+            return paths[format_name]
+
+    raise ValueError("save_formats must contain at least one raw vector format.")
+
+
 def _build_alignment_result(
     *,
     period: str | int,
     input_path: Path,
     paths: dict[str, Path],
+    output_path: Path | None = None,
     aligned_to_period: str | int | None,
     anchor_count: int,
     vocabulary_size: int,
@@ -754,7 +974,7 @@ def _build_alignment_result(
     return W2VAlignmentResult(
         period=period,
         input_path=input_path,
-        output_path=paths["model"],
+        output_path=paths["model"] if output_path is None else output_path,
         keyed_vectors_path=paths["keyed_vectors"],
         vectors_bin_path=paths["vectors_bin"],
         vectors_txt_path=paths["vectors_txt"],
@@ -762,4 +982,3 @@ def _build_alignment_result(
         anchor_count=anchor_count,
         vocabulary_size=vocabulary_size,
     )
-

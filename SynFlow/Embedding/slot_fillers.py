@@ -52,8 +52,6 @@ def parse_slot_values(value: object) -> list[str]:
         filler = str(raw_filler).strip()
         if not filler:
             continue
-        if "/" in filler:
-            filler = filler.rsplit("/", 1)[0]
         if filler:
             fillers.append(filler)
 

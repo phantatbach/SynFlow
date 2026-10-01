@@ -105,6 +105,51 @@ def load_gensim_series(
     }
 
 
+def load_raw_embedding_slice(
+    base_dir: str | Path,
+    period: str | int,
+    file_pattern: str | None = None,
+    binary: bool | None = None,
+    normalize: bool = True,
+) -> HistWordsSlice:
+    """Load one raw or raw-aligned embedding slice as a ``HistWordsSlice``.
+
+    Args:
+        file_pattern: Optional filename pattern relative to the period subfolder.
+            It can include ``{period}``, for example ``"{period}_vectors.txt"``
+            or ``"{period}.kv"``.
+        binary: Whether the raw word2vec-format file is binary. If omitted,
+            ``.bin`` files are treated as binary and text-like files as text.
+    """
+    path = _resolve_raw_embedding_path(Path(base_dir), period, file_pattern)
+    keyed_vectors = _load_raw_embedding_keyed_vectors(path, binary=binary)
+    return HistWordsSlice(
+        keyed_vectors.vectors,
+        list(keyed_vectors.index_to_key),
+        normalize=normalize,
+    )
+
+
+def load_raw_embedding_series(
+    base_dir: str | Path,
+    periods: list[str | int],
+    file_pattern: str | None = None,
+    binary: bool | None = None,
+    normalize: bool = True,
+) -> dict[str | int, HistWordsSlice]:
+    """Load raw or raw-aligned embedding slices from period subfolders."""
+    return {
+        period: load_raw_embedding_slice(
+            base_dir=base_dir,
+            period=period,
+            file_pattern=file_pattern,
+            binary=binary,
+            normalize=normalize,
+        )
+        for period in periods
+    }
+
+
 def _resolve_gensim_path(
     base_dir: Path,
     period: str | int,
@@ -135,6 +180,35 @@ def _resolve_gensim_path(
     raise FileNotFoundError(f"No gensim embedding file found. Tried: {candidate_list}")
 
 
+def _resolve_raw_embedding_path(
+    base_dir: Path,
+    period: str | int,
+    file_pattern: str | None,
+) -> Path:
+    period_name = str(period)
+    period_dir = base_dir / period_name
+    if file_pattern is not None:
+        path = period_dir / file_pattern.format(period=period_name)
+        if not path.exists():
+            raise FileNotFoundError(f"Missing raw embedding file: {path}")
+        return path
+
+    candidates = [
+        period_dir / f"{period_name}.kv",
+        period_dir / f"{period_name}_vectors.txt",
+        period_dir / f"{period_name}.txt",
+        period_dir / f"{period_name}.vec",
+        period_dir / f"{period_name}_vectors.bin",
+        period_dir / f"{period_name}.bin",
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+
+    candidate_list = ", ".join(str(path) for path in candidates)
+    raise FileNotFoundError(f"No raw embedding file found. Tried: {candidate_list}")
+
+
 def _load_gensim_keyed_vectors(path: Path, binary: bool | None):
     from gensim.models import KeyedVectors, Word2Vec
 
@@ -143,6 +217,16 @@ def _load_gensim_keyed_vectors(path: Path, binary: bool | None):
             return Word2Vec.load(str(path)).wv
         except Exception:
             return KeyedVectors.load(str(path), mmap="r")
+
+    if path.suffix == ".kv":
+        return KeyedVectors.load(str(path), mmap="r")
+
+    is_binary = path.suffix == ".bin" if binary is None else binary
+    return KeyedVectors.load_word2vec_format(str(path), binary=is_binary)
+
+
+def _load_raw_embedding_keyed_vectors(path: Path, binary: bool | None):
+    from gensim.models import KeyedVectors
 
     if path.suffix == ".kv":
         return KeyedVectors.load(str(path), mmap="r")

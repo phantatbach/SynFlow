@@ -29,6 +29,8 @@ from .histwords import (
     load_histwords_series,
     load_histwords_slice,
     load_pickle,
+    load_raw_embedding_series,
+    load_raw_embedding_slice,
     normalize_rows,
     vector_norm,
 )
@@ -45,6 +47,7 @@ from .w2v_training import (
     W2VAlignmentResult,
     W2VTrainingResult,
     align_w2v_folder,
+    align_w2v_raw_vec_folder,
     train_w2v_folder,
 )
 
@@ -57,6 +60,7 @@ __all__ = [
     "add_top_members_to_cluster_summary",
     "agglomerative_cosine_cluster",
     "align_w2v_folder",
+    "align_w2v_raw_vec_folder",
     "assign_to_existing_clusters",
     "build_slot_embedding_points",
     "cluster_individual_period",
@@ -70,6 +74,8 @@ __all__ = [
     "load_histwords_series",
     "load_histwords_slice",
     "load_pickle",
+    "load_raw_embedding_series",
+    "load_raw_embedding_slice",
     "match_individual_clusters_between_periods",
     "normalize_matrix",
     "normalize_rows",
