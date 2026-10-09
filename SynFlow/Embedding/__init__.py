@@ -46,6 +46,7 @@ from .slot_fillers import (
 from .w2v_training import (
     W2VAlignmentResult,
     W2VTrainingResult,
+    align_depw2v_raw_vec_folder,
     align_w2v_folder,
     align_w2v_raw_vec_folder,
     train_w2v_folder,
@@ -59,6 +60,7 @@ __all__ = [
     "add_period_pca_coordinates",
     "add_top_members_to_cluster_summary",
     "agglomerative_cosine_cluster",
+    "align_depw2v_raw_vec_folder",
     "align_w2v_folder",
     "align_w2v_raw_vec_folder",
     "assign_to_existing_clusters",

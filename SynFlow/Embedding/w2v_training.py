@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import csv
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
+import math
 import os
 from pathlib import Path
 from tqdm import tqdm
-from typing import Iterable
+from typing import Iterable, Literal
 import multiprocessing
 import random
 import tempfile
+import warnings
 
 from gensim import utils
 from gensim.models import KeyedVectors, Word2Vec
@@ -538,6 +542,7 @@ def align_w2v_folder(
     model_filename: str = "{period}.model",
     save_formats: tuple[str, ...] = DEFAULT_SAVE_FORMATS,
     min_anchor_count: int | None = None,
+    top_k_anchor: int | None = None,
     overwrite: bool = False,
 ) -> list[W2VAlignmentResult]:
     """Sequentially align period Word2Vec models using orthogonal Procrustes.
@@ -558,10 +563,15 @@ def align_w2v_folder(
             include ``{period}``, for example ``"{period}.model"``.
         save_formats: Output formats to write for each aligned model. Defaults
             to all supported formats.
-        min_anchor_count: Minimum shared vocabulary size required for aligning
-            a period to the previous aligned period. If ``None``, the required
-            anchor count is the embedding dimensionality.
-        overwrite: Whether to replace existing aligned output models.
+        min_anchor_count: Minimum number of shared words selected as anchors.
+            If fewer shared words are available, all of them are used. If
+            ``None``, the embedding dimensionality is used as the minimum.
+        top_k_anchor: Target number of shared words used as anchors. Words are
+            ranked by the smaller of their frequencies in the two periods. A
+            larger ``min_anchor_count`` takes precedence. If ``None``, all
+            shared words are used.
+        overwrite: Whether to replace existing aligned output models. Set to
+            ``True`` when changing ``top_k_anchor`` for outputs already saved.
     """
     input_root = Path(input_root)
     output_root = Path(output_root)
@@ -573,6 +583,8 @@ def align_w2v_folder(
     save_formats = _validate_save_formats(save_formats)
     if min_anchor_count is not None and min_anchor_count < 1:
         raise ValueError("min_anchor_count must be at least 1.")
+    if top_k_anchor is not None and top_k_anchor < 1:
+        raise ValueError("top_k_anchor must be at least 1.")
 
     results: list[W2VAlignmentResult] = []
     previous_model: Word2Vec | None = None
@@ -592,16 +604,28 @@ def align_w2v_folder(
                 save_formats=save_formats,
                 overwrite=False,
             )
+            anchor_count = 0
+            if previous_model is not None:
+                anchor_count = _count_common_vocab(previous_model, current_model)
+                _warn_if_below_minimum_anchor_count(
+                    available_count=anchor_count,
+                    vector_size=previous_model.wv.vector_size,
+                    min_anchor_count=min_anchor_count,
+                    scope=f"Embedding space {previous_period!r} -> {period!r}",
+                )
+                anchor_count = _selected_anchor_count(
+                    shared_count=anchor_count,
+                    vector_size=previous_model.wv.vector_size,
+                    top_k_anchor=top_k_anchor,
+                    min_anchor_count=min_anchor_count,
+                )
             results.append(
                 _build_alignment_result(
                     period=period,
                     input_path=input_path,
                     paths=paths,
                     aligned_to_period=previous_period,
-                    anchor_count=0 if previous_model is None else _count_common_vocab(
-                        previous_model,
-                        current_model,
-                    ),
+                    anchor_count=anchor_count,
                     vocabulary_size=len(current_model.wv),
                 )
             )
@@ -618,6 +642,8 @@ def align_w2v_folder(
                 base_model=previous_model,
                 other_model=current_model,
                 min_anchor_count=min_anchor_count,
+                top_k_anchor=top_k_anchor,
+                warning_scope=f"Embedding space {previous_period!r} -> {period!r}",
             )
             current_model.wv.vectors = current_model.wv.vectors.dot(rotation).astype(
                 np.float32,
@@ -654,15 +680,18 @@ def align_w2v_raw_vec_folder(
     periods: list[str | int] | None = None,
     *,
     vector_filename: str = "{period}.txt",
+    vocab_freq_filename: str | None = None,
     save_formats: tuple[str, ...] = RAW_VECTOR_SAVE_FORMATS,
     min_anchor_count: int | None = None,
+    top_k_anchor: int | None = None,
     overwrite: bool = False,
 ) -> list[W2VAlignmentResult]:
     """Sequentially align raw word2vec text vectors using orthogonal Procrustes.
 
-    This follows the same period-folder, normalization, alignment, skipping, and
-    output path contract as :func:`align_w2v_folder`, but each input period file
-    is loaded with ``KeyedVectors.load_word2vec_format(..., binary=False)``.
+    This follows the same period-folder, normalization, skipping, and output
+    path contract as :func:`align_w2v_folder`, but each input period file is
+    loaded with ``KeyedVectors.load_word2vec_format(..., binary=False)``. When
+    ``top_k_anchor`` is set, word counts come from separate vocabulary files.
     Because raw vector text files do not contain full Word2Vec training state,
     this function does not write a ``.model`` output.
 
@@ -674,16 +703,124 @@ def align_w2v_raw_vec_folder(
             from direct subfolder names under ``input_root`` sorted by name.
         vector_filename: Filename template inside each period subfolder. It can
             include ``{period}``, for example ``"{period}_vectors.txt"``.
+        vocab_freq_filename: Path relative to each period subfolder for a
+            two-column tab-separated ``word<tab>count`` file, or a CSV with
+            ``vocab,frequency`` columns. Required when ``top_k_anchor`` is set.
+            The path may include ``{period}``.
         save_formats: Output formats to write for each aligned vector file.
             Defaults to all supported raw-vector formats: ``"keyed_vectors"``,
             ``"vectors_bin"``, and ``"vectors_txt"``.
-        min_anchor_count: Minimum shared vocabulary size required for aligning
-            a period to the previous aligned period. If ``None``, the required
-            anchor count is the embedding dimensionality.
-        overwrite: Whether to replace existing aligned output files.
+        min_anchor_count: Minimum number of shared words selected as anchors.
+            If fewer shared words are available, all of them are used. If
+            ``None``, the embedding dimensionality is used as the minimum.
+        top_k_anchor: Target number of shared words used as anchors, ranked by
+            the smaller frequency in the two periods. A larger
+            ``min_anchor_count`` takes precedence. If ``None``, all shared
+            words are used.
+        overwrite: Whether to replace existing aligned output files. Set to
+            ``True`` when changing ``top_k_anchor`` for outputs already saved.
     """
-    input_root = Path(input_root)
-    output_root = Path(output_root)
+    return _align_raw_vec_folder(
+        input_root=Path(input_root),
+        output_root=Path(output_root),
+        periods=periods,
+        vector_filename=vector_filename,
+        vocab_freq_filename=vocab_freq_filename,
+        save_formats=save_formats,
+        min_anchor_count=min_anchor_count,
+        top_k_anchor=top_k_anchor,
+        top_k_anchor_pct=None,
+        dependency_alignment_mode=None,
+        overwrite=overwrite,
+    )
+
+
+def align_depw2v_raw_vec_folder(
+    input_root: str | Path,
+    output_root: str | Path,
+    periods: list[str | int] | None = None,
+    *,
+    vector_filename: str = "{period}.txt",
+    vocab_freq_filename: str,
+    top_k_anchor: int = 5000,
+    top_k_anchor_pct: float | None = None,
+    alignment_mode: Literal["global", "region_specific"] = "global",
+    save_formats: tuple[str, ...] = RAW_VECTOR_SAVE_FORMATS,
+    min_anchor_count: int | None = None,
+    overwrite: bool = False,
+) -> list[W2VAlignmentResult]:
+    """Align dependency vectors globally or separately by relation.
+
+    In ``"global"`` mode, relation quotas are proportional to the smaller of
+    their total frequencies in the two periods. Shared ``item/relation`` keys
+    are ranked within each relation by their smaller cross-period frequency,
+    and all selected anchors estimate one global rotation. Unfilled quotas are
+    not redistributed unless more anchors are needed to satisfy
+    ``min_anchor_count``.
+
+    In ``"region_specific"`` mode, each relation uses the top
+    ``top_k_anchor_pct`` percent of its own ranked shared items to estimate a
+    separate rotation. That rotation is applied to every current-period vector
+    in the relation.
+
+    Vectors from different relations no longer share one aligned coordinate
+    system and should only be compared within their own relation.
+
+    Args:
+        input_root: Root folder containing one raw-vector subfolder per period.
+        output_root: Root folder where aligned period subfolders are written.
+        periods: Ordered periods to align. Folder names are used when omitted.
+        vector_filename: Raw word2vec text filename template for each period.
+        vocab_freq_filename: Path relative to each period subfolder for a
+            two-column tab-separated ``item<tab>count`` file, or a CSV with
+            ``vocab,frequency`` columns. The path may include ``{period}``.
+        top_k_anchor: Target total anchor count before relation-level rounding
+            in global mode. It is ignored in region-specific mode.
+        top_k_anchor_pct: Percentage of shared items selected independently
+            within each relation in region-specific mode. For example, ``5``
+            selects the top 5 percent. It must be omitted in global mode.
+        alignment_mode: Whether to estimate one global rotation or one rotation
+            for each dependency relation.
+        save_formats: Raw-vector output formats to write.
+        min_anchor_count: Minimum selected anchor count overall in global mode
+            and within each relation in region-specific mode. If fewer shared
+            items are available, all available items are used. The embedding
+            dimensionality is used as the minimum when omitted.
+        overwrite: Whether to replace existing aligned output files. Set to
+            ``True`` after changing anchor settings for existing outputs.
+    """
+    if alignment_mode not in {"global", "region_specific"}:
+        raise ValueError("alignment_mode must be 'global' or 'region_specific'.")
+
+    return _align_raw_vec_folder(
+        input_root=Path(input_root),
+        output_root=Path(output_root),
+        periods=periods,
+        vector_filename=vector_filename,
+        vocab_freq_filename=vocab_freq_filename,
+        save_formats=save_formats,
+        min_anchor_count=min_anchor_count,
+        top_k_anchor=top_k_anchor,
+        top_k_anchor_pct=top_k_anchor_pct,
+        dependency_alignment_mode=alignment_mode,
+        overwrite=overwrite,
+    )
+
+
+def _align_raw_vec_folder(
+    *,
+    input_root: Path,
+    output_root: Path,
+    periods: list[str | int] | None,
+    vector_filename: str,
+    vocab_freq_filename: str | None,
+    save_formats: tuple[str, ...],
+    min_anchor_count: int | None,
+    top_k_anchor: int | None,
+    top_k_anchor_pct: float | None,
+    dependency_alignment_mode: Literal["global", "region_specific"] | None,
+    overwrite: bool,
+) -> list[W2VAlignmentResult]:
     if periods is None:
         periods = _discover_period_subfolders(input_root)
     if not periods:
@@ -692,15 +829,46 @@ def align_w2v_raw_vec_folder(
     save_formats = _validate_raw_vector_save_formats(save_formats)
     if min_anchor_count is not None and min_anchor_count < 1:
         raise ValueError("min_anchor_count must be at least 1.")
+    if dependency_alignment_mode not in {None, "global", "region_specific"}:
+        raise ValueError("alignment_mode must be 'global' or 'region_specific'.")
+    if dependency_alignment_mode == "global":
+        if top_k_anchor is None or top_k_anchor < 1:
+            raise ValueError("top_k_anchor must be at least 1 in global mode.")
+        if top_k_anchor_pct is not None:
+            raise ValueError("top_k_anchor_pct must be omitted in global mode.")
+    elif dependency_alignment_mode == "region_specific":
+        if top_k_anchor_pct is None or not 0 < top_k_anchor_pct <= 100:
+            raise ValueError(
+                "top_k_anchor_pct must be greater than 0 and at most 100 "
+                "in region-specific mode."
+            )
+    else:
+        if top_k_anchor is not None and top_k_anchor < 1:
+            raise ValueError("top_k_anchor must be at least 1.")
+        if top_k_anchor_pct is not None:
+            raise ValueError("top_k_anchor_pct is only supported for dependency alignment.")
+
+    needs_frequencies = (
+        top_k_anchor is not None or dependency_alignment_mode is not None
+    )
+    if needs_frequencies and not vocab_freq_filename:
+        raise ValueError("vocab_freq_filename is required for frequency-based anchors.")
 
     results: list[W2VAlignmentResult] = []
     previous_vectors: KeyedVectors | None = None
+    previous_frequencies: dict[str, int] | None = None
     previous_period: str | int | None = None
 
     iterator = _progress_iter(periods, total=len(periods), enabled=True)
     for period in iterator:
         input_path = _resolve_period_vector_path(input_root, period, vector_filename)
         paths = _build_alignment_output_paths(output_root, period)
+        current_frequencies = None
+        if needs_frequencies:
+            frequency_path = _resolve_period_vocab_frequency_path(
+                input_root, period, vocab_freq_filename
+            )
+            current_frequencies = _load_vocab_frequencies(frequency_path)
 
         existing_path = _find_existing_raw_vector_output(paths, save_formats)
         if existing_path is not None and not overwrite:
@@ -712,6 +880,51 @@ def align_w2v_raw_vec_folder(
                 save_formats=save_formats,
                 overwrite=False,
             )
+            anchor_count = 0
+            if previous_vectors is not None:
+                if dependency_alignment_mode == "global":
+                    anchors = _select_dependency_anchors(
+                        base_vectors=previous_vectors,
+                        other_vectors=current_vectors,
+                        base_frequencies=previous_frequencies,
+                        other_frequencies=current_frequencies,
+                        top_k_anchor=top_k_anchor,
+                        min_anchor_count=min_anchor_count,
+                        warning_scope=(
+                            f"Dependency embedding space "
+                            f"{previous_period!r} -> {period!r}"
+                        ),
+                    )
+                    anchor_count = len(anchors)
+                elif dependency_alignment_mode == "region_specific":
+                    anchors_by_relation = _select_dependency_anchors_by_relation(
+                        base_vectors=previous_vectors,
+                        other_vectors=current_vectors,
+                        base_frequencies=previous_frequencies,
+                        other_frequencies=current_frequencies,
+                        top_k_anchor_pct=top_k_anchor_pct,
+                        min_anchor_count=min_anchor_count,
+                        warning_scope=(
+                            f"Dependency regions {previous_period!r} -> {period!r}"
+                        ),
+                    )
+                    anchor_count = sum(map(len, anchors_by_relation.values()))
+                else:
+                    anchor_count = _count_common_keyed_vectors(
+                        previous_vectors, current_vectors
+                    )
+                    _warn_if_below_minimum_anchor_count(
+                        available_count=anchor_count,
+                        vector_size=previous_vectors.vector_size,
+                        min_anchor_count=min_anchor_count,
+                        scope=f"Embedding space {previous_period!r} -> {period!r}",
+                    )
+                    anchor_count = _selected_anchor_count(
+                        shared_count=anchor_count,
+                        vector_size=previous_vectors.vector_size,
+                        top_k_anchor=top_k_anchor,
+                        min_anchor_count=min_anchor_count,
+                    )
             results.append(
                 _build_alignment_result(
                     period=period,
@@ -719,13 +932,12 @@ def align_w2v_raw_vec_folder(
                     paths=paths,
                     output_path=_primary_raw_vector_output_path(paths, save_formats),
                     aligned_to_period=previous_period,
-                    anchor_count=0
-                    if previous_vectors is None
-                    else _count_common_keyed_vectors(previous_vectors, current_vectors),
+                    anchor_count=anchor_count,
                     vocabulary_size=len(current_vectors),
                 )
             )
             previous_vectors = current_vectors
+            previous_frequencies = current_frequencies
             previous_period = period
             continue
 
@@ -737,15 +949,62 @@ def align_w2v_raw_vec_folder(
 
         anchor_count = 0
         if previous_vectors is not None:
-            rotation, anchor_count = _orthogonal_procrustes_rotation_for_vectors(
-                base_vectors=previous_vectors,
-                other_vectors=current_vectors,
-                min_anchor_count=min_anchor_count,
-            )
-            current_vectors.vectors = current_vectors.vectors.dot(rotation).astype(
-                np.float32,
-                copy=False,
-            )
+            if dependency_alignment_mode == "global":
+                anchors = _select_dependency_anchors(
+                    base_vectors=previous_vectors,
+                    other_vectors=current_vectors,
+                    base_frequencies=previous_frequencies,
+                    other_frequencies=current_frequencies,
+                    top_k_anchor=top_k_anchor,
+                    min_anchor_count=min_anchor_count,
+                    warning_scope=(
+                        f"Dependency embedding space "
+                        f"{previous_period!r} -> {period!r}"
+                    ),
+                )
+                rotation, anchor_count = _orthogonal_procrustes_rotation_from_anchors(
+                    base_vectors=previous_vectors,
+                    other_vectors=current_vectors,
+                    anchors=anchors,
+                )
+                current_vectors.vectors = current_vectors.vectors.dot(rotation).astype(
+                    np.float32,
+                    copy=False,
+                )
+            elif dependency_alignment_mode == "region_specific":
+                anchors_by_relation = _select_dependency_anchors_by_relation(
+                    base_vectors=previous_vectors,
+                    other_vectors=current_vectors,
+                    base_frequencies=previous_frequencies,
+                    other_frequencies=current_frequencies,
+                    top_k_anchor_pct=top_k_anchor_pct,
+                    min_anchor_count=min_anchor_count,
+                    warning_scope=(
+                        f"Dependency regions {previous_period!r} -> {period!r}"
+                    ),
+                )
+                rotations, anchor_count = _dependency_region_rotations(
+                    base_vectors=previous_vectors,
+                    other_vectors=current_vectors,
+                    anchors_by_relation=anchors_by_relation,
+                )
+                _apply_dependency_region_rotations(current_vectors, rotations)
+            else:
+                rotation, anchor_count = _orthogonal_procrustes_rotation_for_vectors(
+                    base_vectors=previous_vectors,
+                    other_vectors=current_vectors,
+                    min_anchor_count=min_anchor_count,
+                    top_k_anchor=top_k_anchor,
+                    base_frequencies=previous_frequencies,
+                    other_frequencies=current_frequencies,
+                    warning_scope=(
+                        f"Embedding space {previous_period!r} -> {period!r}"
+                    ),
+                )
+                current_vectors.vectors = current_vectors.vectors.dot(rotation).astype(
+                    np.float32,
+                    copy=False,
+                )
             _reset_keyed_vector_norms(current_vectors)
 
         paths["keyed_vectors"].parent.mkdir(parents=True, exist_ok=True)
@@ -767,6 +1026,7 @@ def align_w2v_raw_vec_folder(
             )
         )
         previous_vectors = current_vectors
+        previous_frequencies = current_frequencies
         previous_period = period
 
     return results
@@ -802,6 +1062,49 @@ def _resolve_period_vector_path(
     if not path.exists():
         raise FileNotFoundError(f"Missing W2V vector file for period {period}: {path}")
     return path
+
+
+def _resolve_period_vocab_frequency_path(
+    input_root: Path,
+    period: str | int,
+    filename: str,
+) -> Path:
+    period_name = str(period)
+    path = input_root / period_name / filename.format(period=period_name)
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Missing W2V vocabulary frequency file for period {period}: {path}"
+        )
+    return path
+
+
+def _load_vocab_frequencies(path: Path) -> dict[str, int]:
+    frequencies: dict[str, int] = {}
+    is_csv = path.suffix.lower() == ".csv"
+    with path.open("r", encoding="utf-8-sig", newline="") as file:
+        reader = (
+            csv.reader(file)
+            if is_csv
+            else csv.reader(file, delimiter="\t", quoting=csv.QUOTE_NONE)
+        )
+        if is_csv and next(reader, None) != ["vocab", "frequency"]:
+            raise ValueError(f"Expected vocab,frequency header in {path}")
+        for line_number, row in enumerate(reader, start=2 if is_csv else 1):
+            if not row:
+                continue
+            if len(row) != 2 or not row[0]:
+                raise ValueError(f"Invalid vocabulary frequency row in {path}:{line_number}")
+            word, count_text = row
+            try:
+                count = int(count_text)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Invalid vocabulary frequency in {path}:{line_number}"
+                ) from exc
+            if count < 1 or word in frequencies:
+                raise ValueError(f"Invalid or duplicate frequency in {path}:{line_number}")
+            frequencies[word] = count
+    return frequencies
 
 
 def _build_alignment_output_paths(
@@ -845,11 +1148,15 @@ def _orthogonal_procrustes_rotation(
     base_model: Word2Vec,
     other_model: Word2Vec,
     min_anchor_count: int | None,
+    top_k_anchor: int | None,
+    warning_scope: str,
 ) -> tuple[np.ndarray, int]:
     return _orthogonal_procrustes_rotation_for_vectors(
         base_vectors=base_model.wv,
         other_vectors=other_model.wv,
         min_anchor_count=min_anchor_count,
+        top_k_anchor=top_k_anchor,
+        warning_scope=warning_scope,
     )
 
 
@@ -858,18 +1165,327 @@ def _orthogonal_procrustes_rotation_for_vectors(
     base_vectors: KeyedVectors,
     other_vectors: KeyedVectors,
     min_anchor_count: int | None,
+    top_k_anchor: int | None = None,
+    base_frequencies: Mapping[str, int] | None = None,
+    other_frequencies: Mapping[str, int] | None = None,
+    warning_scope: str = "Embedding space",
 ) -> tuple[np.ndarray, int]:
     anchors = sorted(set(base_vectors.key_to_index) & set(other_vectors.key_to_index))
-    required_anchors = (
-        base_vectors.vector_size
-        if min_anchor_count is None
-        else min_anchor_count
+    _warn_if_below_minimum_anchor_count(
+        available_count=len(anchors),
+        vector_size=base_vectors.vector_size,
+        min_anchor_count=min_anchor_count,
+        scope=warning_scope,
     )
-    if len(anchors) < required_anchors:
-        raise ValueError(
-            "Not enough shared vocabulary for alignment: "
-            f"found {len(anchors)}, required {required_anchors}."
+    if top_k_anchor is not None:
+        if base_frequencies is not None and other_frequencies is not None:
+            missing_word = next(
+                (
+                    word for word in anchors
+                    if word not in base_frequencies or word not in other_frequencies
+                ),
+                None,
+            )
+            if missing_word is not None:
+                raise ValueError(
+                    f"Missing vocabulary frequency for shared word {missing_word!r}."
+                )
+            anchors.sort(
+                key=lambda word: (
+                    -min(
+                        base_frequencies[word],
+                        other_frequencies[word],
+                    ),
+                    word,
+                )
+            )
+        elif base_frequencies is None and other_frequencies is None:
+            try:
+                anchors.sort(
+                    key=lambda word: (
+                        -min(
+                            base_vectors.get_vecattr(word, "count"),
+                            other_vectors.get_vecattr(word, "count"),
+                        ),
+                        word,
+                    )
+                )
+            except KeyError as exc:
+                raise ValueError(
+                    "top_k_anchor requires word counts in both Word2Vec models."
+                ) from exc
+        else:
+            raise ValueError("top_k_anchor requires frequencies for both periods.")
+        selected_count = _selected_anchor_count(
+            shared_count=len(anchors),
+            vector_size=base_vectors.vector_size,
+            top_k_anchor=top_k_anchor,
+            min_anchor_count=min_anchor_count,
         )
+        anchors = anchors[:selected_count]
+    return _orthogonal_procrustes_rotation_from_anchors(
+        base_vectors=base_vectors,
+        other_vectors=other_vectors,
+        anchors=anchors,
+    )
+
+
+def _selected_anchor_count(
+    *,
+    shared_count: int,
+    vector_size: int,
+    top_k_anchor: int | None,
+    min_anchor_count: int | None,
+) -> int:
+    if top_k_anchor is None:
+        return shared_count
+    minimum = _minimum_anchor_count(vector_size, min_anchor_count)
+    return min(shared_count, max(top_k_anchor, minimum))
+
+
+def _minimum_anchor_count(
+    vector_size: int,
+    min_anchor_count: int | None,
+) -> int:
+    return vector_size if min_anchor_count is None else min_anchor_count
+
+
+def _warn_if_below_minimum_anchor_count(
+    *,
+    available_count: int,
+    vector_size: int,
+    min_anchor_count: int | None,
+    scope: str,
+) -> None:
+    minimum = _minimum_anchor_count(vector_size, min_anchor_count)
+    if available_count >= minimum:
+        return
+    warnings.warn(
+        f"{scope} has only {available_count} shared anchor candidates, below "
+        f"the minimum anchor count of {minimum}. Using all available anchors "
+        "and continuing alignment.",
+        UserWarning,
+        stacklevel=2,
+    )
+
+
+def _select_dependency_anchors(
+    *,
+    base_vectors: KeyedVectors,
+    other_vectors: KeyedVectors,
+    base_frequencies: Mapping[str, int] | None,
+    other_frequencies: Mapping[str, int] | None,
+    top_k_anchor: int | None,
+    min_anchor_count: int | None,
+    warning_scope: str = "Dependency embedding space",
+) -> list[str]:
+    if top_k_anchor is None:
+        raise ValueError("Dependency alignment requires top_k_anchor.")
+    if base_frequencies is None or other_frequencies is None:
+        raise ValueError("Dependency alignment requires frequencies for both periods.")
+    relation_items = _shared_dependency_items_by_relation(
+        base_vectors=base_vectors,
+        other_vectors=other_vectors,
+        base_frequencies=base_frequencies,
+        other_frequencies=other_frequencies,
+    )
+    shared_count = sum(map(len, relation_items.values()))
+    _warn_if_below_minimum_anchor_count(
+        available_count=shared_count,
+        vector_size=base_vectors.vector_size,
+        min_anchor_count=min_anchor_count,
+        scope=warning_scope,
+    )
+
+    base_relation_totals = _relation_frequency_totals(base_frequencies)
+    other_relation_totals = _relation_frequency_totals(other_frequencies)
+    relations = sorted(set(base_relation_totals) | set(other_relation_totals))
+    relation_support = {
+        relation: min(
+            base_relation_totals.get(relation, 0),
+            other_relation_totals.get(relation, 0),
+        )
+        for relation in relations
+    }
+
+    total_support = sum(relation_support.values())
+    if total_support < 1:
+        raise ValueError("Dependency anchor candidates have no positive frequency support.")
+
+    anchors: list[str] = []
+    for relation in relations:
+        support = relation_support[relation]
+        quota = (2 * top_k_anchor * support + total_support) // (2 * total_support)
+        ranked_items = sorted(
+            relation_items.get(relation, []),
+            key=lambda item: (
+                -min(base_frequencies[item], other_frequencies[item]),
+                item,
+            ),
+        )
+        anchors.extend(ranked_items[:quota])
+
+    minimum = _minimum_anchor_count(base_vectors.vector_size, min_anchor_count)
+    target_count = min(shared_count, minimum)
+    if len(anchors) < target_count:
+        selected = set(anchors)
+        remaining_items = sorted(
+            (
+                item
+                for items in relation_items.values()
+                for item in items
+                if item not in selected
+            ),
+            key=lambda item: (
+                -min(base_frequencies[item], other_frequencies[item]),
+                item,
+            ),
+        )
+        anchors.extend(remaining_items[: target_count - len(anchors)])
+    return anchors
+
+
+def _select_dependency_anchors_by_relation(
+    *,
+    base_vectors: KeyedVectors,
+    other_vectors: KeyedVectors,
+    base_frequencies: Mapping[str, int] | None,
+    other_frequencies: Mapping[str, int] | None,
+    top_k_anchor_pct: float | None,
+    min_anchor_count: int | None,
+    warning_scope: str = "Dependency regions",
+) -> dict[str, list[str]]:
+    if top_k_anchor_pct is None or not 0 < top_k_anchor_pct <= 100:
+        raise ValueError(
+            "Dependency region alignment requires top_k_anchor_pct in (0, 100]."
+        )
+    if base_frequencies is None or other_frequencies is None:
+        raise ValueError("Dependency alignment requires frequencies for both periods.")
+    relation_items = _shared_dependency_items_by_relation(
+        base_vectors=base_vectors,
+        other_vectors=other_vectors,
+        base_frequencies=base_frequencies,
+        other_frequencies=other_frequencies,
+    )
+
+    anchors_by_relation: dict[str, list[str]] = {}
+    minimum = _minimum_anchor_count(base_vectors.vector_size, min_anchor_count)
+    for relation, items in sorted(relation_items.items()):
+        _warn_if_below_minimum_anchor_count(
+            available_count=len(items),
+            vector_size=base_vectors.vector_size,
+            min_anchor_count=min_anchor_count,
+            scope=f"{warning_scope}, relation {relation!r}",
+        )
+        percentage_count = max(
+            1,
+            math.ceil(len(items) * top_k_anchor_pct / 100),
+        )
+        anchor_count = min(len(items), max(percentage_count, minimum))
+        anchors_by_relation[relation] = sorted(
+            items,
+            key=lambda item: (
+                -min(base_frequencies[item], other_frequencies[item]),
+                item,
+            ),
+        )[:anchor_count]
+    return anchors_by_relation
+
+
+def _shared_dependency_items_by_relation(
+    *,
+    base_vectors: KeyedVectors,
+    other_vectors: KeyedVectors,
+    base_frequencies: Mapping[str, int] | None,
+    other_frequencies: Mapping[str, int] | None,
+) -> dict[str, list[str]]:
+    if base_frequencies is None or other_frequencies is None:
+        raise ValueError("Dependency alignment requires frequencies for both periods.")
+
+    shared_items = sorted(
+        set(base_vectors.key_to_index) & set(other_vectors.key_to_index)
+    )
+    relation_items: dict[str, list[str]] = {}
+    for item in shared_items:
+        if item not in base_frequencies or item not in other_frequencies:
+            raise ValueError(f"Missing vocabulary frequency for shared item {item!r}.")
+        relation = _dependency_relation(item)
+        relation_items.setdefault(relation, []).append(item)
+    return relation_items
+
+
+def _dependency_region_rotations(
+    *,
+    base_vectors: KeyedVectors,
+    other_vectors: KeyedVectors,
+    anchors_by_relation: Mapping[str, list[str]],
+) -> tuple[dict[str, np.ndarray], int]:
+    rotations: dict[str, np.ndarray] = {}
+    anchor_count = 0
+    for relation, anchors in anchors_by_relation.items():
+        try:
+            rotation, relation_anchor_count = (
+                _orthogonal_procrustes_rotation_from_anchors(
+                    base_vectors=base_vectors,
+                    other_vectors=other_vectors,
+                    anchors=anchors,
+                )
+            )
+        except ValueError as exc:
+            raise ValueError(f"Cannot align dependency relation {relation!r}: {exc}") from exc
+        rotations[relation] = rotation
+        anchor_count += relation_anchor_count
+    return rotations, anchor_count
+
+
+def _apply_dependency_region_rotations(
+    keyed_vectors: KeyedVectors,
+    rotations: Mapping[str, np.ndarray],
+) -> None:
+    indices_by_relation: dict[str, list[int]] = {}
+    for index, item in enumerate(keyed_vectors.index_to_key):
+        relation = _dependency_relation(item)
+        indices_by_relation.setdefault(relation, []).append(index)
+
+    missing_relations = sorted(set(indices_by_relation) - set(rotations))
+    if missing_relations:
+        joined = ", ".join(missing_relations)
+        raise ValueError(
+            "No shared anchors available for current-period dependency relation(s): "
+            f"{joined}"
+        )
+
+    for relation, indices in indices_by_relation.items():
+        keyed_vectors.vectors[indices] = keyed_vectors.vectors[indices].dot(
+            rotations[relation]
+        ).astype(np.float32, copy=False)
+
+
+def _relation_frequency_totals(frequencies: Mapping[str, int]) -> dict[str, int]:
+    totals: dict[str, int] = {}
+    for item, frequency in frequencies.items():
+        relation = _dependency_relation(item)
+        totals[relation] = totals.get(relation, 0) + frequency
+    return totals
+
+
+def _dependency_relation(item: str) -> str:
+    _, separator, relation = item.rpartition("/")
+    if not separator or not relation:
+        raise ValueError(
+            f"Dependency vector item must use 'item/relation' format: {item!r}"
+        )
+    return relation
+
+
+def _orthogonal_procrustes_rotation_from_anchors(
+    *,
+    base_vectors: KeyedVectors,
+    other_vectors: KeyedVectors,
+    anchors: list[str],
+) -> tuple[np.ndarray, int]:
+    if not anchors:
+        raise ValueError("No shared vocabulary available for alignment.")
 
     base_indices = [base_vectors.key_to_index[word] for word in anchors]
     other_indices = [other_vectors.key_to_index[word] for word in anchors]
